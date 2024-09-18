@@ -508,7 +508,7 @@ if __name__ == "__main__":
             stop_run_2 = True if recv_data[0] == 1 else False
             oracl_data_arrive = int(recv_data[1])    # indicate the number of data in the oracle buffer of MG
             data_section = [sum(data_size_recv[:i]) for i in range(1, data_size_recv.shape[0])]
-            new_data = np.split(recv_data[2:], data_section, axis=0)[1:]
+            new_data = np.split(recv_data, data_section, axis=0)[1:]
             assert len(new_data) == retrain_size*2, f"Error at ML: number of elements received at ML is {len(new_data)} and not match the retrain_size {retrain_size}."
             # split the input and target of the new training data
             dataset_new = []
