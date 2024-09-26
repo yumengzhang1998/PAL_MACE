@@ -23,7 +23,7 @@ class UserModel(object):
         Args:
             rank (int): current process rank (PID).
             result_dir (str): path to directory to save metadata and results.
-            i_device (int): Index for device (GPU or CPU).
+            i_device (int): Index for assigning computation to device (GPU or CPU).
             mode (str): 'predict' for Passive Learner and 'train' for Machine Learning.
         """
         self.rank = rank
