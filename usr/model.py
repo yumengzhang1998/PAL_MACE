@@ -16,20 +16,20 @@ class UserModel(object):
         Receive inputs from Oracle and retrain the model.
         Output model parameters sent to Prediction models.
     """
-    def __init__(self, rank, result_dir, i_gpu, mode):
+    def __init__(self, rank, result_dir, i_device, mode):
         """
         Initilize the model.
         
         Args:
             rank (int): current process rank (PID).
             result_dir (str): path to directory to save metadata and results.
-            i_gpu (int): GPU index.
+            i_device (int) : Index for device (GPU or CPU).
             mode (str): 'predict' for Passive Learner and 'train' for Machine Learning.
         """
         self.rank = rank
         self.result_dir = result_dir
         self.mode = mode
-        self.i_gpu = i_gpu
+        self.i_device = i_device
         
         ##### User Part #####
             
