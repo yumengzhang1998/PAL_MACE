@@ -176,10 +176,10 @@ class UserModel(object):
         for i in range(0, len(datapoints)):
             if i in i_train:
                 self.x_train.append(datapoints[i][0])
-                self.y_train.append(datapoints[i][0])
+                self.y_train.append(datapoints[i][1])
             else:
                 self.x_val.append(datapoints[i][0])
-                self.y_val.append(datapoints[i][0])
+                self.y_val.append(datapoints[i][1])
         print(f"Training Rank{self.rank}: training set size increased")
     
     def retrain(self, req_data):
