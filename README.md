@@ -1,4 +1,4 @@
-# <img src="https://github.com/user-attachments/assets/548da441-e718-4647-912b-ef3ddd34ba61" width="250"> ParallelAL
+# <img src="https://github.com/user-attachments/assets/548da441-e718-4647-912b-ef3ddd34ba61" width="250"> Parallel Active Learning 
 Parallel active learning (PAL) workflow with data and task parallelism through Message Passing Interface (MPI) and mpi4py.
 
 ## Features
