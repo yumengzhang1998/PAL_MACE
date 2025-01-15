@@ -74,7 +74,7 @@ class ModelInterface(object):
                                       Destination: list of data_to_gene at GeneInterface.generate_new_data().
         """
         data_to_gene_list = self.worker.predict(input_list)
-        assert len(data_to_gene_list) == len(input_list), f"Error at Prediction: the data_to_gene_list returned by UserModel.predict() should have the same number of elements as input_list (size {len(input_list)}). Now {len(data_to_gene)}."
+        assert len(data_to_gene_list) == len(input_list), f"Error at Prediction: the data_to_gene_list returned by UserModel.predict() should have the same number of elements as input_list (size {len(input_list)}). Now {len(data_to_gene_list)}."
         for d in data_to_gene_list:
             assert len(d.shape) == 1, "Error at Prediction: every element in data_to_gene_list returned by UserModel.predict() should be an 1-D numpy array."
         return data_to_gene_list
