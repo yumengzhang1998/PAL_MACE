@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyNNsMD"
+version = "1.0.3"
+authors = [
+    {name = "Patrick Reiser", email = "patrick.reiser@kit.edu"},
+]
+description="Neural Network for learning potential energy surface for molecular dynamics."
+dependencies = ['numpy', "scikit-learn", "matplotlib"]
+readme = "README.md"
+requires-python = ">=3.8"
+
+classifiers=[
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering :: Information Analysis",
+        "Topic :: Scientific/Engineering :: Physics",
+        "Topic :: Scientific/Engineering :: Chemistry",
+        "Topic :: Software Development :: Libraries :: Python Modules"
+        ]
+
+[project.optional-dependencies]
+tf = ["tensorflow>=2.3.0"]
+tf_gpu = ["tensorflow-gpu>=2.3.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+namespaces = false
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"pyNNsMD" = ["*.json", "*.yaml"]

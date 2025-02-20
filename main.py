@@ -434,11 +434,11 @@ if __name__ == "__main__":
         if len(gpu_ml) == 0:
             gpu_i = -1
         else:
-            gpu_i = rank_pred.index(rank) % len(gpu_ml)
+            gpu_i = rank_ml.index(rank) % len(gpu_ml)
         from interface import ModelInterface
         assert "model" in usr_pkg.keys(), "User defined model not found in usr_pkg."
         model_module = load_module(usr_pkg["model"], "model_train")
-        ml_worker = ModelInterface(rank, result_dir, gpu_ml, 'train', model_module)
+        ml_worker = ModelInterface(rank, result_dir, gpu_i, 'train', model_module)
         
         req_weight = None
         stop_run = False
