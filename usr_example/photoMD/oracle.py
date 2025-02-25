@@ -24,12 +24,14 @@ class UserOracle(object):
         """
         self.rank = rank
         self.result_dir = result_dir
-        self._workdir = os.environ['TMP']
+        ##### User Part #####
 
         self._elements = generator_setting.elements
         self._num_ex = generator_setting.variable_input["molecule"]["ci"][0] - 1
         self._natoms = len(self._elements)
         self._grad = True
+        self._identifier = rank
+        self._workdir = os.environ['TMP']
         
     def run_calc(self, input_to_orcl):
         """
