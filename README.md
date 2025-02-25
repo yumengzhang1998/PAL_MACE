@@ -101,7 +101,7 @@ mpirun --bind-to core --map-by core --rank-by slot -report-bindings python main.
 ### Run PAL for excited states molecular dynamics (MD) simulations
 Employ PAL to enable the simulation of multiple excited-state potential energy surfaces of a small molecule organic semiconductor, where fully connected neural networks implemented with NNsForMD (https://github.com/aimat-lab/NNsForMD) are utilized in Prediction and Training kernels to predict the ground-state energy and excited-state energy levels. The processes in the Generator kernel propagate MD trajectories and generate new atomic coordinates with PyRAI2MD developed by Jingbai Li et al (https://github.com/lopez-lab/PyRAI2MD). In the oracle kernel, accurate energy and force labels are computed using time-dependent density functional theory (TDDFT) at the B3LYP/6-31G* level of theory with TURBOMOLE (https://www.turbomole.org/).
 
-Install packages. Note this will also install NNsForMD and PyRAI2MD packages modified specifily for this project.
+Install packages. Note this will also install NNsForMD and PyRAI2MD packages modified specifically for this project.
 ```
 bash install_tools/install_pyNNsMD.sh
 bash install_tools/install_pyrai2MD.sh
