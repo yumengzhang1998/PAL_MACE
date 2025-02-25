@@ -30,7 +30,7 @@ Initialize 128 processes on 2 GPU nodes for 1 hour on a computational cluster wi
 #SBATCH --nodes=2
 #SBATCH --ntasks=128
 #SBATCH --ntasks-per-node=64
-#SBATCH --time=00:30:00
+#SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=10240mb
 #SBATCH --job-name=test_toy
