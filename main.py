@@ -132,7 +132,7 @@ if __name__ == "__main__":
             # check if the number of processors matches the user assignment
             for kernel, lis in task_per_node.items():
                 if not lis is None: 
-                    assert len(lis) == len(processor_info.keys()), f"{kernel} in task_per_node specify assignment for only {len(lis)} \
+                    assert len(lis) == len(processor_info.keys()), f"{kernel} in task_per_node specify assignment for {len(lis)} \
                                                                      nodes while {len(processor_info.keys())} available. Check the \
                                                                      task_per_node in al_setting."
         else:
@@ -325,7 +325,7 @@ if __name__ == "__main__":
         if len(gpu_pred) == 0:
             gpu_i = -1
         else:
-            gpu_i = rank_pred.index(rank) % len(gpu_pred)
+            gpu_i = gpu_pred[rank_pred.index(rank)]
         from interface import ModelInterface
         assert "model" in usr_pkg.keys(), "User defined model not found in usr_pkg."
         model_module = load_module(usr_pkg["model"], "model_pred")
@@ -434,7 +434,7 @@ if __name__ == "__main__":
         if len(gpu_ml) == 0:
             gpu_i = -1
         else:
-            gpu_i = rank_ml.index(rank) % len(gpu_ml)
+            gpu_i = gpu_ml[rank_ml.index(rank)]
         from interface import ModelInterface
         assert "model" in usr_pkg.keys(), "User defined model not found in usr_pkg."
         model_module = load_module(usr_pkg["model"], "model_train")
