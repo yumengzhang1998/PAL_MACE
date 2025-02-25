@@ -19,6 +19,7 @@ class UserOracle(object):
         """
         self.rank = rank
         self.result_dir = result_dir
+        ##### User Part #####
         
     def run_calc(self, input_to_orcl):
         """
