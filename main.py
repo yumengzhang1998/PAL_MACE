@@ -304,7 +304,7 @@ if __name__ == "__main__":
             
             if save_progress:
                 # save the current state and data of the generator
-                gene_worker.save_progress()
+                gene_worker.save_progress(stop_run)
 
         # call stop run before terminating
         gene_worker.stop_run()
@@ -545,7 +545,7 @@ if __name__ == "__main__":
             ml_worker.add_trainingset(dataset_new)
             
             # save the current progress/data/state of machine learning progress
-            ml_worker.save_progress()
+            ml_worker.save_progress(stop_run=False)
 
             if stop_retrain: continue
 

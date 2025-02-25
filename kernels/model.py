@@ -137,6 +137,9 @@ class UserModel(object):
         """
         Save the current progress/data/state.
         Called everytime after retraining and receiving new data points.
+
+        Args:
+            stop_run (bool): flag to stop the active learning workflow. True for stop.
         """
         ##### User Part #####
         pass

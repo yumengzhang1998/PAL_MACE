@@ -99,11 +99,13 @@ class ModelInterface(object):
         assert type(stop_run) is bool, "Error at Training: the stop_run returned by UserModel.retrain() should be a bool variable."
         return stop_run
         
-    def save_progress(self):
+    def save_progress(self, stop_run):
         """
         Interface to user defined save_progress method.
+        Args:
+            stop_run (bool): flag to stop the active learning workflow. True for stop.
         """
-        self.worker.save_progress()
+        self.worker.save_progress(stop_run)
     
 class GeneInterface(object):
     """
@@ -131,11 +133,14 @@ class GeneInterface(object):
         assert type(stop_run) is bool, "Error at Generator: the stop_run returned by UserGene.generate_new_data() should be a bool variable."
         return stop_run, data_to_pred
     
-    def save_progress(self):
+    def save_progress(self, stop_run):
         """
         Interface to user defined save_progress method.
+
+        Args:
+            stop_run (bool): flag to stop the active learning workflow. True for stop.
         """
-        self.worker.save_progress()
+        self.worker.save_progress(stop_run)
 
     def stop_run(self):
         """
