@@ -9,9 +9,9 @@ Parallel active learning (PAL) workflow with data and task parallelism through M
 * Implemented with MPI and its Python package (mpi4py), PAL is scalable and can be deployed flexibly on shared- (e.g., laptop) and distributed-memory systems (e.g., computer cluster).
 
 ## Prerequisite
-* Python >= 3.9
+* Python >= 3.10
 * mpi4py >= 3.1 with openmpi
-* Matplotlib/Numpy
+* Numpy
 * openmpi == 4.1
 
 ## Usage
