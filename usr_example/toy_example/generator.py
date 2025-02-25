@@ -29,7 +29,7 @@ class UserGene(object):
         ##### User Part ######
         self.counter = 0
         #self.limit = float("inf")
-        self.limit = 300000 + self.rank
+        self.limit = 200000 + self.rank
         self.state = np.random.randn(4)
         self.history = [[],]
         self.save_path = os.path.join(self.result_dir, f"generator_data_{rank}")
@@ -77,9 +77,12 @@ class UserGene(object):
         # data_to_pred should be returned as an 1-D numpy array
         return stop_run, data_to_pred
     
-    def save_progress(self):
+    def save_progress(self, stop_run):
         """
         Save the current state and progress. Called everytime after the interval defined by progress_save_interval in al_setting.
+
+        Args:
+            stop_run (bool): flag to stop the active learning workflow. True for stop.
         """
         ##### User Part #####
         m = 'ab' if os.path.exists(self.save_path) else 'wb'
@@ -92,4 +95,4 @@ class UserGene(object):
         Called before the Generator process terminating when active learning workflow shuts down.
         """
         ##### User Part #####
-        self.save_progress()
+        self.save_progress(stop_run=True)

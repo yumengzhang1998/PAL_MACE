@@ -242,10 +242,13 @@ class UserModel(object):
         # stop_run should be returned as a bool value.
         return stop_run
             
-    def save_progress(self):
+    def save_progress(self, stop_run):
         """
         Save the current progress/data/state.
         Called everytime after retraining and receiving new data points.
+
+        Args:
+            stop_run (bool): flag to stop the active learning workflow. True for stop.
         """
         ##### User Part #####
         with open(os.path.join(self.result_dir, f"retrain_history_{self.rank}.json"), 'w') as fh:
@@ -257,4 +260,4 @@ class UserModel(object):
         """
         ##### User Part #####
         if self.mode == "train":
-            self.save_progress()
+            self.save_progress(stop_run=True)
