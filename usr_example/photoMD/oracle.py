@@ -32,6 +32,7 @@ class UserOracle(object):
         self._grad = True
         self._identifier = rank
         self._workdir = os.environ['TMP']
+        self._num_state_total = self._num_ex + 1
         
     def run_calc(self, input_to_orcl):
         """
@@ -98,7 +99,7 @@ class UserOracle(object):
         else:
             pass
         
-        energy = [0.0] * self._num_state_total
+        energy = np.zeros((self._num_state_total,), dtype=float)
         if dscf_finished:
             os.system("eiger > eiger.out")
             energy[0] = getTMEnergies(".")[-1] # read ground state energy from eiger.out
@@ -171,7 +172,12 @@ class UserOracle(object):
         # results['energy'] = energy
         # results['gradient'] = gradient
         # results['current_n'] = current_state
-        orcl_calc_res = np.concatenate(([float(current_state),], coords.flatten(), energy.flatten(), gradient.flatten()), axis=0)
+        if gradient is None:
+            gradient = np.zeros((self._natoms, 3), dtype=float)
+        else:
+            gradient = np.array(gradient, dtype=float)
+
+        orcl_calc_res = np.concatenate((energy.flatten(), gradient.flatten()), axis=0)
         
         # back to main directory and remove temporary directory
         os.chdir(startdir)

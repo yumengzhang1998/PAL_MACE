@@ -55,10 +55,13 @@ class UserModel(object):
         set_gpu([self.i_device,])
 
         self.hyper = model_setting.ml_hyper    # model and retraining hyperparameters
-        self.model_dir = model_setting.model_path    # path to the directory (in the result directory) with model files
+        self.model_dir = os.path.join(self.result_dir, model_setting.model_path)    # path to the directory (in the result directory) with model files
         self.mode = mode    # flag of prediction or training kernel
         self.natoms = self.hyper['model']['atoms']
         self.nstates = self.hyper['model']['states']
+
+        if not os.path.exists(self.model_dir):
+            os.makedirs(self.model_dir, exist_ok=True)
 
         if self.mode == 'train':
             weight_path = os.path.join(self.model_dir, f'weights_v{self.i_device}')
@@ -99,6 +102,7 @@ class UserModel(object):
                 self.i_val = np.array([i for i in range(0, self.coord.shape[0]) if i not in self.i_train], dtype=int)
             else:
                 self.coord, self.energy, self.force = None, None, None
+                self.i_train, self.i_val = [], []
 
             self.hist_path = os.path.join(self.model_dir, f'retrain_history{self.i_device}.json')
             try:
@@ -153,6 +157,9 @@ class UserModel(object):
             res = self._model.predict(x_scaled, batch_size=batch_size)
 
         else:
+            x = np.array(list_data_to_pred, dtype=float)
+            occupied_states = x[:,0]
+            x = x[:,1:].reshape(x.shape[0], self.natoms, 3)
             batch_size = self.hyper['general']['batch_size_predict']
             x_scaled = self._scaler.transform(x=x)[0]
             tf.keras.backend.clear_session()
@@ -277,16 +284,15 @@ class UserModel(object):
         """
         ##### User Part #####
         # organize input data
-        new_coord = np.empty(len(datapoints), self.natoms, 3)
-        new_energy = np.empty(len(datapoints), self.nstates)
-        new_force = np.zeros(len(datapoints), self.nstates, self.natoms, 3)
+        new_coord = np.empty((len(datapoints), self.natoms, 3), dtype=float)
+        new_energy = np.empty((len(datapoints), self.nstates), dtype=float)
+        new_force = np.zeros((len(datapoints), self.nstates, self.natoms, 3), dtype=float)
         new_size = int((1-self.hyper['retraining']['val_split'])*new_coord.shape[0])
         for i in range(0, len(datapoints)):
-            current_state = int(datapoints[i][0])
-            new_coord[i] = datapoints[i][1:self.natoms*3+1].reshape(self.natoms, 3)
-            datapoints[i] = datapoints[i][self.natoms*3+1:]
-            new_energy[i] = datapoints[i][:self.nstates].reshape(self.nstates,)
-            new_force[i][current_state] = datapoints[i][self.nstates:].reshape(self.nstates, self.natoms, 3)
+            current_state = int(datapoints[i][0][0])
+            new_coord[i] = datapoints[i][0][1:].reshape(self.natoms, 3)
+            new_energy[i] = datapoints[i][1][:self.nstates].reshape(self.nstates,)
+            new_force[i][current_state] = datapoints[i][1][self.nstates:].reshape(self.natoms, 3)
 
         if self.coord is None:
             self.coord = new_coord.copy()

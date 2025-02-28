@@ -288,7 +288,7 @@ if __name__ == "__main__":
 
                 # data size info scattered by the controller
                 comm_gene_ex.Scatter([data_size_gather, MPI.LONG], [data_size_recv, MPI.LONG], root=0)
-                data_size_recv = int(data_size_recv)
+                data_size_recv = int(data_size_recv[0])
 
             # receive data from EXCHANGE controller kernel
             recvbuf = np.empty((data_size_recv,), dtype=float)
@@ -606,7 +606,7 @@ if __name__ == "__main__":
             comm_world.Recv([data_size_recv, MPI.LONG], source=RANK_MG, tag=tag_here)
 
             # receive input from MG
-            data_recv = np.empty((int(data_size_recv),), dtype=float)
+            data_recv = np.empty((int(data_size_recv[0]),), dtype=float)
             comm_world.Recv([data_recv, MPI.DOUBLE], source=RANK_MG, tag=tag_here)
             stop_run = True if data_recv[0] == 1 else False
             input_for_orcl = data_recv[1:]
@@ -821,7 +821,7 @@ if __name__ == "__main__":
                 assert (size_to_gene == size_to_gene_record).all(), "Error at utils: size is not fixed for list_data_to_gene_checked returned by utils.prediction_check(). Check your implementation or set fixed_size_data to False in al_setting."
 
             # distribute predictions to each generator process
-            recvbuf_tmp = np.empty((int(recvsize_tmp),), dtype=float)
+            recvbuf_tmp = np.empty((int(recvsize_tmp[0]),), dtype=float)
             comm_gene_ex.Scatterv([data_to_gene, size_to_gene, data_to_gene_displs, MPI.DOUBLE], [recvbuf_tmp, MPI.DOUBLE], root=0)
             ################# Done ##################
 
@@ -858,7 +858,7 @@ if __name__ == "__main__":
             recvsize_tmp = np.empty((1,), dtype=int)
             comm_gene_ex.Scatter([size_to_gene, MPI.LONG], [recvsize_tmp, MPI.LONG], root=0)
         # distribute predictions to each generator process
-        recvbuf_tmp = np.empty((int(recvsize_tmp),), dtype=float)
+        recvbuf_tmp = np.empty((int(recvsize_tmp[0]),), dtype=float)
         comm_gene_ex.Scatterv([data_to_gene, size_to_gene, data_to_gene_displs, MPI.DOUBLE], [recvbuf_tmp, MPI.DOUBLE], root=0)
 
         # send stop_run signal to MG, Oracle and Training processes
@@ -1084,3 +1084,4 @@ if __name__ == "__main__":
     comm_world.Barrier()
     if rank == 0:
         print("All processes exits normally.")
+    errout.close()

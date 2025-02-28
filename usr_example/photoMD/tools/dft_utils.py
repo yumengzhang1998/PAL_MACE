@@ -1,17 +1,7 @@
 #!/usr/bin/env python
-import os
-import sys
+import os, sys, resource, time, random, subprocess, shutil, uuid, getpass, socket, yaml, re
 import numpy as np
 import scipy.spatial as scsp
-import resource
-import time
-import random
-import subprocess
-import shutil
-import uuid
-import getpass
-import socket
-import yaml
 try:
     from StringIO import StringIO as mStringIO
 except ImportError:
@@ -25,6 +15,20 @@ kBT=kB*T
 AToBohr=1.889725989
 HToeV = 27.211399
 
+
+def readXYZ(filename):
+    infile=open(filename,"r")
+    coords=[]
+    elements=[]
+    lines=infile.readlines()
+    if len(lines)<3:
+        exit("ERROR: no coordinates found in %s/%s"%(os.getcwd(), filename))
+    for line in lines[2:]:
+        elements.append(line.split()[0].capitalize())
+        coords.append([float(line.split()[1]),float(line.split()[2]),float(line.split()[3])])
+    infile.close()
+    coords=np.array(coords)
+    return coords,elements
 
 def sci_to_float(s):
     """convert string with scientific notation to float"""
