@@ -19,9 +19,9 @@ ml_hyper = {
                 'depth' : 6,
                 'nn_size' : 5000,   # number of neurons per layer
                 'use_reg_weight' : {'class_name': 'L2', 'config': {'l2': 1e-4}},
-                #"activ": {"class_name": "sharp_softplus", "config": {"n": 10.0}},
+                "activ": {"class_name": "sharp_softplus", "config": {"n": 10.0}},
                 'invd_index' : True,
-                'activ': 'relu',
+                #'activ': 'relu',
                 },
             'retraining':{
                 "energy_only": False,

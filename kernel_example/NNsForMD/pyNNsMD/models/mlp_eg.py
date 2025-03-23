@@ -136,6 +136,19 @@ class EnergyGradientModel(ks.Model):
 
         self.precomputed_features = precomputed_features
 
+    def build(self, input_shape):
+        """
+        Build the model by call it once with random input.
+
+        Args:
+            input_shape (tuple): shape of the input.
+        """
+        # Not sure if this works for custom layers
+        super(EnergyGradientModel, self).build(input_shape)
+        input_shape = (10, input_shape[1], input_shape[2])
+        self.call(ks.random.normal(input_shape))
+        self.built = True
+
     def call(self, data, training=False, **kwargs):
         """
         Call the model output, forward pass.

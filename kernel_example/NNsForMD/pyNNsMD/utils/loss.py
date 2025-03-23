@@ -25,8 +25,10 @@ class ScaledMeanAbsoluteError(tf.keras.metrics.MeanAbsoluteError):
 
     def reset_states(self):
             # Super variables
-            ks.backend.set_value(self.total, 0)
-            ks.backend.set_value(self.count, 0)
+            #ks.backend.set_value(self.total, 0)
+            #ks.backend.set_value(self.count, 0)
+            self.total.assign(0)
+            self.count.assign(0)
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         y_true = self.scale * y_true
@@ -40,7 +42,8 @@ class ScaledMeanAbsoluteError(tf.keras.metrics.MeanAbsoluteError):
         return mae_conf
 
     def set_scale(self,scale):
-        ks.backend.set_value(self.scale, scale)
+        #ks.backend.set_value(self.scale, scale)
+        self.scale.assign(scale)
 
 
 class MaskedScaledMeanAbsoluteError(tf.keras.metrics.Metric):
@@ -54,8 +57,10 @@ class MaskedScaledMeanAbsoluteError(tf.keras.metrics.Metric):
 
     def reset_states(self):
             # Super variables
-            ks.backend.set_value(self.total, 0)
-            ks.backend.set_value(self.count, 0)
+            #ks.backend.set_value(self.total, 0)
+            #ks.backend.set_value(self.count, 0)
+            self.total.assign(0)
+            self.count.assign(0)
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         mask = K.cast(K.not_equal(y_true, 0.0), dtype="float32")
@@ -75,7 +80,8 @@ class MaskedScaledMeanAbsoluteError(tf.keras.metrics.Metric):
         return mae_conf
 
     def set_scale(self,scale):
-        ks.backend.set_value(self.scale, scale)
+        #ks.backend.set_value(self.scale, scale)
+        self.scale.assign(scale)
 
 
 class ZeroEmptyLoss(tf.keras.losses.Loss):
@@ -107,7 +113,7 @@ def get_lr_metric(optimizer):
     """
 
     def lr(y_true, y_pred):
-        return optimizer.lr
+        return optimizer.learning_rate
 
     return lr
 

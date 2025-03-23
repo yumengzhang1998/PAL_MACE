@@ -364,7 +364,7 @@ class UserModel(object):
         print(f"Info: shape of training input feature is {feat_x[self.i_train].shape}")
         
         # Setting constant feature normalization
-        optimizer = tf.keras.optimizers.Adam(lr=learning_rate)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
         lr_metric = get_lr_metric(optimizer)
 
         mae_energy = MaskedScaledMeanAbsoluteError(scaling_shape=self._scaler.energy_std.shape)
@@ -490,7 +490,7 @@ class MPICallback(ks.callbacks.Callback):
         
     def on_train_begin(self, logs=None):
         self.wait = 0
-        self.best = np.Inf
+        self.best = np.inf
         self.best_weights = None
         
     def on_epoch_end(self, epoch, logs=None):
