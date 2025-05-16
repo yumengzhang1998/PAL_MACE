@@ -1,0 +1,483 @@
+2025-05-05 16:35:22.908 INFO: ===========VERIFYING SETTINGS===========
+2025-05-05 16:35:22.909 INFO: MACE version: 0.3.10
+2025-05-05 16:35:22.909 DEBUG: Configuration: Namespace(name='bi0', seed=123, work_dir='.', log_dir='./logs//sample_0//logs', model_dir='./logs//sample_0/', checkpoints_dir='./logs//sample_0//checkpoints', results_dir='./logs//sample_0//results', downloads_dir='./downloads', device='cuda', default_dtype='float64', distributed=False, log_level='INFO', error_table='TotalMAE', model='MACE_with_charge', r_max=9.0, radial_type='bessel', num_radial_basis=8, num_cutoff_basis=5, pair_repulsion=False, distance_transform='None', interaction='RealAgnosticResidualInteractionBlock', interaction_first='RealAgnosticResidualInteractionBlock', max_ell=3, correlation=3, num_interactions=2, MLP_irreps='16x0e', radial_MLP='[64, 64, 64]', hidden_irreps=128x0e+128x1o, num_channels=128, max_L=1, gate='silu', scaling='rms_forces_scaling', avg_num_neighbors=1, compute_avg_num_neighbors=True, compute_stress=False, compute_forces=True, train_file='train.xyz', valid_file='test.xyz', valid_fraction=0.1, test_file='test.xyz', test_dir=None, multi_processed_test=False, num_workers=16, pin_memory=True, atomic_numbers=None, mean=None, std=None, statistics_file='None', E0s='average', foundation_filter_elements=True, heads=None, multiheads_finetuning=True, foundation_head=None, weight_pt_head=1.0, num_samples_pt=10000, force_mh_ft_lr=False, subselect_pt='random', pt_train_file=None, pt_valid_file=None, foundation_model_elements=False, keep_isolated_atoms=False, energy_key='REF_energy', forces_key='REF_forces', virials_key='REF_virials', stress_key='REF_stress', dipole_key='REF_dipole', charges_key='REF_charges', loss='weighted', forces_weight=100.0, energy_weight=1.0, virials_weight=1.0, stress_weight=1.0, dipole_weight=1.0, config_type_weights='{"Default":1.0}', huber_delta=0.01, optimizer='adam', beta=0.9, batch_size=32, valid_batch_size=32, lr=0.01, weight_decay=5e-07, amsgrad=True, scheduler='ReduceLROnPlateau', lr_factor=0.8, scheduler_patience=50, lr_scheduler_gamma=0.9993, ema=True, ema_decay=0.99, max_num_epochs=300, patience=20, foundation_model=None, foundation_model_readout=True, eval_interval=1, keep_checkpoints=False, save_all_checkpoints=False, restart_latest=False, save_cpu=False, clip_grad=10.0, enable_cueq=False, wandb=False, wandb_dir=None, wandb_project='', wandb_entity='', wandb_name='', swa=False, start_swa=None, swa_lr=0.001, swa_energy_weight=1000.0, swa_forces_weight=100.0, swa_virials_weight=10.0, swa_stress_weight=10.0, swa_dipole_weight=1.0, scale=True, shift=True)
+2025-05-05 16:36:44.199 INFO: ===========VERIFYING SETTINGS===========
+2025-05-05 16:36:44.200 INFO: MACE version: 0.3.10
+2025-05-05 16:36:44.200 DEBUG: Configuration: Namespace(name='bi0', seed=123, work_dir='.', log_dir='./logs//sample_0//logs', model_dir='./logs//sample_0/', checkpoints_dir='./logs//sample_0//checkpoints', results_dir='./logs//sample_0//results', downloads_dir='./downloads', device='cuda', default_dtype='float64', distributed=False, log_level='INFO', error_table='TotalMAE', model='MACE_with_charge', r_max=9.0, radial_type='bessel', num_radial_basis=8, num_cutoff_basis=5, pair_repulsion=False, distance_transform='None', interaction='RealAgnosticResidualInteractionBlock', interaction_first='RealAgnosticResidualInteractionBlock', max_ell=3, correlation=3, num_interactions=2, MLP_irreps='16x0e', radial_MLP='[64, 64, 64]', hidden_irreps=128x0e+128x1o, num_channels=128, max_L=1, gate='silu', scaling='rms_forces_scaling', avg_num_neighbors=1, compute_avg_num_neighbors=True, compute_stress=False, compute_forces=True, train_file='train.xyz', valid_file='test.xyz', valid_fraction=0.1, test_file='test.xyz', test_dir=None, multi_processed_test=False, num_workers=16, pin_memory=True, atomic_numbers=None, mean=None, std=None, statistics_file='None', E0s='average', foundation_filter_elements=True, heads=None, multiheads_finetuning=True, foundation_head=None, weight_pt_head=1.0, num_samples_pt=10000, force_mh_ft_lr=False, subselect_pt='random', pt_train_file=None, pt_valid_file=None, foundation_model_elements=False, keep_isolated_atoms=False, energy_key='REF_energy', forces_key='REF_forces', virials_key='REF_virials', stress_key='REF_stress', dipole_key='REF_dipole', charges_key='REF_charges', loss='weighted', forces_weight=100.0, energy_weight=1.0, virials_weight=1.0, stress_weight=1.0, dipole_weight=1.0, config_type_weights='{"Default":1.0}', huber_delta=0.01, optimizer='adam', beta=0.9, batch_size=32, valid_batch_size=32, lr=0.01, weight_decay=5e-07, amsgrad=True, scheduler='ReduceLROnPlateau', lr_factor=0.8, scheduler_patience=50, lr_scheduler_gamma=0.9993, ema=True, ema_decay=0.99, max_num_epochs=300, patience=20, foundation_model=None, foundation_model_readout=True, eval_interval=1, keep_checkpoints=False, save_all_checkpoints=False, restart_latest=False, save_cpu=False, clip_grad=10.0, enable_cueq=False, wandb=False, wandb_dir=None, wandb_project='', wandb_entity='', wandb_name='', swa=False, start_swa=None, swa_lr=0.001, swa_energy_weight=1000.0, swa_forces_weight=100.0, swa_virials_weight=10.0, swa_stress_weight=10.0, swa_dipole_weight=1.0, scale=True, shift=True)
+2025-05-05 16:36:44.260 INFO: CUDA version: 12.1, CUDA device: 0
+2025-05-05 16:36:44.358 DEBUG: Popen(['git', 'version'], cwd=/hkfs/home/project/hk-project-aimat2/hv3694/ALParallel_hardcode_mace/usr/initial_pyg/full_data_charge_embed, stdin=None, shell=False, universal_newlines=False)
+2025-05-05 16:36:44.361 DEBUG: Popen(['git', 'version'], cwd=/hkfs/home/project/hk-project-aimat2/hv3694/ALParallel_hardcode_mace/usr/initial_pyg/full_data_charge_embed, stdin=None, shell=False, universal_newlines=False)
+2025-05-05 16:36:44.374 DEBUG: Popen(['git', 'cat-file', '--batch-check'], cwd=/hkfs/home/project/hk-project-aimat2/hv3694/ALParallel_hardcode_mace, stdin=<valid stream>, shell=False, universal_newlines=False)
+2025-05-05 16:36:44.384 DEBUG: Current Git commit: 375c24608777fb59d36c35af6207eccfa3ec7008
+2025-05-05 16:36:44.384 INFO: ===========LOADING INPUT DATA===========
+2025-05-05 16:36:44.385 INFO: Using heads: ['default']
+2025-05-05 16:36:44.385 INFO: =============    Processing head default     ===========
+2025-05-05 16:36:44.385 INFO: Total number of configurations: train=1616, valid=404, 
+2025-05-05 16:36:44.409 INFO: Atomic Numbers used: [83]
+2025-05-05 16:36:44.409 INFO: Computing average Atomic Energies using least squares regression
+2025-05-05 16:36:44.428 INFO: Atomic Energies used (z: eV) for head default: {83: -5841.262678307498}
+2025-05-05 16:36:45.166 INFO: Computing average number of neighbors
+2025-05-05 16:36:47.743 INFO: Average number of neighbors: 7.3335713010887025
+2025-05-05 16:36:47.743 INFO: During training the following quantities will be reported: energy, forces
+2025-05-05 16:36:47.743 INFO: ===========MODEL DETAILS===========
+2025-05-05 16:36:47.744 INFO: Building model
+2025-05-05 16:36:47.744 INFO: Message passing with 128 channels and max_L=1 (128x0e+128x1o)
+2025-05-05 16:36:47.744 INFO: 2 layers, each with correlation order: 3 (body order: 4) and spherical harmonics up to: l=3
+2025-05-05 16:36:47.744 INFO: 8 radial and 5 basis functions
+2025-05-05 16:36:47.744 INFO: Radial cutoff: 9.0 A (total receptive field for each atom: 18.0 A)
+2025-05-05 16:36:47.744 INFO: Distance transform for radial basis functions: None
+2025-05-05 16:36:47.744 INFO: Hidden irreps: 128x0e+128x1o
+2025-05-05 16:36:49.379 DEBUG: ScaleShiftMACE_with_charge(
+  (node_embedding): LinearNodeEmbeddingBlockwithcharge(
+    (linear): Linear(1x0e -> 128x0e | 128 weights)
+    (charge_embed): Linear(in_features=1, out_features=32, bias=True)
+    (projection_layer): Linear(in_features=33, out_features=1, bias=True)
+  )
+  (radial_embedding): RadialEmbeddingBlock(
+    (bessel_fn): BesselBasis(r_max=9.0, num_basis=8, trainable=False)
+    (cutoff_fn): PolynomialCutoff(p=5, r_max=9.0)
+  )
+  (spherical_harmonics): SphericalHarmonics()
+  (atomic_energies_fn): AtomicEnergiesBlock(energies=[[-5841.2627]])
+  (interactions): ModuleList(
+    (0): RealAgnosticResidualInteractionBlock(
+      (linear_up): Linear(128x0e -> 128x0e | 16384 weights)
+      (conv_tp): TensorProduct(128x0e x 1x0e+1x1o+1x2e+1x3o -> 128x0e+128x1o+128x2e+128x3o | 512 paths | 512 weights)
+      (conv_tp_weights): FullyConnectedNet[8, 64, 64, 64, 512]
+      (linear): Linear(128x0e+128x1o+128x2e+128x3o -> 128x0e+128x1o+128x2e+128x3o | 65536 weights)
+      (skip_tp): FullyConnectedTensorProduct(128x0e x 1x0e -> 128x0e+128x1o | 16384 paths | 16384 weights)
+      (reshape): reshape_irreps()
+    )
+    (1): RealAgnosticResidualInteractionBlock(
+      (linear_up): Linear(128x0e+128x1o -> 128x0e+128x1o | 32768 weights)
+      (conv_tp): TensorProduct(128x0e+128x1o x 1x0e+1x1o+1x2e+1x3o -> 256x0e+384x1o+384x2e+256x3o | 1280 paths | 1280 weights)
+      (conv_tp_weights): FullyConnectedNet[8, 64, 64, 64, 1280]
+      (linear): Linear(128x0e+128x0e+128x1o+128x1o+128x1o+128x2e+128x2e+128x2e+128x3o+128x3o -> 128x0e+128x1o+128x2e+128x3o | 163840 weights)
+      (skip_tp): FullyConnectedTensorProduct(128x0e+128x1o x 1x0e -> 128x0e | 16384 paths | 16384 weights)
+      (reshape): reshape_irreps()
+    )
+  )
+  (products): ModuleList(
+    (0): EquivariantProductBasisBlock(
+      (symmetric_contractions): SymmetricContraction(
+        (contractions): ModuleList(
+          (0): Contraction(
+            (contractions_weighting): ModuleList(
+              (0-1): 2 x GraphModule()
+            )
+            (contractions_features): ModuleList(
+              (0-1): 2 x GraphModule()
+            )
+            (weights): ParameterList(
+                (0): Parameter containing: [torch.float64 of size 1x4x128 (cuda:0)]
+                (1): Parameter containing: [torch.float64 of size 1x1x128 (cuda:0)]
+            )
+            (graph_opt_main): GraphModule()
+          )
+          (1): Contraction(
+            (contractions_weighting): ModuleList(
+              (0-1): 2 x GraphModule()
+            )
+            (contractions_features): ModuleList(
+              (0-1): 2 x GraphModule()
+            )
+            (weights): ParameterList(
+                (0): Parameter containing: [torch.float64 of size 1x6x128 (cuda:0)]
+                (1): Parameter containing: [torch.float64 of size 1x1x128 (cuda:0)]
+            )
+            (graph_opt_main): GraphModule()
+          )
+        )
+      )
+      (linear): Linear(128x0e+128x1o -> 128x0e+128x1o | 32768 weights)
+    )
+    (1): EquivariantProductBasisBlock(
+      (symmetric_contractions): SymmetricContraction(
+        (contractions): ModuleList(
+          (0): Contraction(
+            (contractions_weighting): ModuleList(
+              (0-1): 2 x GraphModule()
+            )
+            (contractions_features): ModuleList(
+              (0-1): 2 x GraphModule()
+            )
+            (weights): ParameterList(
+                (0): Parameter containing: [torch.float64 of size 1x4x128 (cuda:0)]
+                (1): Parameter containing: [torch.float64 of size 1x1x128 (cuda:0)]
+            )
+            (graph_opt_main): GraphModule()
+          )
+        )
+      )
+      (linear): Linear(128x0e -> 128x0e | 16384 weights)
+    )
+  )
+  (readouts): ModuleList(
+    (0): LinearReadoutBlock(
+      (linear): Linear(128x0e+128x1o -> 1x0e | 128 weights)
+    )
+    (1): NonLinearReadoutBlock(
+      (linear_1): Linear(128x0e -> 16x0e | 2048 weights)
+      (non_linearity): Activation [x] (16x0e -> 16x0e)
+      (linear_2): Linear(16x0e -> 1x0e | 16 weights)
+    )
+  )
+  (scale_shift): ScaleShiftBlock(scale=0.6813, shift=-0.5024)
+  (charge_embed): Linear(in_features=1, out_features=32, bias=True)
+)
+2025-05-05 16:36:49.381 INFO: Total number of parameters: 509618
+2025-05-05 16:36:49.381 INFO: 
+2025-05-05 16:36:49.381 INFO: ===========OPTIMIZER INFORMATION===========
+2025-05-05 16:36:49.381 INFO: Using ADAM as parameter optimizer
+2025-05-05 16:36:49.381 INFO: Batch size: 32
+2025-05-05 16:36:49.381 INFO: Using Exponential Moving Average with decay: 0.99
+2025-05-05 16:36:49.381 INFO: Number of gradient updates: 15150
+2025-05-05 16:36:49.381 INFO: Learning rate: 0.01, weight decay: 5e-07
+2025-05-05 16:36:49.381 INFO: WeightedEnergyForcesLoss(energy_weight=1.000, forces_weight=100.000)
+2025-05-05 16:36:49.383 INFO: Using gradient clipping with tolerance=10.000
+2025-05-05 16:36:49.383 INFO: 
+2025-05-05 16:36:49.383 INFO: ===========TRAINING===========
+2025-05-05 16:36:49.383 INFO: Started training, reporting errors on validation set
+2025-05-05 16:36:49.383 INFO: Loss metrics on validation set
+2025-05-05 16:36:55.347 INFO: Initial: head: validation, loss=2.13661227, MAE_E=17551.54 meV, MAE_F=  488.31 meV / A
+2025-05-05 16:37:06.583 INFO: Epoch 0: head: train, loss=0.35523219, MAE_E= 7672.72 meV, MAE_F=  240.71 meV / A
+2025-05-05 16:37:07.305 INFO: Epoch 0: head: validation, loss=0.36809193, MAE_E= 7522.70 meV, MAE_F=  242.12 meV / A
+2025-05-05 16:37:07.307 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-0.pt
+2025-05-05 16:37:11.942 INFO: Epoch 1: head: train, loss=0.22294482, MAE_E= 9178.83 meV, MAE_F=  166.48 meV / A
+2025-05-05 16:37:12.637 INFO: Epoch 1: head: validation, loss=0.22829051, MAE_E= 8996.92 meV, MAE_F=  166.82 meV / A
+2025-05-05 16:37:12.639 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-0.pt
+2025-05-05 16:37:12.640 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-1.pt
+2025-05-05 16:37:17.584 INFO: Epoch 2: head: train, loss=0.21357218, MAE_E= 5550.68 meV, MAE_F=  166.83 meV / A
+2025-05-05 16:37:18.284 INFO: Epoch 2: head: validation, loss=0.22623990, MAE_E= 5448.66 meV, MAE_F=  167.95 meV / A
+2025-05-05 16:37:18.286 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-1.pt
+2025-05-05 16:37:18.286 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-2.pt
+2025-05-05 16:37:23.347 INFO: Epoch 3: head: train, loss=0.23025989, MAE_E= 4902.96 meV, MAE_F=  177.17 meV / A
+2025-05-05 16:37:24.090 INFO: Epoch 3: head: validation, loss=0.23803830, MAE_E= 4821.21 meV, MAE_F=  177.96 meV / A
+2025-05-05 16:37:28.861 INFO: Epoch 4: head: train, loss=0.20963839, MAE_E= 6563.69 meV, MAE_F=  178.86 meV / A
+2025-05-05 16:37:29.628 INFO: Epoch 4: head: validation, loss=0.22451728, MAE_E= 6444.19 meV, MAE_F=  181.68 meV / A
+2025-05-05 16:37:29.630 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-2.pt
+2025-05-05 16:37:29.631 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-4.pt
+2025-05-05 16:37:34.678 INFO: Epoch 5: head: train, loss=0.20213796, MAE_E= 5413.10 meV, MAE_F=  176.17 meV / A
+2025-05-05 16:37:35.413 INFO: Epoch 5: head: validation, loss=0.21079134, MAE_E= 5294.62 meV, MAE_F=  177.38 meV / A
+2025-05-05 16:37:35.415 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-4.pt
+2025-05-05 16:37:35.415 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-5.pt
+2025-05-05 16:37:40.324 INFO: Epoch 6: head: train, loss=0.24805407, MAE_E= 6000.60 meV, MAE_F=  194.12 meV / A
+2025-05-05 16:37:41.057 INFO: Epoch 6: head: validation, loss=0.26216105, MAE_E= 5881.64 meV, MAE_F=  195.16 meV / A
+2025-05-05 16:37:45.875 INFO: Epoch 7: head: train, loss=0.15474640, MAE_E= 6093.19 meV, MAE_F=  143.41 meV / A
+2025-05-05 16:37:46.586 INFO: Epoch 7: head: validation, loss=0.16310675, MAE_E= 5972.78 meV, MAE_F=  144.74 meV / A
+2025-05-05 16:37:46.589 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-5.pt
+2025-05-05 16:37:46.590 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-7.pt
+2025-05-05 16:37:51.673 INFO: Epoch 8: head: train, loss=0.11950252, MAE_E= 5784.48 meV, MAE_F=  120.88 meV / A
+2025-05-05 16:37:52.387 INFO: Epoch 8: head: validation, loss=0.12569241, MAE_E= 5668.51 meV, MAE_F=  122.22 meV / A
+2025-05-05 16:37:52.390 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-7.pt
+2025-05-05 16:37:52.390 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-8.pt
+2025-05-05 16:37:57.237 INFO: Epoch 9: head: train, loss=0.13983700, MAE_E= 5343.20 meV, MAE_F=  140.77 meV / A
+2025-05-05 16:37:57.958 INFO: Epoch 9: head: validation, loss=0.14649281, MAE_E= 5247.94 meV, MAE_F=  142.01 meV / A
+2025-05-05 16:38:02.785 INFO: Epoch 10: head: train, loss=0.12035685, MAE_E= 5603.71 meV, MAE_F=  125.08 meV / A
+2025-05-05 16:38:03.516 INFO: Epoch 10: head: validation, loss=0.12841026, MAE_E= 5493.43 meV, MAE_F=  127.61 meV / A
+2025-05-05 16:38:08.269 INFO: Epoch 11: head: train, loss=0.08446698, MAE_E= 5278.09 meV, MAE_F=   96.20 meV / A
+2025-05-05 16:38:09.005 INFO: Epoch 11: head: validation, loss=0.09075816, MAE_E= 5189.38 meV, MAE_F=   99.17 meV / A
+2025-05-05 16:38:09.007 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-8.pt
+2025-05-05 16:38:09.007 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-11.pt
+2025-05-05 16:38:14.092 INFO: Epoch 12: head: train, loss=0.07573153, MAE_E= 4910.58 meV, MAE_F=   90.07 meV / A
+2025-05-05 16:38:14.911 INFO: Epoch 12: head: validation, loss=0.08139435, MAE_E= 4823.07 meV, MAE_F=   92.28 meV / A
+2025-05-05 16:38:14.914 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-11.pt
+2025-05-05 16:38:14.915 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-12.pt
+2025-05-05 16:38:20.317 INFO: Epoch 13: head: train, loss=0.09144303, MAE_E= 3400.33 meV, MAE_F=  108.67 meV / A
+2025-05-05 16:38:21.097 INFO: Epoch 13: head: validation, loss=0.09920353, MAE_E= 3355.57 meV, MAE_F=  110.89 meV / A
+2025-05-05 16:38:26.178 INFO: Epoch 14: head: train, loss=0.07604544, MAE_E= 3791.60 meV, MAE_F=   95.08 meV / A
+2025-05-05 16:38:26.940 INFO: Epoch 14: head: validation, loss=0.08127502, MAE_E= 3731.08 meV, MAE_F=   96.73 meV / A
+2025-05-05 16:38:26.942 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-12.pt
+2025-05-05 16:38:26.943 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-14.pt
+2025-05-05 16:38:32.004 INFO: Epoch 15: head: train, loss=0.05715537, MAE_E= 3568.60 meV, MAE_F=   80.74 meV / A
+2025-05-05 16:38:32.722 INFO: Epoch 15: head: validation, loss=0.06198106, MAE_E= 3503.28 meV, MAE_F=   82.66 meV / A
+2025-05-05 16:38:32.724 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-14.pt
+2025-05-05 16:38:32.730 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-15.pt
+2025-05-05 16:38:37.706 INFO: Epoch 16: head: train, loss=0.06108759, MAE_E= 3312.64 meV, MAE_F=   89.12 meV / A
+2025-05-05 16:38:38.511 INFO: Epoch 16: head: validation, loss=0.06601664, MAE_E= 3260.95 meV, MAE_F=   90.79 meV / A
+2025-05-05 16:38:43.367 INFO: Epoch 17: head: train, loss=0.04621681, MAE_E= 2994.55 meV, MAE_F=   74.30 meV / A
+2025-05-05 16:38:44.137 INFO: Epoch 17: head: validation, loss=0.05022795, MAE_E= 2936.37 meV, MAE_F=   76.01 meV / A
+2025-05-05 16:38:44.139 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-15.pt
+2025-05-05 16:38:44.139 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-17.pt
+2025-05-05 16:38:49.050 INFO: Epoch 18: head: train, loss=0.03638237, MAE_E= 2385.32 meV, MAE_F=   63.88 meV / A
+2025-05-05 16:38:49.765 INFO: Epoch 18: head: validation, loss=0.04038375, MAE_E= 2337.22 meV, MAE_F=   65.82 meV / A
+2025-05-05 16:38:49.767 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-17.pt
+2025-05-05 16:38:49.768 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-18.pt
+2025-05-05 16:38:54.606 INFO: Epoch 19: head: train, loss=0.02915351, MAE_E= 1787.26 meV, MAE_F=   55.40 meV / A
+2025-05-05 16:38:55.340 INFO: Epoch 19: head: validation, loss=0.03280456, MAE_E= 1743.74 meV, MAE_F=   57.08 meV / A
+2025-05-05 16:38:55.343 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-18.pt
+2025-05-05 16:38:55.343 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-19.pt
+2025-05-05 16:39:00.169 INFO: Epoch 20: head: train, loss=0.02447345, MAE_E= 1300.27 meV, MAE_F=   49.07 meV / A
+2025-05-05 16:39:00.872 INFO: Epoch 20: head: validation, loss=0.02825609, MAE_E= 1267.27 meV, MAE_F=   51.27 meV / A
+2025-05-05 16:39:00.875 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-19.pt
+2025-05-05 16:39:00.875 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-20.pt
+2025-05-05 16:39:05.831 INFO: Epoch 21: head: train, loss=0.02138442, MAE_E= 1012.81 meV, MAE_F=   44.53 meV / A
+2025-05-05 16:39:06.553 INFO: Epoch 21: head: validation, loss=0.02521769, MAE_E=  980.41 meV, MAE_F=   47.08 meV / A
+2025-05-05 16:39:06.556 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-20.pt
+2025-05-05 16:39:06.561 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-21.pt
+2025-05-05 16:39:11.519 INFO: Epoch 22: head: train, loss=0.01910872, MAE_E=  847.43 meV, MAE_F=   41.28 meV / A
+2025-05-05 16:39:12.247 INFO: Epoch 22: head: validation, loss=0.02326800, MAE_E=  825.12 meV, MAE_F=   44.39 meV / A
+2025-05-05 16:39:12.249 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-21.pt
+2025-05-05 16:39:12.255 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-22.pt
+2025-05-05 16:39:17.326 INFO: Epoch 23: head: train, loss=0.01771250, MAE_E=  766.50 meV, MAE_F=   39.36 meV / A
+2025-05-05 16:39:18.041 INFO: Epoch 23: head: validation, loss=0.02174141, MAE_E=  742.73 meV, MAE_F=   42.41 meV / A
+2025-05-05 16:39:18.043 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-22.pt
+2025-05-05 16:39:18.043 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-23.pt
+2025-05-05 16:39:22.982 INFO: Epoch 24: head: train, loss=0.01627057, MAE_E=  728.70 meV, MAE_F=   37.33 meV / A
+2025-05-05 16:39:23.717 INFO: Epoch 24: head: validation, loss=0.02047967, MAE_E=  707.87 meV, MAE_F=   40.73 meV / A
+2025-05-05 16:39:23.719 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-23.pt
+2025-05-05 16:39:23.720 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-24.pt
+2025-05-05 16:39:28.982 INFO: Epoch 25: head: train, loss=0.01500840, MAE_E=  688.72 meV, MAE_F=   35.53 meV / A
+2025-05-05 16:39:29.762 INFO: Epoch 25: head: validation, loss=0.01940404, MAE_E=  669.08 meV, MAE_F=   39.12 meV / A
+2025-05-05 16:39:29.765 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-24.pt
+2025-05-05 16:39:29.765 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-25.pt
+2025-05-05 16:39:34.950 INFO: Epoch 26: head: train, loss=0.01385452, MAE_E=  648.27 meV, MAE_F=   33.95 meV / A
+2025-05-05 16:39:35.740 INFO: Epoch 26: head: validation, loss=0.01829315, MAE_E=  629.12 meV, MAE_F=   37.58 meV / A
+2025-05-05 16:39:35.742 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-25.pt
+2025-05-05 16:39:35.742 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-26.pt
+2025-05-05 16:39:40.813 INFO: Epoch 27: head: train, loss=0.01245066, MAE_E=  632.50 meV, MAE_F=   32.09 meV / A
+2025-05-05 16:39:41.547 INFO: Epoch 27: head: validation, loss=0.01748928, MAE_E=  617.47 meV, MAE_F=   36.27 meV / A
+2025-05-05 16:39:41.549 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-26.pt
+2025-05-05 16:39:41.549 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-27.pt
+2025-05-05 16:39:46.601 INFO: Epoch 28: head: train, loss=0.01148663, MAE_E=  608.13 meV, MAE_F=   30.76 meV / A
+2025-05-05 16:39:47.378 INFO: Epoch 28: head: validation, loss=0.01667947, MAE_E=  592.21 meV, MAE_F=   35.21 meV / A
+2025-05-05 16:39:47.381 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-27.pt
+2025-05-05 16:39:47.381 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-28.pt
+2025-05-05 16:39:52.393 INFO: Epoch 29: head: train, loss=0.01075724, MAE_E=  595.86 meV, MAE_F=   29.71 meV / A
+2025-05-05 16:39:53.223 INFO: Epoch 29: head: validation, loss=0.01605411, MAE_E=  579.70 meV, MAE_F=   34.24 meV / A
+2025-05-05 16:39:53.226 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-28.pt
+2025-05-05 16:39:53.226 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-29.pt
+2025-05-05 16:39:58.391 INFO: Epoch 30: head: train, loss=0.01006929, MAE_E=  602.20 meV, MAE_F=   28.65 meV / A
+2025-05-05 16:39:59.124 INFO: Epoch 30: head: validation, loss=0.01557797, MAE_E=  589.17 meV, MAE_F=   33.64 meV / A
+2025-05-05 16:39:59.126 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-29.pt
+2025-05-05 16:39:59.127 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-30.pt
+2025-05-05 16:40:04.385 INFO: Epoch 31: head: train, loss=0.00934209, MAE_E=  591.43 meV, MAE_F=   27.86 meV / A
+2025-05-05 16:40:05.129 INFO: Epoch 31: head: validation, loss=0.01504871, MAE_E=  575.98 meV, MAE_F=   32.91 meV / A
+2025-05-05 16:40:05.131 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-30.pt
+2025-05-05 16:40:05.131 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-31.pt
+2025-05-05 16:40:09.964 INFO: Epoch 32: head: train, loss=0.00885116, MAE_E=  597.97 meV, MAE_F=   27.28 meV / A
+2025-05-05 16:40:10.679 INFO: Epoch 32: head: validation, loss=0.01474063, MAE_E=  578.19 meV, MAE_F=   32.34 meV / A
+2025-05-05 16:40:10.681 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-31.pt
+2025-05-05 16:40:10.681 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-32.pt
+2025-05-05 16:40:15.747 INFO: Epoch 33: head: train, loss=0.00817841, MAE_E=  578.50 meV, MAE_F=   26.16 meV / A
+2025-05-05 16:40:16.516 INFO: Epoch 33: head: validation, loss=0.01423547, MAE_E=  562.58 meV, MAE_F=   31.51 meV / A
+2025-05-05 16:40:16.518 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-32.pt
+2025-05-05 16:40:16.519 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-33.pt
+2025-05-05 16:40:21.706 INFO: Epoch 34: head: train, loss=0.00749744, MAE_E=  554.73 meV, MAE_F=   25.17 meV / A
+2025-05-05 16:40:22.453 INFO: Epoch 34: head: validation, loss=0.01385256, MAE_E=  539.98 meV, MAE_F=   30.82 meV / A
+2025-05-05 16:40:22.455 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-33.pt
+2025-05-05 16:40:22.455 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-34.pt
+2025-05-05 16:40:27.440 INFO: Epoch 35: head: train, loss=0.00695304, MAE_E=  541.35 meV, MAE_F=   24.26 meV / A
+2025-05-05 16:40:28.201 INFO: Epoch 35: head: validation, loss=0.01355254, MAE_E=  527.61 meV, MAE_F=   30.25 meV / A
+2025-05-05 16:40:28.204 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-34.pt
+2025-05-05 16:40:28.205 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-35.pt
+2025-05-05 16:40:33.146 INFO: Epoch 36: head: train, loss=0.00670714, MAE_E=  529.80 meV, MAE_F=   23.88 meV / A
+2025-05-05 16:40:33.886 INFO: Epoch 36: head: validation, loss=0.01319113, MAE_E=  514.09 meV, MAE_F=   29.68 meV / A
+2025-05-05 16:40:33.888 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-35.pt
+2025-05-05 16:40:33.889 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-36.pt
+2025-05-05 16:40:38.946 INFO: Epoch 37: head: train, loss=0.00623796, MAE_E=  523.05 meV, MAE_F=   23.10 meV / A
+2025-05-05 16:40:39.673 INFO: Epoch 37: head: validation, loss=0.01293429, MAE_E=  509.12 meV, MAE_F=   29.26 meV / A
+2025-05-05 16:40:39.676 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-36.pt
+2025-05-05 16:40:39.676 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-37.pt
+2025-05-05 16:40:44.664 INFO: Epoch 38: head: train, loss=0.00576770, MAE_E=  507.34 meV, MAE_F=   22.56 meV / A
+2025-05-05 16:40:45.381 INFO: Epoch 38: head: validation, loss=0.01257991, MAE_E=  495.09 meV, MAE_F=   28.74 meV / A
+2025-05-05 16:40:45.383 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-37.pt
+2025-05-05 16:40:45.384 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-38.pt
+2025-05-05 16:40:50.373 INFO: Epoch 39: head: train, loss=0.00510107, MAE_E=  487.42 meV, MAE_F=   21.59 meV / A
+2025-05-05 16:40:51.110 INFO: Epoch 39: head: validation, loss=0.01243168, MAE_E=  476.53 meV, MAE_F=   28.34 meV / A
+2025-05-05 16:40:51.112 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-38.pt
+2025-05-05 16:40:51.112 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-39.pt
+2025-05-05 16:40:56.008 INFO: Epoch 40: head: train, loss=0.00507271, MAE_E=  475.92 meV, MAE_F=   21.27 meV / A
+2025-05-05 16:40:56.732 INFO: Epoch 40: head: validation, loss=0.01221638, MAE_E=  462.54 meV, MAE_F=   27.92 meV / A
+2025-05-05 16:40:56.735 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-39.pt
+2025-05-05 16:40:56.735 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-40.pt
+2025-05-05 16:41:01.613 INFO: Epoch 41: head: train, loss=0.00475807, MAE_E=  462.07 meV, MAE_F=   20.66 meV / A
+2025-05-05 16:41:02.360 INFO: Epoch 41: head: validation, loss=0.01200872, MAE_E=  449.92 meV, MAE_F=   27.57 meV / A
+2025-05-05 16:41:02.362 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-40.pt
+2025-05-05 16:41:02.363 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-41.pt
+2025-05-05 16:41:07.462 INFO: Epoch 42: head: train, loss=0.00444974, MAE_E=  454.12 meV, MAE_F=   20.10 meV / A
+2025-05-05 16:41:08.212 INFO: Epoch 42: head: validation, loss=0.01187707, MAE_E=  443.60 meV, MAE_F=   27.30 meV / A
+2025-05-05 16:41:08.215 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-41.pt
+2025-05-05 16:41:08.215 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-42.pt
+2025-05-05 16:41:13.124 INFO: Epoch 43: head: train, loss=0.00422760, MAE_E=  445.84 meV, MAE_F=   19.56 meV / A
+2025-05-05 16:41:13.950 INFO: Epoch 43: head: validation, loss=0.01163440, MAE_E=  435.77 meV, MAE_F=   26.89 meV / A
+2025-05-05 16:41:13.952 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-42.pt
+2025-05-05 16:41:13.953 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-43.pt
+2025-05-05 16:41:19.128 INFO: Epoch 44: head: train, loss=0.00398457, MAE_E=  437.40 meV, MAE_F=   19.10 meV / A
+2025-05-05 16:41:19.832 INFO: Epoch 44: head: validation, loss=0.01138989, MAE_E=  425.65 meV, MAE_F=   26.54 meV / A
+2025-05-05 16:41:19.834 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-43.pt
+2025-05-05 16:41:19.835 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-44.pt
+2025-05-05 16:41:24.635 INFO: Epoch 45: head: train, loss=0.00368933, MAE_E=  426.75 meV, MAE_F=   18.60 meV / A
+2025-05-05 16:41:25.381 INFO: Epoch 45: head: validation, loss=0.01132269, MAE_E=  414.53 meV, MAE_F=   26.23 meV / A
+2025-05-05 16:41:25.383 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-44.pt
+2025-05-05 16:41:25.383 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-45.pt
+2025-05-05 16:41:30.295 INFO: Epoch 46: head: train, loss=0.00355794, MAE_E=  424.47 meV, MAE_F=   18.34 meV / A
+2025-05-05 16:41:31.098 INFO: Epoch 46: head: validation, loss=0.01119168, MAE_E=  412.98 meV, MAE_F=   26.06 meV / A
+2025-05-05 16:41:31.100 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-45.pt
+2025-05-05 16:41:31.101 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-46.pt
+2025-05-05 16:41:36.165 INFO: Epoch 47: head: train, loss=0.00344064, MAE_E=  418.44 meV, MAE_F=   18.02 meV / A
+2025-05-05 16:41:36.942 INFO: Epoch 47: head: validation, loss=0.01097273, MAE_E=  407.60 meV, MAE_F=   25.75 meV / A
+2025-05-05 16:41:36.944 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-46.pt
+2025-05-05 16:41:36.945 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-47.pt
+2025-05-05 16:41:41.994 INFO: Epoch 48: head: train, loss=0.00319256, MAE_E=  410.23 meV, MAE_F=   17.48 meV / A
+2025-05-05 16:41:42.729 INFO: Epoch 48: head: validation, loss=0.01078909, MAE_E=  402.43 meV, MAE_F=   25.45 meV / A
+2025-05-05 16:41:42.732 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-47.pt
+2025-05-05 16:41:42.736 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-48.pt
+2025-05-05 16:41:47.813 INFO: Epoch 49: head: train, loss=0.00312164, MAE_E=  402.50 meV, MAE_F=   17.29 meV / A
+2025-05-05 16:41:48.550 INFO: Epoch 49: head: validation, loss=0.01073835, MAE_E=  392.10 meV, MAE_F=   25.31 meV / A
+2025-05-05 16:41:48.552 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-48.pt
+2025-05-05 16:41:48.552 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-49.pt
+2025-05-05 16:41:53.640 INFO: Epoch 50: head: train, loss=0.00293051, MAE_E=  405.78 meV, MAE_F=   16.84 meV / A
+2025-05-05 16:41:54.380 INFO: Epoch 50: head: validation, loss=0.01063868, MAE_E=  397.00 meV, MAE_F=   25.10 meV / A
+2025-05-05 16:41:54.382 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-49.pt
+2025-05-05 16:41:54.388 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-50.pt
+2025-05-05 16:41:59.437 INFO: Epoch 51: head: train, loss=0.00279284, MAE_E=  394.16 meV, MAE_F=   16.56 meV / A
+2025-05-05 16:42:00.176 INFO: Epoch 51: head: validation, loss=0.01061159, MAE_E=  384.03 meV, MAE_F=   24.86 meV / A
+2025-05-05 16:42:00.179 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-50.pt
+2025-05-05 16:42:00.179 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-51.pt
+2025-05-05 16:42:05.310 INFO: Epoch 52: head: train, loss=0.00271364, MAE_E=  388.65 meV, MAE_F=   16.41 meV / A
+2025-05-05 16:42:06.015 INFO: Epoch 52: head: validation, loss=0.01059298, MAE_E=  379.21 meV, MAE_F=   24.75 meV / A
+2025-05-05 16:42:06.017 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-51.pt
+2025-05-05 16:42:06.018 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-52.pt
+2025-05-05 16:42:11.246 INFO: Epoch 53: head: train, loss=0.00268195, MAE_E=  396.29 meV, MAE_F=   16.30 meV / A
+2025-05-05 16:42:12.013 INFO: Epoch 53: head: validation, loss=0.01047259, MAE_E=  386.34 meV, MAE_F=   24.67 meV / A
+2025-05-05 16:42:12.015 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-52.pt
+2025-05-05 16:42:12.016 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-53.pt
+2025-05-05 16:42:17.256 INFO: Epoch 54: head: train, loss=0.00252344, MAE_E=  401.07 meV, MAE_F=   15.99 meV / A
+2025-05-05 16:42:18.078 INFO: Epoch 54: head: validation, loss=0.01037736, MAE_E=  389.82 meV, MAE_F=   24.53 meV / A
+2025-05-05 16:42:18.080 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-53.pt
+2025-05-05 16:42:18.080 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-54.pt
+2025-05-05 16:42:23.073 INFO: Epoch 55: head: train, loss=0.00248076, MAE_E=  389.98 meV, MAE_F=   15.76 meV / A
+2025-05-05 16:42:23.873 INFO: Epoch 55: head: validation, loss=0.01037178, MAE_E=  380.07 meV, MAE_F=   24.41 meV / A
+2025-05-05 16:42:23.875 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-54.pt
+2025-05-05 16:42:23.876 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-55.pt
+2025-05-05 16:42:29.005 INFO: Epoch 56: head: train, loss=0.00231160, MAE_E=  372.49 meV, MAE_F=   15.44 meV / A
+2025-05-05 16:42:29.778 INFO: Epoch 56: head: validation, loss=0.01036217, MAE_E=  363.91 meV, MAE_F=   24.21 meV / A
+2025-05-05 16:42:29.780 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-55.pt
+2025-05-05 16:42:29.781 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-56.pt
+2025-05-05 16:42:34.832 INFO: Epoch 57: head: train, loss=0.00215795, MAE_E=  362.60 meV, MAE_F=   15.08 meV / A
+2025-05-05 16:42:35.625 INFO: Epoch 57: head: validation, loss=0.01041028, MAE_E=  352.50 meV, MAE_F=   24.12 meV / A
+2025-05-05 16:42:40.684 INFO: Epoch 58: head: train, loss=0.00206659, MAE_E=  352.99 meV, MAE_F=   14.76 meV / A
+2025-05-05 16:42:41.495 INFO: Epoch 58: head: validation, loss=0.01041809, MAE_E=  345.12 meV, MAE_F=   23.97 meV / A
+2025-05-05 16:42:46.576 INFO: Epoch 59: head: train, loss=0.00199087, MAE_E=  345.64 meV, MAE_F=   14.53 meV / A
+2025-05-05 16:42:47.346 INFO: Epoch 59: head: validation, loss=0.01034589, MAE_E=  337.81 meV, MAE_F=   23.77 meV / A
+2025-05-05 16:42:47.348 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-56.pt
+2025-05-05 16:42:47.348 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-59.pt
+2025-05-05 16:42:52.495 INFO: Epoch 60: head: train, loss=0.00191387, MAE_E=  346.58 meV, MAE_F=   14.37 meV / A
+2025-05-05 16:42:53.415 INFO: Epoch 60: head: validation, loss=0.01023954, MAE_E=  339.88 meV, MAE_F=   23.64 meV / A
+2025-05-05 16:42:53.418 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-59.pt
+2025-05-05 16:42:53.418 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-60.pt
+2025-05-05 16:42:58.570 INFO: Epoch 61: head: train, loss=0.00195137, MAE_E=  350.41 meV, MAE_F=   14.49 meV / A
+2025-05-05 16:42:59.361 INFO: Epoch 61: head: validation, loss=0.01015230, MAE_E=  342.48 meV, MAE_F=   23.69 meV / A
+2025-05-05 16:42:59.363 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-60.pt
+2025-05-05 16:42:59.364 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-61.pt
+2025-05-05 16:43:04.524 INFO: Epoch 62: head: train, loss=0.00195052, MAE_E=  349.66 meV, MAE_F=   14.37 meV / A
+2025-05-05 16:43:05.301 INFO: Epoch 62: head: validation, loss=0.01018271, MAE_E=  343.62 meV, MAE_F=   23.61 meV / A
+2025-05-05 16:43:10.427 INFO: Epoch 63: head: train, loss=0.00186283, MAE_E=  348.33 meV, MAE_F=   14.15 meV / A
+2025-05-05 16:43:11.274 INFO: Epoch 63: head: validation, loss=0.01021423, MAE_E=  341.90 meV, MAE_F=   23.57 meV / A
+2025-05-05 16:43:16.600 INFO: Epoch 64: head: train, loss=0.00175366, MAE_E=  342.33 meV, MAE_F=   13.79 meV / A
+2025-05-05 16:43:17.405 INFO: Epoch 64: head: validation, loss=0.01022972, MAE_E=  335.83 meV, MAE_F=   23.48 meV / A
+2025-05-05 16:43:22.431 INFO: Epoch 65: head: train, loss=0.00167846, MAE_E=  341.64 meV, MAE_F=   13.64 meV / A
+2025-05-05 16:43:23.335 INFO: Epoch 65: head: validation, loss=0.01026077, MAE_E=  333.38 meV, MAE_F=   23.41 meV / A
+2025-05-05 16:43:28.586 INFO: Epoch 66: head: train, loss=0.00158700, MAE_E=  330.84 meV, MAE_F=   13.27 meV / A
+2025-05-05 16:43:29.466 INFO: Epoch 66: head: validation, loss=0.01033644, MAE_E=  324.81 meV, MAE_F=   23.32 meV / A
+2025-05-05 16:43:34.478 INFO: Epoch 67: head: train, loss=0.00147867, MAE_E=  320.30 meV, MAE_F=   13.01 meV / A
+2025-05-05 16:43:35.300 INFO: Epoch 67: head: validation, loss=0.01036842, MAE_E=  314.25 meV, MAE_F=   23.20 meV / A
+2025-05-05 16:43:40.601 INFO: Epoch 68: head: train, loss=0.00143987, MAE_E=  311.61 meV, MAE_F=   12.85 meV / A
+2025-05-05 16:43:41.356 INFO: Epoch 68: head: validation, loss=0.01036851, MAE_E=  305.26 meV, MAE_F=   23.10 meV / A
+2025-05-05 16:43:46.477 INFO: Epoch 69: head: train, loss=0.00135898, MAE_E=  307.69 meV, MAE_F=   12.67 meV / A
+2025-05-05 16:43:47.303 INFO: Epoch 69: head: validation, loss=0.01032868, MAE_E=  300.47 meV, MAE_F=   22.98 meV / A
+2025-05-05 16:43:52.326 INFO: Epoch 70: head: train, loss=0.00135374, MAE_E=  296.61 meV, MAE_F=   12.54 meV / A
+2025-05-05 16:43:53.171 INFO: Epoch 70: head: validation, loss=0.01031306, MAE_E=  290.67 meV, MAE_F=   22.91 meV / A
+2025-05-05 16:43:58.514 INFO: Epoch 71: head: train, loss=0.00129849, MAE_E=  287.39 meV, MAE_F=   12.37 meV / A
+2025-05-05 16:43:59.314 INFO: Epoch 71: head: validation, loss=0.01028119, MAE_E=  283.36 meV, MAE_F=   22.87 meV / A
+2025-05-05 16:44:04.354 INFO: Epoch 72: head: train, loss=0.00128240, MAE_E=  288.94 meV, MAE_F=   12.34 meV / A
+2025-05-05 16:44:05.173 INFO: Epoch 72: head: validation, loss=0.01029272, MAE_E=  283.60 meV, MAE_F=   22.83 meV / A
+2025-05-05 16:44:10.181 INFO: Epoch 73: head: train, loss=0.00133029, MAE_E=  295.61 meV, MAE_F=   12.44 meV / A
+2025-05-05 16:44:10.988 INFO: Epoch 73: head: validation, loss=0.01008112, MAE_E=  289.81 meV, MAE_F=   22.68 meV / A
+2025-05-05 16:44:10.990 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-61.pt
+2025-05-05 16:44:10.991 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-73.pt
+2025-05-05 16:44:16.104 INFO: Epoch 74: head: train, loss=0.00132500, MAE_E=  305.01 meV, MAE_F=   12.41 meV / A
+2025-05-05 16:44:16.918 INFO: Epoch 74: head: validation, loss=0.01003917, MAE_E=  297.95 meV, MAE_F=   22.55 meV / A
+2025-05-05 16:44:16.920 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-73.pt
+2025-05-05 16:44:16.921 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-74.pt
+2025-05-05 16:44:22.229 INFO: Epoch 75: head: train, loss=0.00125243, MAE_E=  300.42 meV, MAE_F=   12.21 meV / A
+2025-05-05 16:44:23.116 INFO: Epoch 75: head: validation, loss=0.01010593, MAE_E=  292.71 meV, MAE_F=   22.52 meV / A
+2025-05-05 16:44:28.332 INFO: Epoch 76: head: train, loss=0.00118778, MAE_E=  289.21 meV, MAE_F=   11.91 meV / A
+2025-05-05 16:44:29.113 INFO: Epoch 76: head: validation, loss=0.01014285, MAE_E=  283.07 meV, MAE_F=   22.45 meV / A
+2025-05-05 16:44:34.139 INFO: Epoch 77: head: train, loss=0.00112485, MAE_E=  281.36 meV, MAE_F=   11.71 meV / A
+2025-05-05 16:44:34.913 INFO: Epoch 77: head: validation, loss=0.01015712, MAE_E=  275.23 meV, MAE_F=   22.39 meV / A
+2025-05-05 16:44:39.901 INFO: Epoch 78: head: train, loss=0.00107555, MAE_E=  275.50 meV, MAE_F=   11.56 meV / A
+2025-05-05 16:44:40.777 INFO: Epoch 78: head: validation, loss=0.01022862, MAE_E=  269.81 meV, MAE_F=   22.37 meV / A
+2025-05-05 16:44:45.749 INFO: Epoch 79: head: train, loss=0.00105118, MAE_E=  269.09 meV, MAE_F=   11.42 meV / A
+2025-05-05 16:44:46.552 INFO: Epoch 79: head: validation, loss=0.01022086, MAE_E=  264.02 meV, MAE_F=   22.30 meV / A
+2025-05-05 16:44:51.870 INFO: Epoch 80: head: train, loss=0.00103145, MAE_E=  267.83 meV, MAE_F=   11.41 meV / A
+2025-05-05 16:44:52.722 INFO: Epoch 80: head: validation, loss=0.01022843, MAE_E=  263.82 meV, MAE_F=   22.32 meV / A
+2025-05-05 16:44:57.951 INFO: Epoch 81: head: train, loss=0.00102674, MAE_E=  264.64 meV, MAE_F=   11.33 meV / A
+2025-05-05 16:44:58.761 INFO: Epoch 81: head: validation, loss=0.01027849, MAE_E=  259.92 meV, MAE_F=   22.34 meV / A
+2025-05-05 16:45:03.939 INFO: Epoch 82: head: train, loss=0.00100632, MAE_E=  262.75 meV, MAE_F=   11.29 meV / A
+2025-05-05 16:45:04.730 INFO: Epoch 82: head: validation, loss=0.01016736, MAE_E=  258.02 meV, MAE_F=   22.27 meV / A
+2025-05-05 16:45:09.913 INFO: Epoch 83: head: train, loss=0.00099577, MAE_E=  267.32 meV, MAE_F=   11.27 meV / A
+2025-05-05 16:45:10.693 INFO: Epoch 83: head: validation, loss=0.01009712, MAE_E=  263.72 meV, MAE_F=   22.18 meV / A
+2025-05-05 16:45:16.064 INFO: Epoch 84: head: train, loss=0.00099384, MAE_E=  267.98 meV, MAE_F=   11.17 meV / A
+2025-05-05 16:45:16.845 INFO: Epoch 84: head: validation, loss=0.01001958, MAE_E=  263.94 meV, MAE_F=   22.09 meV / A
+2025-05-05 16:45:16.847 DEBUG: Deleting old checkpoint file: ./logs//sample_0//checkpoints/bi0_run-123_epoch-74.pt
+2025-05-05 16:45:16.848 DEBUG: Saving checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-84.pt
+2025-05-05 16:45:22.013 INFO: Epoch 85: head: train, loss=0.00094920, MAE_E=  261.56 meV, MAE_F=   10.98 meV / A
+2025-05-05 16:45:22.844 INFO: Epoch 85: head: validation, loss=0.01004291, MAE_E=  257.49 meV, MAE_F=   22.02 meV / A
+2025-05-05 16:45:28.742 INFO: Epoch 86: head: train, loss=0.00091571, MAE_E=  256.24 meV, MAE_F=   10.88 meV / A
+2025-05-05 16:45:29.577 INFO: Epoch 86: head: validation, loss=0.01006689, MAE_E=  250.48 meV, MAE_F=   21.96 meV / A
+2025-05-05 16:45:34.780 INFO: Epoch 87: head: train, loss=0.00087610, MAE_E=  246.43 meV, MAE_F=   10.69 meV / A
+2025-05-05 16:45:35.606 INFO: Epoch 87: head: validation, loss=0.01006325, MAE_E=  242.61 meV, MAE_F=   21.87 meV / A
+2025-05-05 16:45:40.884 INFO: Epoch 88: head: train, loss=0.00084427, MAE_E=  242.71 meV, MAE_F=   10.55 meV / A
+2025-05-05 16:45:41.657 INFO: Epoch 88: head: validation, loss=0.01007297, MAE_E=  238.62 meV, MAE_F=   21.86 meV / A
+2025-05-05 16:45:46.768 INFO: Epoch 89: head: train, loss=0.00082242, MAE_E=  235.93 meV, MAE_F=   10.39 meV / A
+2025-05-05 16:45:47.523 INFO: Epoch 89: head: validation, loss=0.01005780, MAE_E=  231.67 meV, MAE_F=   21.78 meV / A
+2025-05-05 16:45:52.589 INFO: Epoch 90: head: train, loss=0.00079129, MAE_E=  228.85 meV, MAE_F=   10.27 meV / A
+2025-05-05 16:45:53.404 INFO: Epoch 90: head: validation, loss=0.01011443, MAE_E=  225.64 meV, MAE_F=   21.77 meV / A
+2025-05-05 16:45:58.496 INFO: Epoch 91: head: train, loss=0.00076228, MAE_E=  227.72 meV, MAE_F=   10.15 meV / A
+2025-05-05 16:45:59.262 INFO: Epoch 91: head: validation, loss=0.01015178, MAE_E=  224.72 meV, MAE_F=   21.75 meV / A
+2025-05-05 16:46:04.431 INFO: Epoch 92: head: train, loss=0.00073817, MAE_E=  222.46 meV, MAE_F=   10.05 meV / A
+2025-05-05 16:46:05.198 INFO: Epoch 92: head: validation, loss=0.01022763, MAE_E=  219.10 meV, MAE_F=   21.77 meV / A
+2025-05-05 16:46:10.346 INFO: Epoch 93: head: train, loss=0.00071840, MAE_E=  215.35 meV, MAE_F=    9.92 meV / A
+2025-05-05 16:46:11.111 INFO: Epoch 93: head: validation, loss=0.01024735, MAE_E=  211.71 meV, MAE_F=   21.68 meV / A
+2025-05-05 16:46:16.224 INFO: Epoch 94: head: train, loss=0.00069583, MAE_E=  208.59 meV, MAE_F=    9.81 meV / A
+2025-05-05 16:46:16.972 INFO: Epoch 94: head: validation, loss=0.01028892, MAE_E=  206.89 meV, MAE_F=   21.69 meV / A
+2025-05-05 16:46:22.348 INFO: Epoch 95: head: train, loss=0.00067654, MAE_E=  206.20 meV, MAE_F=    9.71 meV / A
+2025-05-05 16:46:23.255 INFO: Epoch 95: head: validation, loss=0.01029485, MAE_E=  203.64 meV, MAE_F=   21.67 meV / A
+2025-05-05 16:46:28.220 INFO: Epoch 96: head: train, loss=0.00066714, MAE_E=  200.92 meV, MAE_F=    9.65 meV / A
+2025-05-05 16:46:28.981 INFO: Epoch 96: head: validation, loss=0.01029863, MAE_E=  197.51 meV, MAE_F=   21.62 meV / A
+2025-05-05 16:46:34.221 INFO: Epoch 97: head: train, loss=0.00065151, MAE_E=  198.11 meV, MAE_F=    9.58 meV / A
+2025-05-05 16:46:34.981 INFO: Epoch 97: head: validation, loss=0.01022394, MAE_E=  195.53 meV, MAE_F=   21.51 meV / A
+2025-05-05 16:46:39.954 INFO: Epoch 98: head: train, loss=0.00064215, MAE_E=  195.11 meV, MAE_F=    9.53 meV / A
+2025-05-05 16:46:40.741 INFO: Epoch 98: head: validation, loss=0.01030000, MAE_E=  192.99 meV, MAE_F=   21.53 meV / A
+2025-05-05 16:46:45.735 INFO: Epoch 99: head: train, loss=0.00064457, MAE_E=  194.64 meV, MAE_F=    9.53 meV / A
+2025-05-05 16:46:46.514 INFO: Epoch 99: head: validation, loss=0.01028067, MAE_E=  191.69 meV, MAE_F=   21.52 meV / A
+2025-05-05 16:46:51.512 INFO: Epoch 100: head: train, loss=0.00064319, MAE_E=  192.09 meV, MAE_F=    9.54 meV / A
+2025-05-05 16:46:52.304 INFO: Epoch 100: head: validation, loss=0.01018523, MAE_E=  189.72 meV, MAE_F=   21.46 meV / A
+2025-05-05 16:46:57.423 INFO: Epoch 101: head: train, loss=0.00062567, MAE_E=  190.70 meV, MAE_F=    9.42 meV / A
+2025-05-05 16:46:58.210 INFO: Epoch 101: head: validation, loss=0.01014396, MAE_E=  188.72 meV, MAE_F=   21.38 meV / A
+2025-05-05 16:47:03.359 INFO: Epoch 102: head: train, loss=0.00062189, MAE_E=  194.13 meV, MAE_F=    9.39 meV / A
+2025-05-05 16:47:04.199 INFO: Epoch 102: head: validation, loss=0.01016123, MAE_E=  191.30 meV, MAE_F=   21.38 meV / A
+2025-05-05 16:47:09.315 INFO: Epoch 103: head: train, loss=0.00061916, MAE_E=  192.23 meV, MAE_F=    9.40 meV / A
+2025-05-05 16:47:10.115 INFO: Epoch 103: head: validation, loss=0.01009408, MAE_E=  189.47 meV, MAE_F=   21.34 meV / A
+2025-05-05 16:47:15.105 INFO: Epoch 104: head: train, loss=0.00059749, MAE_E=  195.61 meV, MAE_F=    9.32 meV / A
+2025-05-05 16:47:15.912 INFO: Epoch 104: head: validation, loss=0.01003670, MAE_E=  193.68 meV, MAE_F=   21.30 meV / A
+2025-05-05 16:47:15.912 INFO: Stopping optimization after 20 epochs without improvement
+2025-05-05 16:47:15.912 INFO: Training complete
+2025-05-05 16:47:15.942 INFO: 
+2025-05-05 16:47:15.942 INFO: ===========FINISHED TRAINING===========
+2025-05-05 16:47:15.942 INFO: eveluation
+2025-05-05 16:47:15.943 INFO: The scale is [0.68125837] and shift is -0.5024311435980053
+2025-05-05 16:47:16.362 INFO: Energy Mean: -40384.33983408107, Variance: 315912911.8938966
+2025-05-05 16:47:16.680 INFO: Energy RMSE: 0.3274152874946594
+2025-05-05 16:47:16.680 INFO: Energy R2: 0.9999999996606636
+2025-05-05 16:47:16.680 INFO: Energy MAE: 0.2120494246482849
+2025-05-05 16:47:16.684 INFO: Forces RMSE: 0.1024899640874876
+2025-05-05 16:47:16.684 INFO: Forces R2: 0.9924031905381145
+2025-05-05 16:47:18.484 INFO: Energy Mean: -40944.56357687771, Variance: 318168548.5093977
+2025-05-05 16:47:18.624 INFO: Loading checkpoint: ./logs//sample_0//checkpoints/bi0_run-123_epoch-84.pt
+2025-05-05 16:47:18.669 INFO: Loaded Stage one model from epoch 84 for evaluation
+2025-05-05 16:47:18.669 INFO: Saving model to logs/sample_0/checkpoints/bi0_run-123.model
+2025-05-05 16:47:18.831 INFO: Compiling model, saving metadata to logs/sample_0/bi0_compiled.model
+2025-05-05 16:47:18.931 INFO: Done

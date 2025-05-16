@@ -1,0 +1,1508 @@
+cuequivariance or cuequivariance_torch is not available. Cuequivariance acceleration will be disabled.
+False
+Results directory samples/ already exists. Exiting.
+Reading data from:  ./raw/bi7-3_parsed.csv
+['./raw/bi7-3_parsed.csv']
+Reading data from:  ./raw/bi7-3_parsed.csv
+[-40889.29948163279]
+(7, 3)
+Loading saved bootstrap sample 0
+Training model 0
+2025-04-29 19:43:05.421 INFO: ===========VERIFYING SETTINGS===========
+2025-04-29 19:43:05.421 INFO: MACE version: 0.3.10
+2025-04-29 19:43:05.501 INFO: CUDA version: 12.1, CUDA device: 0
+default
+2025-04-29 19:43:05.565 INFO: ===========LOADING INPUT DATA===========
+2025-04-29 19:43:05.565 INFO: Using heads: ['default']
+2025-04-29 19:43:05.565 INFO: =============    Processing head default     ===========
+2025-04-29 19:43:05.565 INFO: Total number of configurations: train=360, valid=90, 
+2025-04-29 19:43:05.572 INFO: Atomic Numbers used: [83]
+2025-04-29 19:43:05.572 INFO: Computing average Atomic Energies using least squares regression
+{'default': {83: -5841.412682911707}}
+2025-04-29 19:43:05.576 INFO: Atomic Energies used (z: eV) for head default: {83: -5841.412682911707}
+2025-04-29 19:43:05.782 INFO: Computing average number of neighbors
+2025-04-29 19:43:08.036 INFO: Average number of neighbors: 6.0
+2025-04-29 19:43:08.037 INFO: During training the following quantities will be reported: energy, forces
+2025-04-29 19:43:08.037 INFO: ===========MODEL DETAILS===========
+2025-04-29 19:43:08.037 INFO: Building model
+2025-04-29 19:43:08.037 INFO: Message passing with 128 channels and max_L=1 (128x0e+128x1o)
+2025-04-29 19:43:08.037 INFO: 2 layers, each with correlation order: 3 (body order: 4) and spherical harmonics up to: l=3
+2025-04-29 19:43:08.037 INFO: 8 radial and 5 basis functions
+2025-04-29 19:43:08.037 INFO: Radial cutoff: 9.0 A (total receptive field for each atom: 18.0 A)
+2025-04-29 19:43:08.037 INFO: Distance transform for radial basis functions: None
+2025-04-29 19:43:08.037 INFO: Hidden irreps: 128x0e+128x1o
+2025-04-29 19:43:08.344 INFO: Mean: 0.0004292717927313935, Std: [0.76544627]
+0.0 [0.76544627]
+2025-04-29 19:43:08.344 INFO: Scale: [0.76544627], Shift: 0.0
+2025-04-29 19:43:09.635 INFO: Total number of parameters: 509618
+2025-04-29 19:43:09.635 INFO: 
+2025-04-29 19:43:09.636 INFO: ===========OPTIMIZER INFORMATION===========
+2025-04-29 19:43:09.636 INFO: Using ADAM as parameter optimizer
+2025-04-29 19:43:09.636 INFO: Batch size: 32
+2025-04-29 19:43:09.636 INFO: Using Exponential Moving Average with decay: 0.99
+2025-04-29 19:43:09.636 INFO: Number of gradient updates: 2250
+2025-04-29 19:43:09.636 INFO: Learning rate: 0.01, weight decay: 5e-07
+2025-04-29 19:43:09.636 INFO: WeightedEnergyForcesLoss(energy_weight=1.000, forces_weight=100.000)
+2025-04-29 19:43:09.637 INFO: Using gradient clipping with tolerance=10.000
+2025-04-29 19:43:09.637 INFO: 
+2025-04-29 19:43:09.637 INFO: ===========TRAINING===========
+2025-04-29 19:43:09.638 INFO: Started training, reporting errors on validation set
+2025-04-29 19:43:09.638 INFO: Loss metrics on validation set
+2025-04-29 19:43:12.304 INFO: Initial: head: validation, loss=2.57657915, MAE_E=20305.75 meV, MAE_F=  595.07 meV / A
+2025-04-29 19:43:17.419 INFO: Epoch 0: head: train, loss=0.29655949, MAE_E= 1745.66 meV, MAE_F=  239.21 meV / A
+2025-04-29 19:43:18.931 INFO: Epoch 0: head: validation, loss=0.33380765, MAE_E= 1745.78 meV, MAE_F=  239.64 meV / A
+2025-04-29 19:43:20.916 INFO: Epoch 1: head: train, loss=0.63152679, MAE_E= 3606.56 meV, MAE_F=  350.21 meV / A
+2025-04-29 19:43:21.569 INFO: Epoch 1: head: validation, loss=0.67494693, MAE_E= 3595.98 meV, MAE_F=  344.08 meV / A
+2025-04-29 19:43:23.359 INFO: Epoch 2: head: train, loss=0.57661094, MAE_E= 3533.72 meV, MAE_F=  344.01 meV / A
+2025-04-29 19:43:23.917 INFO: Epoch 2: head: validation, loss=0.61618751, MAE_E= 3523.18 meV, MAE_F=  338.49 meV / A
+2025-04-29 19:43:25.646 INFO: Epoch 3: head: train, loss=0.17284191, MAE_E=  368.73 meV, MAE_F=  173.72 meV / A
+2025-04-29 19:43:26.209 INFO: Epoch 3: head: validation, loss=0.18581093, MAE_E=  369.25 meV, MAE_F=  173.14 meV / A
+2025-04-29 19:43:28.133 INFO: Epoch 4: head: train, loss=0.13814295, MAE_E=  117.57 meV, MAE_F=  167.33 meV / A
+2025-04-29 19:43:28.794 INFO: Epoch 4: head: validation, loss=0.15061061, MAE_E=  114.47 meV, MAE_F=  167.64 meV / A
+2025-04-29 19:43:30.608 INFO: Epoch 5: head: train, loss=0.09170947, MAE_E=   81.38 meV, MAE_F=  137.47 meV / A
+2025-04-29 19:43:31.194 INFO: Epoch 5: head: validation, loss=0.09661534, MAE_E=   77.91 meV, MAE_F=  136.54 meV / A
+2025-04-29 19:43:33.131 INFO: Epoch 6: head: train, loss=0.05188620, MAE_E=  568.96 meV, MAE_F=  101.93 meV / A
+2025-04-29 19:43:33.782 INFO: Epoch 6: head: validation, loss=0.05358334, MAE_E=  566.64 meV, MAE_F=  100.02 meV / A
+2025-04-29 19:43:35.710 INFO: Epoch 7: head: train, loss=0.03736956, MAE_E=  359.67 meV, MAE_F=   84.49 meV / A
+2025-04-29 19:43:36.285 INFO: Epoch 7: head: validation, loss=0.03884298, MAE_E=  359.39 meV, MAE_F=   83.08 meV / A
+2025-04-29 19:43:38.202 INFO: Epoch 8: head: train, loss=0.02591569, MAE_E=  107.05 meV, MAE_F=   70.04 meV / A
+2025-04-29 19:43:38.809 INFO: Epoch 8: head: validation, loss=0.02643009, MAE_E=  106.78 meV, MAE_F=   68.16 meV / A
+2025-04-29 19:43:40.678 INFO: Epoch 9: head: train, loss=0.02299074, MAE_E=  222.74 meV, MAE_F=   65.71 meV / A
+2025-04-29 19:43:41.216 INFO: Epoch 9: head: validation, loss=0.02324521, MAE_E=  222.62 meV, MAE_F=   63.84 meV / A
+2025-04-29 19:43:43.068 INFO: Epoch 10: head: train, loss=0.03746273, MAE_E=   39.43 meV, MAE_F=   84.25 meV / A
+2025-04-29 19:43:43.671 INFO: Epoch 10: head: validation, loss=0.03841758, MAE_E=   39.16 meV, MAE_F=   83.26 meV / A
+2025-04-29 19:43:45.461 INFO: Epoch 11: head: train, loss=0.03214688, MAE_E=   41.11 meV, MAE_F=   79.40 meV / A
+2025-04-29 19:43:46.045 INFO: Epoch 11: head: validation, loss=0.03183517, MAE_E=   39.28 meV, MAE_F=   77.68 meV / A
+2025-04-29 19:43:47.860 INFO: Epoch 12: head: train, loss=0.02791670, MAE_E=  198.89 meV, MAE_F=   74.00 meV / A
+2025-04-29 19:43:48.492 INFO: Epoch 12: head: validation, loss=0.02805332, MAE_E=  199.90 meV, MAE_F=   72.72 meV / A
+2025-04-29 19:43:50.305 INFO: Epoch 13: head: train, loss=0.01735422, MAE_E=   29.42 meV, MAE_F=   58.12 meV / A
+2025-04-29 19:43:50.883 INFO: Epoch 13: head: validation, loss=0.01757134, MAE_E=   29.10 meV, MAE_F=   56.90 meV / A
+2025-04-29 19:43:52.791 INFO: Epoch 14: head: train, loss=0.01344773, MAE_E=  143.69 meV, MAE_F=   50.68 meV / A
+2025-04-29 19:43:53.344 INFO: Epoch 14: head: validation, loss=0.01349593, MAE_E=  144.88 meV, MAE_F=   49.47 meV / A
+2025-04-29 19:43:55.211 INFO: Epoch 15: head: train, loss=0.01052707, MAE_E=   29.43 meV, MAE_F=   44.69 meV / A
+2025-04-29 19:43:55.771 INFO: Epoch 15: head: validation, loss=0.01092582, MAE_E=   30.28 meV, MAE_F=   44.11 meV / A
+2025-04-29 19:43:57.667 INFO: Epoch 16: head: train, loss=0.00883486, MAE_E=   67.99 meV, MAE_F=   40.81 meV / A
+2025-04-29 19:43:58.229 INFO: Epoch 16: head: validation, loss=0.00931441, MAE_E=   67.94 meV, MAE_F=   40.54 meV / A
+2025-04-29 19:44:00.006 INFO: Epoch 17: head: train, loss=0.00764972, MAE_E=  192.42 meV, MAE_F=   37.78 meV / A
+2025-04-29 19:44:00.598 INFO: Epoch 17: head: validation, loss=0.00816596, MAE_E=  192.40 meV, MAE_F=   37.59 meV / A
+2025-04-29 19:44:02.463 INFO: Epoch 18: head: train, loss=0.00696801, MAE_E=   18.72 meV, MAE_F=   35.96 meV / A
+2025-04-29 19:44:03.047 INFO: Epoch 18: head: validation, loss=0.00750510, MAE_E=   18.26 meV, MAE_F=   35.77 meV / A
+2025-04-29 19:44:04.888 INFO: Epoch 19: head: train, loss=0.00686782, MAE_E=  847.77 meV, MAE_F=   34.45 meV / A
+2025-04-29 19:44:05.483 INFO: Epoch 19: head: validation, loss=0.00752560, MAE_E=  848.06 meV, MAE_F=   34.53 meV / A
+2025-04-29 19:44:07.239 INFO: Epoch 20: head: train, loss=0.03102651, MAE_E= 1828.99 meV, MAE_F=   77.24 meV / A
+2025-04-29 19:44:07.800 INFO: Epoch 20: head: validation, loss=0.03156117, MAE_E= 1829.83 meV, MAE_F=   75.68 meV / A
+2025-04-29 19:44:09.576 INFO: Epoch 21: head: train, loss=0.01677204, MAE_E=  764.29 meV, MAE_F=   56.98 meV / A
+2025-04-29 19:44:10.149 INFO: Epoch 21: head: validation, loss=0.01701778, MAE_E=  764.43 meV, MAE_F=   55.92 meV / A
+2025-04-29 19:44:11.972 INFO: Epoch 22: head: train, loss=0.01233770, MAE_E= 1058.17 meV, MAE_F=   46.87 meV / A
+2025-04-29 19:44:12.545 INFO: Epoch 22: head: validation, loss=0.01260406, MAE_E= 1060.23 meV, MAE_F=   45.61 meV / A
+2025-04-29 19:44:14.319 INFO: Epoch 23: head: train, loss=0.01228390, MAE_E=  412.66 meV, MAE_F=   48.26 meV / A
+2025-04-29 19:44:14.874 INFO: Epoch 23: head: validation, loss=0.01289877, MAE_E=  414.15 meV, MAE_F=   48.18 meV / A
+2025-04-29 19:44:16.627 INFO: Epoch 24: head: train, loss=0.00932285, MAE_E=  470.80 meV, MAE_F=   41.92 meV / A
+2025-04-29 19:44:17.185 INFO: Epoch 24: head: validation, loss=0.00981647, MAE_E=  471.72 meV, MAE_F=   41.84 meV / A
+2025-04-29 19:44:19.030 INFO: Epoch 25: head: train, loss=0.00851150, MAE_E=  185.94 meV, MAE_F=   40.32 meV / A
+2025-04-29 19:44:19.563 INFO: Epoch 25: head: validation, loss=0.00889734, MAE_E=  186.47 meV, MAE_F=   39.77 meV / A
+2025-04-29 19:44:21.398 INFO: Epoch 26: head: train, loss=0.00749562, MAE_E=  127.55 meV, MAE_F=   37.83 meV / A
+2025-04-29 19:44:21.930 INFO: Epoch 26: head: validation, loss=0.00789870, MAE_E=  127.67 meV, MAE_F=   37.39 meV / A
+2025-04-29 19:44:23.853 INFO: Epoch 27: head: train, loss=0.00682961, MAE_E=   20.32 meV, MAE_F=   35.92 meV / A
+2025-04-29 19:44:24.428 INFO: Epoch 27: head: validation, loss=0.00713727, MAE_E=   20.69 meV, MAE_F=   35.05 meV / A
+2025-04-29 19:44:26.311 INFO: Epoch 28: head: train, loss=0.00696749, MAE_E=   45.73 meV, MAE_F=   35.97 meV / A
+2025-04-29 19:44:26.900 INFO: Epoch 28: head: validation, loss=0.00725268, MAE_E=   46.86 meV, MAE_F=   35.35 meV / A
+2025-04-29 19:44:28.826 INFO: Epoch 29: head: train, loss=0.00722723, MAE_E=  109.06 meV, MAE_F=   36.43 meV / A
+2025-04-29 19:44:29.409 INFO: Epoch 29: head: validation, loss=0.00757377, MAE_E=  109.35 meV, MAE_F=   36.39 meV / A
+2025-04-29 19:44:31.168 INFO: Epoch 30: head: train, loss=0.00608878, MAE_E=   94.25 meV, MAE_F=   33.57 meV / A
+2025-04-29 19:44:31.796 INFO: Epoch 30: head: validation, loss=0.00647966, MAE_E=   94.91 meV, MAE_F=   33.42 meV / A
+2025-04-29 19:44:33.733 INFO: Epoch 31: head: train, loss=0.00761582, MAE_E=   78.37 meV, MAE_F=   37.40 meV / A
+2025-04-29 19:44:34.330 INFO: Epoch 31: head: validation, loss=0.00796677, MAE_E=   78.75 meV, MAE_F=   37.12 meV / A
+2025-04-29 19:44:36.115 INFO: Epoch 32: head: train, loss=0.00806089, MAE_E=   34.05 meV, MAE_F=   38.50 meV / A
+2025-04-29 19:44:36.769 INFO: Epoch 32: head: validation, loss=0.00853289, MAE_E=   35.51 meV, MAE_F=   38.34 meV / A
+2025-04-29 19:44:38.573 INFO: Epoch 33: head: train, loss=0.00770825, MAE_E=   51.51 meV, MAE_F=   37.40 meV / A
+2025-04-29 19:44:39.145 INFO: Epoch 33: head: validation, loss=0.00818636, MAE_E=   52.02 meV, MAE_F=   37.40 meV / A
+2025-04-29 19:44:40.983 INFO: Epoch 34: head: train, loss=0.00663658, MAE_E=   27.13 meV, MAE_F=   34.78 meV / A
+2025-04-29 19:44:41.562 INFO: Epoch 34: head: validation, loss=0.00713694, MAE_E=   29.48 meV, MAE_F=   34.72 meV / A
+2025-04-29 19:44:43.542 INFO: Epoch 35: head: train, loss=0.00614289, MAE_E=  121.44 meV, MAE_F=   33.44 meV / A
+2025-04-29 19:44:44.127 INFO: Epoch 35: head: validation, loss=0.00670936, MAE_E=  121.45 meV, MAE_F=   33.60 meV / A
+2025-04-29 19:44:46.027 INFO: Epoch 36: head: train, loss=0.00573872, MAE_E=  167.75 meV, MAE_F=   32.39 meV / A
+2025-04-29 19:44:46.704 INFO: Epoch 36: head: validation, loss=0.00624656, MAE_E=  168.17 meV, MAE_F=   32.65 meV / A
+2025-04-29 19:44:48.717 INFO: Epoch 37: head: train, loss=0.00524478, MAE_E=  119.89 meV, MAE_F=   31.03 meV / A
+2025-04-29 19:44:49.378 INFO: Epoch 37: head: validation, loss=0.00570956, MAE_E=  120.51 meV, MAE_F=   31.25 meV / A
+2025-04-29 19:44:51.230 INFO: Epoch 38: head: train, loss=0.00501549, MAE_E=   80.53 meV, MAE_F=   30.39 meV / A
+2025-04-29 19:44:51.776 INFO: Epoch 38: head: validation, loss=0.00546773, MAE_E=   81.10 meV, MAE_F=   30.60 meV / A
+2025-04-29 19:44:53.662 INFO: Epoch 39: head: train, loss=0.00564839, MAE_E=   73.97 meV, MAE_F=   32.77 meV / A
+2025-04-29 19:44:54.212 INFO: Epoch 39: head: validation, loss=0.00622235, MAE_E=   75.07 meV, MAE_F=   33.55 meV / A
+2025-04-29 19:44:55.990 INFO: Epoch 40: head: train, loss=0.00565697, MAE_E=  122.48 meV, MAE_F=   32.80 meV / A
+2025-04-29 19:44:56.583 INFO: Epoch 40: head: validation, loss=0.00627809, MAE_E=  123.80 meV, MAE_F=   33.67 meV / A
+2025-04-29 19:44:58.380 INFO: Epoch 41: head: train, loss=0.00549202, MAE_E=   35.10 meV, MAE_F=   32.29 meV / A
+2025-04-29 19:44:58.977 INFO: Epoch 41: head: validation, loss=0.00597562, MAE_E=   36.59 meV, MAE_F=   32.92 meV / A
+2025-04-29 19:45:01.000 INFO: Epoch 42: head: train, loss=0.00501658, MAE_E=   30.99 meV, MAE_F=   30.71 meV / A
+2025-04-29 19:45:01.625 INFO: Epoch 42: head: validation, loss=0.00549526, MAE_E=   32.59 meV, MAE_F=   31.31 meV / A
+2025-04-29 19:45:03.643 INFO: Epoch 43: head: train, loss=0.00448299, MAE_E=   26.21 meV, MAE_F=   28.83 meV / A
+2025-04-29 19:45:04.419 INFO: Epoch 43: head: validation, loss=0.00499554, MAE_E=   28.04 meV, MAE_F=   29.54 meV / A
+2025-04-29 19:45:06.474 INFO: Epoch 44: head: train, loss=0.00416622, MAE_E=   28.23 meV, MAE_F=   27.69 meV / A
+2025-04-29 19:45:07.184 INFO: Epoch 44: head: validation, loss=0.00471390, MAE_E=   30.08 meV, MAE_F=   28.52 meV / A
+2025-04-29 19:45:09.305 INFO: Epoch 45: head: train, loss=0.00385432, MAE_E=   17.90 meV, MAE_F=   26.56 meV / A
+2025-04-29 19:45:09.962 INFO: Epoch 45: head: validation, loss=0.00439916, MAE_E=   19.96 meV, MAE_F=   27.40 meV / A
+2025-04-29 19:45:12.114 INFO: Epoch 46: head: train, loss=0.00352415, MAE_E=   22.26 meV, MAE_F=   25.37 meV / A
+2025-04-29 19:45:12.795 INFO: Epoch 46: head: validation, loss=0.00409425, MAE_E=   24.15 meV, MAE_F=   26.34 meV / A
+2025-04-29 19:45:15.036 INFO: Epoch 47: head: train, loss=0.00323258, MAE_E=   16.49 meV, MAE_F=   24.25 meV / A
+2025-04-29 19:45:15.740 INFO: Epoch 47: head: validation, loss=0.00382906, MAE_E=   18.45 meV, MAE_F=   25.39 meV / A
+2025-04-29 19:45:17.935 INFO: Epoch 48: head: train, loss=0.00290590, MAE_E=   14.69 meV, MAE_F=   23.09 meV / A
+2025-04-29 19:45:18.695 INFO: Epoch 48: head: validation, loss=0.00354040, MAE_E=   16.40 meV, MAE_F=   24.38 meV / A
+2025-04-29 19:45:20.965 INFO: Epoch 49: head: train, loss=0.00274612, MAE_E=   15.90 meV, MAE_F=   22.39 meV / A
+2025-04-29 19:45:21.666 INFO: Epoch 49: head: validation, loss=0.00331784, MAE_E=   17.63 meV, MAE_F=   23.61 meV / A
+2025-04-29 19:45:23.983 INFO: Epoch 50: head: train, loss=0.00252664, MAE_E=   15.12 meV, MAE_F=   21.48 meV / A
+2025-04-29 19:45:24.698 INFO: Epoch 50: head: validation, loss=0.00307152, MAE_E=   16.91 meV, MAE_F=   22.72 meV / A
+2025-04-29 19:45:26.915 INFO: Epoch 51: head: train, loss=0.00233077, MAE_E=   14.42 meV, MAE_F=   20.65 meV / A
+2025-04-29 19:45:27.950 INFO: Epoch 51: head: validation, loss=0.00285023, MAE_E=   16.14 meV, MAE_F=   21.90 meV / A
+2025-04-29 19:45:30.731 INFO: Epoch 52: head: train, loss=0.00212760, MAE_E=   14.55 meV, MAE_F=   19.73 meV / A
+2025-04-29 19:45:31.884 INFO: Epoch 52: head: validation, loss=0.00263065, MAE_E=   16.25 meV, MAE_F=   21.08 meV / A
+2025-04-29 19:45:34.580 INFO: Epoch 53: head: train, loss=0.00195666, MAE_E=   14.81 meV, MAE_F=   18.91 meV / A
+2025-04-29 19:45:35.690 INFO: Epoch 53: head: validation, loss=0.00243898, MAE_E=   16.49 meV, MAE_F=   20.31 meV / A
+2025-04-29 19:45:38.479 INFO: Epoch 54: head: train, loss=0.00181529, MAE_E=   14.60 meV, MAE_F=   18.23 meV / A
+2025-04-29 19:45:39.504 INFO: Epoch 54: head: validation, loss=0.00226655, MAE_E=   16.41 meV, MAE_F=   19.61 meV / A
+2025-04-29 19:45:42.455 INFO: Epoch 55: head: train, loss=0.00168995, MAE_E=   14.55 meV, MAE_F=   17.64 meV / A
+2025-04-29 19:45:43.489 INFO: Epoch 55: head: validation, loss=0.00211228, MAE_E=   16.45 meV, MAE_F=   18.95 meV / A
+2025-04-29 19:45:46.309 INFO: Epoch 56: head: train, loss=0.00157008, MAE_E=   14.59 meV, MAE_F=   17.01 meV / A
+2025-04-29 19:45:47.455 INFO: Epoch 56: head: validation, loss=0.00197973, MAE_E=   16.46 meV, MAE_F=   18.38 meV / A
+2025-04-29 19:45:50.354 INFO: Epoch 57: head: train, loss=0.00148308, MAE_E=   14.73 meV, MAE_F=   16.52 meV / A
+2025-04-29 19:45:51.165 INFO: Epoch 57: head: validation, loss=0.00186121, MAE_E=   16.53 meV, MAE_F=   17.84 meV / A
+2025-04-29 19:45:53.701 INFO: Epoch 58: head: train, loss=0.00140254, MAE_E=   14.74 meV, MAE_F=   16.07 meV / A
+2025-04-29 19:45:54.500 INFO: Epoch 58: head: validation, loss=0.00175904, MAE_E=   16.54 meV, MAE_F=   17.36 meV / A
+2025-04-29 19:45:56.941 INFO: Epoch 59: head: train, loss=0.00132805, MAE_E=   14.89 meV, MAE_F=   15.65 meV / A
+2025-04-29 19:45:57.681 INFO: Epoch 59: head: validation, loss=0.00166370, MAE_E=   16.66 meV, MAE_F=   16.90 meV / A
+2025-04-29 19:46:00.278 INFO: Epoch 60: head: train, loss=0.00125850, MAE_E=   14.98 meV, MAE_F=   15.23 meV / A
+2025-04-29 19:46:01.124 INFO: Epoch 60: head: validation, loss=0.00158586, MAE_E=   16.69 meV, MAE_F=   16.50 meV / A
+2025-04-29 19:46:03.777 INFO: Epoch 61: head: train, loss=0.00122223, MAE_E=   15.01 meV, MAE_F=   15.02 meV / A
+2025-04-29 19:46:04.812 INFO: Epoch 61: head: validation, loss=0.00151753, MAE_E=   16.78 meV, MAE_F=   16.13 meV / A
+2025-04-29 19:46:07.715 INFO: Epoch 62: head: train, loss=0.00116069, MAE_E=   14.90 meV, MAE_F=   14.63 meV / A
+2025-04-29 19:46:08.953 INFO: Epoch 62: head: validation, loss=0.00145117, MAE_E=   16.80 meV, MAE_F=   15.77 meV / A
+2025-04-29 19:46:11.914 INFO: Epoch 63: head: train, loss=0.00112216, MAE_E=   15.08 meV, MAE_F=   14.39 meV / A
+2025-04-29 19:46:12.960 INFO: Epoch 63: head: validation, loss=0.00139536, MAE_E=   16.82 meV, MAE_F=   15.47 meV / A
+2025-04-29 19:46:16.074 INFO: Epoch 64: head: train, loss=0.00107584, MAE_E=   15.04 meV, MAE_F=   14.09 meV / A
+2025-04-29 19:46:17.122 INFO: Epoch 64: head: validation, loss=0.00134476, MAE_E=   16.84 meV, MAE_F=   15.19 meV / A
+2025-04-29 19:46:20.147 INFO: Epoch 65: head: train, loss=0.00104195, MAE_E=   15.22 meV, MAE_F=   13.86 meV / A
+2025-04-29 19:46:21.110 INFO: Epoch 65: head: validation, loss=0.00129731, MAE_E=   16.89 meV, MAE_F=   14.92 meV / A
+2025-04-29 19:46:23.662 INFO: Epoch 66: head: train, loss=0.00099900, MAE_E=   15.00 meV, MAE_F=   13.58 meV / A
+2025-04-29 19:46:24.477 INFO: Epoch 66: head: validation, loss=0.00125753, MAE_E=   16.96 meV, MAE_F=   14.67 meV / A
+2025-04-29 19:46:26.902 INFO: Epoch 67: head: train, loss=0.00096592, MAE_E=   15.24 meV, MAE_F=   13.36 meV / A
+2025-04-29 19:46:27.658 INFO: Epoch 67: head: validation, loss=0.00121965, MAE_E=   16.95 meV, MAE_F=   14.44 meV / A
+2025-04-29 19:46:30.049 INFO: Epoch 68: head: train, loss=0.00093994, MAE_E=   15.24 meV, MAE_F=   13.19 meV / A
+2025-04-29 19:46:30.850 INFO: Epoch 68: head: validation, loss=0.00118764, MAE_E=   16.94 meV, MAE_F=   14.25 meV / A
+2025-04-29 19:46:33.303 INFO: Epoch 69: head: train, loss=0.00091238, MAE_E=   15.18 meV, MAE_F=   13.00 meV / A
+2025-04-29 19:46:34.066 INFO: Epoch 69: head: validation, loss=0.00115525, MAE_E=   16.92 meV, MAE_F=   14.05 meV / A
+2025-04-29 19:46:36.547 INFO: Epoch 70: head: train, loss=0.00088946, MAE_E=   15.20 meV, MAE_F=   12.83 meV / A
+2025-04-29 19:46:37.322 INFO: Epoch 70: head: validation, loss=0.00112586, MAE_E=   17.00 meV, MAE_F=   13.86 meV / A
+2025-04-29 19:46:39.973 INFO: Epoch 71: head: train, loss=0.00086684, MAE_E=   14.99 meV, MAE_F=   12.67 meV / A
+2025-04-29 19:46:40.966 INFO: Epoch 71: head: validation, loss=0.00110145, MAE_E=   16.89 meV, MAE_F=   13.69 meV / A
+2025-04-29 19:46:43.858 INFO: Epoch 72: head: train, loss=0.00085419, MAE_E=   15.18 meV, MAE_F=   12.58 meV / A
+2025-04-29 19:46:45.013 INFO: Epoch 72: head: validation, loss=0.00107159, MAE_E=   16.87 meV, MAE_F=   13.51 meV / A
+2025-04-29 19:46:47.723 INFO: Epoch 73: head: train, loss=0.00082463, MAE_E=   15.14 meV, MAE_F=   12.36 meV / A
+2025-04-29 19:46:48.965 INFO: Epoch 73: head: validation, loss=0.00104647, MAE_E=   16.86 meV, MAE_F=   13.35 meV / A
+2025-04-29 19:46:51.926 INFO: Epoch 74: head: train, loss=0.00080699, MAE_E=   15.07 meV, MAE_F=   12.24 meV / A
+2025-04-29 19:46:53.001 INFO: Epoch 74: head: validation, loss=0.00102326, MAE_E=   16.83 meV, MAE_F=   13.20 meV / A
+2025-04-29 19:46:56.095 INFO: Epoch 75: head: train, loss=0.00077786, MAE_E=   14.81 meV, MAE_F=   12.05 meV / A
+2025-04-29 19:46:57.136 INFO: Epoch 75: head: validation, loss=0.00100007, MAE_E=   16.78 meV, MAE_F=   13.05 meV / A
+2025-04-29 19:46:59.622 INFO: Epoch 76: head: train, loss=0.00078079, MAE_E=   14.84 meV, MAE_F=   12.06 meV / A
+2025-04-29 19:47:00.397 INFO: Epoch 76: head: validation, loss=0.00097838, MAE_E=   16.78 meV, MAE_F=   12.91 meV / A
+2025-04-29 19:47:02.806 INFO: Epoch 77: head: train, loss=0.00075995, MAE_E=   14.90 meV, MAE_F=   11.91 meV / A
+2025-04-29 19:47:03.574 INFO: Epoch 77: head: validation, loss=0.00095992, MAE_E=   16.75 meV, MAE_F=   12.79 meV / A
+2025-04-29 19:47:06.264 INFO: Epoch 78: head: train, loss=0.00074881, MAE_E=   14.91 meV, MAE_F=   11.82 meV / A
+2025-04-29 19:47:07.000 INFO: Epoch 78: head: validation, loss=0.00094041, MAE_E=   16.76 meV, MAE_F=   12.65 meV / A
+2025-04-29 19:47:09.492 INFO: Epoch 79: head: train, loss=0.00072355, MAE_E=   14.71 meV, MAE_F=   11.67 meV / A
+2025-04-29 19:47:10.288 INFO: Epoch 79: head: validation, loss=0.00091935, MAE_E=   16.60 meV, MAE_F=   12.53 meV / A
+2025-04-29 19:47:12.759 INFO: Epoch 80: head: train, loss=0.00073159, MAE_E=   14.59 meV, MAE_F=   11.68 meV / A
+2025-04-29 19:47:13.622 INFO: Epoch 80: head: validation, loss=0.00090581, MAE_E=   16.58 meV, MAE_F=   12.45 meV / A
+2025-04-29 19:47:16.008 INFO: Epoch 81: head: train, loss=0.00072047, MAE_E=   14.65 meV, MAE_F=   11.59 meV / A
+2025-04-29 19:47:16.790 INFO: Epoch 81: head: validation, loss=0.00089001, MAE_E=   16.53 meV, MAE_F=   12.36 meV / A
+2025-04-29 19:47:19.214 INFO: Epoch 82: head: train, loss=0.00070704, MAE_E=   14.54 meV, MAE_F=   11.50 meV / A
+2025-04-29 19:47:20.022 INFO: Epoch 82: head: validation, loss=0.00087745, MAE_E=   16.51 meV, MAE_F=   12.26 meV / A
+2025-04-29 19:47:22.782 INFO: Epoch 83: head: train, loss=0.00069877, MAE_E=   14.53 meV, MAE_F=   11.43 meV / A
+2025-04-29 19:47:23.639 INFO: Epoch 83: head: validation, loss=0.00086584, MAE_E=   16.49 meV, MAE_F=   12.19 meV / A
+2025-04-29 19:47:26.399 INFO: Epoch 84: head: train, loss=0.00068977, MAE_E=   14.54 meV, MAE_F=   11.38 meV / A
+2025-04-29 19:47:27.538 INFO: Epoch 84: head: validation, loss=0.00085124, MAE_E=   16.46 meV, MAE_F=   12.09 meV / A
+2025-04-29 19:47:30.110 INFO: Epoch 85: head: train, loss=0.00067190, MAE_E=   14.37 meV, MAE_F=   11.24 meV / A
+2025-04-29 19:47:31.079 INFO: Epoch 85: head: validation, loss=0.00083763, MAE_E=   16.47 meV, MAE_F=   12.00 meV / A
+2025-04-29 19:47:33.688 INFO: Epoch 86: head: train, loss=0.00066963, MAE_E=   14.46 meV, MAE_F=   11.23 meV / A
+2025-04-29 19:47:34.695 INFO: Epoch 86: head: validation, loss=0.00082193, MAE_E=   16.44 meV, MAE_F=   11.89 meV / A
+2025-04-29 19:47:37.444 INFO: Epoch 87: head: train, loss=0.00064908, MAE_E=   14.27 meV, MAE_F=   11.06 meV / A
+2025-04-29 19:47:38.386 INFO: Epoch 87: head: validation, loss=0.00080873, MAE_E=   16.41 meV, MAE_F=   11.79 meV / A
+2025-04-29 19:47:41.162 INFO: Epoch 88: head: train, loss=0.00064662, MAE_E=   14.44 meV, MAE_F=   11.04 meV / A
+2025-04-29 19:47:42.141 INFO: Epoch 88: head: validation, loss=0.00079726, MAE_E=   16.40 meV, MAE_F=   11.70 meV / A
+2025-04-29 19:47:45.024 INFO: Epoch 89: head: train, loss=0.00062472, MAE_E=   14.42 meV, MAE_F=   10.88 meV / A
+2025-04-29 19:47:45.866 INFO: Epoch 89: head: validation, loss=0.00078526, MAE_E=   16.36 meV, MAE_F=   11.62 meV / A
+2025-04-29 19:47:48.541 INFO: Epoch 90: head: train, loss=0.00062455, MAE_E=   14.51 meV, MAE_F=   10.86 meV / A
+2025-04-29 19:47:49.411 INFO: Epoch 90: head: validation, loss=0.00077425, MAE_E=   16.42 meV, MAE_F=   11.54 meV / A
+2025-04-29 19:47:52.378 INFO: Epoch 91: head: train, loss=0.00061621, MAE_E=   14.49 meV, MAE_F=   10.79 meV / A
+2025-04-29 19:47:53.364 INFO: Epoch 91: head: validation, loss=0.00076273, MAE_E=   16.38 meV, MAE_F=   11.46 meV / A
+2025-04-29 19:47:56.374 INFO: Epoch 92: head: train, loss=0.00060812, MAE_E=   14.50 meV, MAE_F=   10.73 meV / A
+2025-04-29 19:47:57.410 INFO: Epoch 92: head: validation, loss=0.00075565, MAE_E=   16.33 meV, MAE_F=   11.41 meV / A
+2025-04-29 19:48:00.021 INFO: Epoch 93: head: train, loss=0.00059709, MAE_E=   14.68 meV, MAE_F=   10.64 meV / A
+2025-04-29 19:48:00.940 INFO: Epoch 93: head: validation, loss=0.00074695, MAE_E=   16.35 meV, MAE_F=   11.34 meV / A
+2025-04-29 19:48:03.405 INFO: Epoch 94: head: train, loss=0.00059833, MAE_E=   14.59 meV, MAE_F=   10.64 meV / A
+2025-04-29 19:48:04.322 INFO: Epoch 94: head: validation, loss=0.00074364, MAE_E=   16.31 meV, MAE_F=   11.31 meV / A
+2025-04-29 19:48:07.089 INFO: Epoch 95: head: train, loss=0.00059198, MAE_E=   14.59 meV, MAE_F=   10.59 meV / A
+2025-04-29 19:48:08.107 INFO: Epoch 95: head: validation, loss=0.00074054, MAE_E=   16.28 meV, MAE_F=   11.29 meV / A
+2025-04-29 19:48:11.101 INFO: Epoch 96: head: train, loss=0.00058529, MAE_E=   14.48 meV, MAE_F=   10.52 meV / A
+2025-04-29 19:48:12.120 INFO: Epoch 96: head: validation, loss=0.00073466, MAE_E=   16.24 meV, MAE_F=   11.25 meV / A
+2025-04-29 19:48:15.099 INFO: Epoch 97: head: train, loss=0.00057780, MAE_E=   14.45 meV, MAE_F=   10.46 meV / A
+2025-04-29 19:48:16.106 INFO: Epoch 97: head: validation, loss=0.00072581, MAE_E=   16.25 meV, MAE_F=   11.18 meV / A
+2025-04-29 19:48:19.146 INFO: Epoch 98: head: train, loss=0.00056844, MAE_E=   14.52 meV, MAE_F=   10.39 meV / A
+2025-04-29 19:48:20.032 INFO: Epoch 98: head: validation, loss=0.00071718, MAE_E=   16.24 meV, MAE_F=   11.12 meV / A
+2025-04-29 19:48:22.955 INFO: Epoch 99: head: train, loss=0.00056200, MAE_E=   14.40 meV, MAE_F=   10.33 meV / A
+2025-04-29 19:48:23.905 INFO: Epoch 99: head: validation, loss=0.00070790, MAE_E=   16.22 meV, MAE_F=   11.05 meV / A
+2025-04-29 19:48:26.781 INFO: Epoch 100: head: train, loss=0.00055488, MAE_E=   14.31 meV, MAE_F=   10.28 meV / A
+2025-04-29 19:48:27.747 INFO: Epoch 100: head: validation, loss=0.00069780, MAE_E=   16.21 meV, MAE_F=   10.98 meV / A
+2025-04-29 19:48:30.716 INFO: Epoch 101: head: train, loss=0.00054779, MAE_E=   14.51 meV, MAE_F=   10.22 meV / A
+2025-04-29 19:48:31.632 INFO: Epoch 101: head: validation, loss=0.00068823, MAE_E=   16.21 meV, MAE_F=   10.90 meV / A
+2025-04-29 19:48:34.704 INFO: Epoch 102: head: train, loss=0.00053985, MAE_E=   14.39 meV, MAE_F=   10.15 meV / A
+2025-04-29 19:48:35.871 INFO: Epoch 102: head: validation, loss=0.00067769, MAE_E=   16.22 meV, MAE_F=   10.82 meV / A
+2025-04-29 19:48:38.915 INFO: Epoch 103: head: train, loss=0.00053206, MAE_E=   14.48 meV, MAE_F=   10.09 meV / A
+2025-04-29 19:48:39.958 INFO: Epoch 103: head: validation, loss=0.00066823, MAE_E=   16.21 meV, MAE_F=   10.75 meV / A
+2025-04-29 19:48:42.924 INFO: Epoch 104: head: train, loss=0.00052227, MAE_E=   14.35 meV, MAE_F=   10.01 meV / A
+2025-04-29 19:48:43.960 INFO: Epoch 104: head: validation, loss=0.00065906, MAE_E=   16.22 meV, MAE_F=   10.68 meV / A
+2025-04-29 19:48:46.671 INFO: Epoch 105: head: train, loss=0.00051685, MAE_E=   14.55 meV, MAE_F=    9.95 meV / A
+2025-04-29 19:48:47.697 INFO: Epoch 105: head: validation, loss=0.00065157, MAE_E=   16.22 meV, MAE_F=   10.61 meV / A
+2025-04-29 19:48:50.717 INFO: Epoch 106: head: train, loss=0.00050980, MAE_E=   14.49 meV, MAE_F=    9.88 meV / A
+2025-04-29 19:48:51.710 INFO: Epoch 106: head: validation, loss=0.00064364, MAE_E=   16.21 meV, MAE_F=   10.55 meV / A
+2025-04-29 19:48:54.827 INFO: Epoch 107: head: train, loss=0.00050358, MAE_E=   14.45 meV, MAE_F=    9.82 meV / A
+2025-04-29 19:48:55.840 INFO: Epoch 107: head: validation, loss=0.00063980, MAE_E=   16.23 meV, MAE_F=   10.50 meV / A
+2025-04-29 19:48:58.957 INFO: Epoch 108: head: train, loss=0.00049955, MAE_E=   14.31 meV, MAE_F=    9.78 meV / A
+2025-04-29 19:48:59.984 INFO: Epoch 108: head: validation, loss=0.00063511, MAE_E=   16.19 meV, MAE_F=   10.45 meV / A
+2025-04-29 19:49:02.899 INFO: Epoch 109: head: train, loss=0.00050240, MAE_E=   14.52 meV, MAE_F=    9.80 meV / A
+2025-04-29 19:49:04.059 INFO: Epoch 109: head: validation, loss=0.00062898, MAE_E=   16.18 meV, MAE_F=   10.42 meV / A
+2025-04-29 19:49:06.823 INFO: Epoch 110: head: train, loss=0.00050241, MAE_E=   14.28 meV, MAE_F=    9.79 meV / A
+2025-04-29 19:49:07.508 INFO: Epoch 110: head: validation, loss=0.00062859, MAE_E=   16.11 meV, MAE_F=   10.41 meV / A
+2025-04-29 19:49:09.693 INFO: Epoch 111: head: train, loss=0.00049786, MAE_E=   14.41 meV, MAE_F=    9.76 meV / A
+2025-04-29 19:49:10.417 INFO: Epoch 111: head: validation, loss=0.00062438, MAE_E=   16.11 meV, MAE_F=   10.39 meV / A
+2025-04-29 19:49:12.892 INFO: Epoch 112: head: train, loss=0.00049625, MAE_E=   14.42 meV, MAE_F=    9.74 meV / A
+2025-04-29 19:49:13.708 INFO: Epoch 112: head: validation, loss=0.00061997, MAE_E=   16.13 meV, MAE_F=   10.36 meV / A
+2025-04-29 19:49:16.326 INFO: Epoch 113: head: train, loss=0.00048636, MAE_E=   14.58 meV, MAE_F=    9.66 meV / A
+2025-04-29 19:49:17.210 INFO: Epoch 113: head: validation, loss=0.00061453, MAE_E=   16.13 meV, MAE_F=   10.32 meV / A
+2025-04-29 19:49:20.096 INFO: Epoch 114: head: train, loss=0.00048739, MAE_E=   14.25 meV, MAE_F=    9.67 meV / A
+2025-04-29 19:49:21.114 INFO: Epoch 114: head: validation, loss=0.00060831, MAE_E=   16.08 meV, MAE_F=   10.27 meV / A
+2025-04-29 19:49:24.036 INFO: Epoch 115: head: train, loss=0.00048322, MAE_E=   14.46 meV, MAE_F=    9.63 meV / A
+2025-04-29 19:49:25.067 INFO: Epoch 115: head: validation, loss=0.00060352, MAE_E=   16.10 meV, MAE_F=   10.23 meV / A
+2025-04-29 19:49:27.781 INFO: Epoch 116: head: train, loss=0.00047866, MAE_E=   14.45 meV, MAE_F=    9.58 meV / A
+2025-04-29 19:49:28.898 INFO: Epoch 116: head: validation, loss=0.00059821, MAE_E=   16.14 meV, MAE_F=   10.18 meV / A
+2025-04-29 19:49:31.802 INFO: Epoch 117: head: train, loss=0.00047478, MAE_E=   14.50 meV, MAE_F=    9.55 meV / A
+2025-04-29 19:49:32.968 INFO: Epoch 117: head: validation, loss=0.00059438, MAE_E=   16.10 meV, MAE_F=   10.14 meV / A
+2025-04-29 19:49:35.847 INFO: Epoch 118: head: train, loss=0.00047006, MAE_E=   14.44 meV, MAE_F=    9.49 meV / A
+2025-04-29 19:49:36.880 INFO: Epoch 118: head: validation, loss=0.00058961, MAE_E=   16.10 meV, MAE_F=   10.11 meV / A
+2025-04-29 19:49:39.768 INFO: Epoch 119: head: train, loss=0.00046429, MAE_E=   14.53 meV, MAE_F=    9.45 meV / A
+2025-04-29 19:49:40.793 INFO: Epoch 119: head: validation, loss=0.00058375, MAE_E=   16.07 meV, MAE_F=   10.06 meV / A
+2025-04-29 19:49:43.757 INFO: Epoch 120: head: train, loss=0.00045982, MAE_E=   14.31 meV, MAE_F=    9.39 meV / A
+2025-04-29 19:49:44.924 INFO: Epoch 120: head: validation, loss=0.00057829, MAE_E=   16.06 meV, MAE_F=   10.01 meV / A
+2025-04-29 19:49:47.916 INFO: Epoch 121: head: train, loss=0.00045830, MAE_E=   14.46 meV, MAE_F=    9.37 meV / A
+2025-04-29 19:49:49.015 INFO: Epoch 121: head: validation, loss=0.00057251, MAE_E=   16.07 meV, MAE_F=    9.96 meV / A
+2025-04-29 19:49:52.070 INFO: Epoch 122: head: train, loss=0.00045546, MAE_E=   14.33 meV, MAE_F=    9.35 meV / A
+2025-04-29 19:49:53.061 INFO: Epoch 122: head: validation, loss=0.00056729, MAE_E=   16.06 meV, MAE_F=    9.91 meV / A
+2025-04-29 19:49:56.006 INFO: Epoch 123: head: train, loss=0.00045361, MAE_E=   14.61 meV, MAE_F=    9.34 meV / A
+2025-04-29 19:49:57.009 INFO: Epoch 123: head: validation, loss=0.00056295, MAE_E=   16.06 meV, MAE_F=    9.88 meV / A
+2025-04-29 19:49:59.929 INFO: Epoch 124: head: train, loss=0.00043810, MAE_E=   14.59 meV, MAE_F=    9.22 meV / A
+2025-04-29 19:50:01.015 INFO: Epoch 124: head: validation, loss=0.00055744, MAE_E=   16.07 meV, MAE_F=    9.83 meV / A
+2025-04-29 19:50:03.901 INFO: Epoch 125: head: train, loss=0.00044287, MAE_E=   14.51 meV, MAE_F=    9.24 meV / A
+2025-04-29 19:50:04.859 INFO: Epoch 125: head: validation, loss=0.00055234, MAE_E=   16.06 meV, MAE_F=    9.79 meV / A
+2025-04-29 19:50:08.367 INFO: Epoch 126: head: train, loss=0.00043772, MAE_E=   14.56 meV, MAE_F=    9.17 meV / A
+2025-04-29 19:50:09.513 INFO: Epoch 126: head: validation, loss=0.00054819, MAE_E=   16.05 meV, MAE_F=    9.75 meV / A
+2025-04-29 19:50:12.392 INFO: Epoch 127: head: train, loss=0.00043124, MAE_E=   14.41 meV, MAE_F=    9.11 meV / A
+2025-04-29 19:50:13.446 INFO: Epoch 127: head: validation, loss=0.00054332, MAE_E=   16.02 meV, MAE_F=    9.71 meV / A
+2025-04-29 19:50:16.286 INFO: Epoch 128: head: train, loss=0.00042906, MAE_E=   14.49 meV, MAE_F=    9.10 meV / A
+2025-04-29 19:50:17.318 INFO: Epoch 128: head: validation, loss=0.00053831, MAE_E=   16.04 meV, MAE_F=    9.67 meV / A
+2025-04-29 19:50:20.009 INFO: Epoch 129: head: train, loss=0.00042377, MAE_E=   14.52 meV, MAE_F=    9.06 meV / A
+2025-04-29 19:50:21.018 INFO: Epoch 129: head: validation, loss=0.00053328, MAE_E=   16.03 meV, MAE_F=    9.63 meV / A
+2025-04-29 19:50:23.734 INFO: Epoch 130: head: train, loss=0.00041596, MAE_E=   14.55 meV, MAE_F=    9.00 meV / A
+2025-04-29 19:50:24.624 INFO: Epoch 130: head: validation, loss=0.00052841, MAE_E=   16.01 meV, MAE_F=    9.59 meV / A
+2025-04-29 19:50:27.506 INFO: Epoch 131: head: train, loss=0.00041726, MAE_E=   14.32 meV, MAE_F=    8.99 meV / A
+2025-04-29 19:50:28.541 INFO: Epoch 131: head: validation, loss=0.00052443, MAE_E=   16.00 meV, MAE_F=    9.55 meV / A
+2025-04-29 19:50:31.407 INFO: Epoch 132: head: train, loss=0.00041238, MAE_E=   14.37 meV, MAE_F=    8.94 meV / A
+2025-04-29 19:50:32.355 INFO: Epoch 132: head: validation, loss=0.00052098, MAE_E=   15.97 meV, MAE_F=    9.52 meV / A
+2025-04-29 19:50:35.166 INFO: Epoch 133: head: train, loss=0.00040749, MAE_E=   14.51 meV, MAE_F=    8.89 meV / A
+2025-04-29 19:50:36.198 INFO: Epoch 133: head: validation, loss=0.00051828, MAE_E=   15.97 meV, MAE_F=    9.49 meV / A
+2025-04-29 19:50:39.254 INFO: Epoch 134: head: train, loss=0.00040187, MAE_E=   14.48 meV, MAE_F=    8.83 meV / A
+2025-04-29 19:50:40.292 INFO: Epoch 134: head: validation, loss=0.00051391, MAE_E=   16.04 meV, MAE_F=    9.45 meV / A
+2025-04-29 19:50:43.182 INFO: Epoch 135: head: train, loss=0.00040295, MAE_E=   14.40 meV, MAE_F=    8.83 meV / A
+2025-04-29 19:50:44.237 INFO: Epoch 135: head: validation, loss=0.00051132, MAE_E=   15.99 meV, MAE_F=    9.42 meV / A
+2025-04-29 19:50:47.266 INFO: Epoch 136: head: train, loss=0.00040119, MAE_E=   14.43 meV, MAE_F=    8.82 meV / A
+2025-04-29 19:50:48.311 INFO: Epoch 136: head: validation, loss=0.00050750, MAE_E=   15.97 meV, MAE_F=    9.39 meV / A
+2025-04-29 19:50:51.377 INFO: Epoch 137: head: train, loss=0.00039691, MAE_E=   14.52 meV, MAE_F=    8.78 meV / A
+2025-04-29 19:50:52.500 INFO: Epoch 137: head: validation, loss=0.00050376, MAE_E=   15.96 meV, MAE_F=    9.36 meV / A
+2025-04-29 19:50:55.477 INFO: Epoch 138: head: train, loss=0.00038988, MAE_E=   14.39 meV, MAE_F=    8.70 meV / A
+2025-04-29 19:50:56.523 INFO: Epoch 138: head: validation, loss=0.00050009, MAE_E=   15.96 meV, MAE_F=    9.33 meV / A
+2025-04-29 19:50:59.437 INFO: Epoch 139: head: train, loss=0.00039048, MAE_E=   14.53 meV, MAE_F=    8.71 meV / A
+2025-04-29 19:51:00.471 INFO: Epoch 139: head: validation, loss=0.00049634, MAE_E=   15.95 meV, MAE_F=    9.30 meV / A
+2025-04-29 19:51:03.456 INFO: Epoch 140: head: train, loss=0.00038552, MAE_E=   14.51 meV, MAE_F=    8.66 meV / A
+2025-04-29 19:51:04.512 INFO: Epoch 140: head: validation, loss=0.00049188, MAE_E=   15.94 meV, MAE_F=    9.26 meV / A
+2025-04-29 19:51:07.517 INFO: Epoch 141: head: train, loss=0.00038277, MAE_E=   14.45 meV, MAE_F=    8.64 meV / A
+2025-04-29 19:51:08.597 INFO: Epoch 141: head: validation, loss=0.00048883, MAE_E=   15.93 meV, MAE_F=    9.23 meV / A
+2025-04-29 19:51:11.610 INFO: Epoch 142: head: train, loss=0.00037807, MAE_E=   14.49 meV, MAE_F=    8.59 meV / A
+2025-04-29 19:51:12.671 INFO: Epoch 142: head: validation, loss=0.00048508, MAE_E=   15.94 meV, MAE_F=    9.20 meV / A
+2025-04-29 19:51:15.378 INFO: Epoch 143: head: train, loss=0.00037844, MAE_E=   14.53 meV, MAE_F=    8.59 meV / A
+2025-04-29 19:51:16.412 INFO: Epoch 143: head: validation, loss=0.00048163, MAE_E=   15.94 meV, MAE_F=    9.17 meV / A
+2025-04-29 19:51:19.424 INFO: Epoch 144: head: train, loss=0.00037526, MAE_E=   14.58 meV, MAE_F=    8.56 meV / A
+2025-04-29 19:51:20.393 INFO: Epoch 144: head: validation, loss=0.00047858, MAE_E=   15.93 meV, MAE_F=    9.14 meV / A
+2025-04-29 19:51:23.230 INFO: Epoch 145: head: train, loss=0.00037353, MAE_E=   14.48 meV, MAE_F=    8.55 meV / A
+2025-04-29 19:51:24.136 INFO: Epoch 145: head: validation, loss=0.00047516, MAE_E=   15.91 meV, MAE_F=    9.11 meV / A
+2025-04-29 19:51:27.017 INFO: Epoch 146: head: train, loss=0.00036831, MAE_E=   14.68 meV, MAE_F=    8.50 meV / A
+2025-04-29 19:51:27.968 INFO: Epoch 146: head: validation, loss=0.00047285, MAE_E=   15.90 meV, MAE_F=    9.09 meV / A
+2025-04-29 19:51:30.948 INFO: Epoch 147: head: train, loss=0.00036467, MAE_E=   14.44 meV, MAE_F=    8.46 meV / A
+2025-04-29 19:51:31.976 INFO: Epoch 147: head: validation, loss=0.00047022, MAE_E=   15.88 meV, MAE_F=    9.06 meV / A
+2025-04-29 19:51:34.932 INFO: Epoch 148: head: train, loss=0.00036028, MAE_E=   14.58 meV, MAE_F=    8.43 meV / A
+2025-04-29 19:51:36.065 INFO: Epoch 148: head: validation, loss=0.00046725, MAE_E=   15.92 meV, MAE_F=    9.03 meV / A
+2025-04-29 19:51:39.090 INFO: Epoch 149: head: train, loss=0.00036202, MAE_E=   14.62 meV, MAE_F=    8.42 meV / A
+2025-04-29 19:51:40.219 INFO: Epoch 149: head: validation, loss=0.00046613, MAE_E=   15.86 meV, MAE_F=    9.02 meV / A
+2025-04-29 19:51:43.212 INFO: Epoch 150: head: train, loss=0.00036128, MAE_E=   14.55 meV, MAE_F=    8.43 meV / A
+2025-04-29 19:51:44.265 INFO: Epoch 150: head: validation, loss=0.00046404, MAE_E=   15.94 meV, MAE_F=    9.00 meV / A
+2025-04-29 19:51:47.148 INFO: Epoch 151: head: train, loss=0.00035806, MAE_E=   14.54 meV, MAE_F=    8.38 meV / A
+2025-04-29 19:51:48.169 INFO: Epoch 151: head: validation, loss=0.00046294, MAE_E=   15.91 meV, MAE_F=    8.99 meV / A
+2025-04-29 19:51:51.034 INFO: Epoch 152: head: train, loss=0.00035839, MAE_E=   14.53 meV, MAE_F=    8.38 meV / A
+2025-04-29 19:51:52.073 INFO: Epoch 152: head: validation, loss=0.00046150, MAE_E=   15.87 meV, MAE_F=    8.98 meV / A
+2025-04-29 19:51:55.173 INFO: Epoch 153: head: train, loss=0.00035742, MAE_E=   14.59 meV, MAE_F=    8.37 meV / A
+2025-04-29 19:51:56.255 INFO: Epoch 153: head: validation, loss=0.00046031, MAE_E=   15.91 meV, MAE_F=    8.97 meV / A
+2025-04-29 19:51:58.916 INFO: Epoch 154: head: train, loss=0.00035525, MAE_E=   14.63 meV, MAE_F=    8.35 meV / A
+2025-04-29 19:51:59.842 INFO: Epoch 154: head: validation, loss=0.00045789, MAE_E=   15.94 meV, MAE_F=    8.95 meV / A
+2025-04-29 19:52:02.457 INFO: Epoch 155: head: train, loss=0.00035290, MAE_E=   14.45 meV, MAE_F=    8.34 meV / A
+2025-04-29 19:52:03.416 INFO: Epoch 155: head: validation, loss=0.00045474, MAE_E=   15.90 meV, MAE_F=    8.92 meV / A
+2025-04-29 19:52:06.135 INFO: Epoch 156: head: train, loss=0.00034457, MAE_E=   14.69 meV, MAE_F=    8.25 meV / A
+2025-04-29 19:52:07.078 INFO: Epoch 156: head: validation, loss=0.00045205, MAE_E=   15.87 meV, MAE_F=    8.90 meV / A
+2025-04-29 19:52:09.805 INFO: Epoch 157: head: train, loss=0.00034323, MAE_E=   14.58 meV, MAE_F=    8.25 meV / A
+2025-04-29 19:52:10.754 INFO: Epoch 157: head: validation, loss=0.00045020, MAE_E=   15.86 meV, MAE_F=    8.88 meV / A
+2025-04-29 19:52:13.641 INFO: Epoch 158: head: train, loss=0.00034744, MAE_E=   14.58 meV, MAE_F=    8.28 meV / A
+2025-04-29 19:52:14.632 INFO: Epoch 158: head: validation, loss=0.00045162, MAE_E=   15.89 meV, MAE_F=    8.89 meV / A
+2025-04-29 19:52:17.477 INFO: Epoch 159: head: train, loss=0.00034185, MAE_E=   14.57 meV, MAE_F=    8.23 meV / A
+2025-04-29 19:52:18.573 INFO: Epoch 159: head: validation, loss=0.00044880, MAE_E=   15.85 meV, MAE_F=    8.87 meV / A
+2025-04-29 19:52:21.206 INFO: Epoch 160: head: train, loss=0.00034465, MAE_E=   14.55 meV, MAE_F=    8.25 meV / A
+2025-04-29 19:52:22.321 INFO: Epoch 160: head: validation, loss=0.00044694, MAE_E=   15.80 meV, MAE_F=    8.85 meV / A
+2025-04-29 19:52:25.262 INFO: Epoch 161: head: train, loss=0.00034503, MAE_E=   14.57 meV, MAE_F=    8.25 meV / A
+2025-04-29 19:52:26.302 INFO: Epoch 161: head: validation, loss=0.00044566, MAE_E=   15.85 meV, MAE_F=    8.84 meV / A
+2025-04-29 19:52:29.354 INFO: Epoch 162: head: train, loss=0.00034278, MAE_E=   14.41 meV, MAE_F=    8.23 meV / A
+2025-04-29 19:52:30.415 INFO: Epoch 162: head: validation, loss=0.00044378, MAE_E=   15.77 meV, MAE_F=    8.83 meV / A
+2025-04-29 19:52:33.391 INFO: Epoch 163: head: train, loss=0.00034232, MAE_E=   14.34 meV, MAE_F=    8.22 meV / A
+2025-04-29 19:52:34.440 INFO: Epoch 163: head: validation, loss=0.00044397, MAE_E=   15.92 meV, MAE_F=    8.84 meV / A
+2025-04-29 19:52:37.538 INFO: Epoch 164: head: train, loss=0.00034476, MAE_E=   14.55 meV, MAE_F=    8.25 meV / A
+2025-04-29 19:52:38.761 INFO: Epoch 164: head: validation, loss=0.00044896, MAE_E=   15.90 meV, MAE_F=    8.88 meV / A
+2025-04-29 19:52:41.516 INFO: Epoch 165: head: train, loss=0.00034355, MAE_E=   14.41 meV, MAE_F=    8.24 meV / A
+2025-04-29 19:52:42.180 INFO: Epoch 165: head: validation, loss=0.00044912, MAE_E=   15.88 meV, MAE_F=    8.88 meV / A
+2025-04-29 19:52:44.314 INFO: Epoch 166: head: train, loss=0.00034600, MAE_E=   14.48 meV, MAE_F=    8.26 meV / A
+2025-04-29 19:52:45.031 INFO: Epoch 166: head: validation, loss=0.00044959, MAE_E=   15.90 meV, MAE_F=    8.87 meV / A
+2025-04-29 19:52:47.215 INFO: Epoch 167: head: train, loss=0.00034800, MAE_E=   14.47 meV, MAE_F=    8.29 meV / A
+2025-04-29 19:52:48.023 INFO: Epoch 167: head: validation, loss=0.00044912, MAE_E=   15.88 meV, MAE_F=    8.87 meV / A
+2025-04-29 19:52:50.465 INFO: Epoch 168: head: train, loss=0.00034431, MAE_E=   14.53 meV, MAE_F=    8.24 meV / A
+2025-04-29 19:52:51.284 INFO: Epoch 168: head: validation, loss=0.00044807, MAE_E=   15.87 meV, MAE_F=    8.86 meV / A
+2025-04-29 19:52:53.422 INFO: Epoch 169: head: train, loss=0.00034344, MAE_E=   14.58 meV, MAE_F=    8.24 meV / A
+2025-04-29 19:52:54.272 INFO: Epoch 169: head: validation, loss=0.00044629, MAE_E=   15.87 meV, MAE_F=    8.84 meV / A
+2025-04-29 19:52:56.879 INFO: Epoch 170: head: train, loss=0.00034237, MAE_E=   14.59 meV, MAE_F=    8.22 meV / A
+2025-04-29 19:52:57.806 INFO: Epoch 170: head: validation, loss=0.00044391, MAE_E=   15.86 meV, MAE_F=    8.81 meV / A
+2025-04-29 19:53:00.741 INFO: Epoch 171: head: train, loss=0.00033705, MAE_E=   14.51 meV, MAE_F=    8.17 meV / A
+2025-04-29 19:53:01.772 INFO: Epoch 171: head: validation, loss=0.00044203, MAE_E=   15.85 meV, MAE_F=    8.79 meV / A
+2025-04-29 19:53:04.728 INFO: Epoch 172: head: train, loss=0.00033932, MAE_E=   14.47 meV, MAE_F=    8.20 meV / A
+2025-04-29 19:53:05.721 INFO: Epoch 172: head: validation, loss=0.00044048, MAE_E=   15.85 meV, MAE_F=    8.77 meV / A
+2025-04-29 19:53:08.741 INFO: Epoch 173: head: train, loss=0.00033861, MAE_E=   14.73 meV, MAE_F=    8.19 meV / A
+2025-04-29 19:53:09.869 INFO: Epoch 173: head: validation, loss=0.00043806, MAE_E=   15.88 meV, MAE_F=    8.76 meV / A
+2025-04-29 19:53:12.896 INFO: Epoch 174: head: train, loss=0.00033565, MAE_E=   14.43 meV, MAE_F=    8.16 meV / A
+2025-04-29 19:53:13.938 INFO: Epoch 174: head: validation, loss=0.00043643, MAE_E=   15.83 meV, MAE_F=    8.74 meV / A
+2025-04-29 19:53:16.980 INFO: Epoch 175: head: train, loss=0.00033476, MAE_E=   14.56 meV, MAE_F=    8.15 meV / A
+2025-04-29 19:53:18.028 INFO: Epoch 175: head: validation, loss=0.00043317, MAE_E=   15.85 meV, MAE_F=    8.71 meV / A
+2025-04-29 19:53:21.158 INFO: Epoch 176: head: train, loss=0.00033375, MAE_E=   14.42 meV, MAE_F=    8.14 meV / A
+2025-04-29 19:53:22.197 INFO: Epoch 176: head: validation, loss=0.00043014, MAE_E=   15.88 meV, MAE_F=    8.69 meV / A
+2025-04-29 19:53:25.208 INFO: Epoch 177: head: train, loss=0.00033058, MAE_E=   14.65 meV, MAE_F=    8.10 meV / A
+2025-04-29 19:53:26.258 INFO: Epoch 177: head: validation, loss=0.00042805, MAE_E=   15.89 meV, MAE_F=    8.67 meV / A
+2025-04-29 19:53:29.277 INFO: Epoch 178: head: train, loss=0.00032893, MAE_E=   14.65 meV, MAE_F=    8.08 meV / A
+2025-04-29 19:53:30.346 INFO: Epoch 178: head: validation, loss=0.00042511, MAE_E=   15.86 meV, MAE_F=    8.64 meV / A
+2025-04-29 19:53:33.392 INFO: Epoch 179: head: train, loss=0.00032734, MAE_E=   14.61 meV, MAE_F=    8.07 meV / A
+2025-04-29 19:53:34.519 INFO: Epoch 179: head: validation, loss=0.00042291, MAE_E=   15.89 meV, MAE_F=    8.62 meV / A
+2025-04-29 19:53:37.513 INFO: Epoch 180: head: train, loss=0.00032230, MAE_E=   14.62 meV, MAE_F=    8.02 meV / A
+2025-04-29 19:53:38.635 INFO: Epoch 180: head: validation, loss=0.00042017, MAE_E=   15.84 meV, MAE_F=    8.60 meV / A
+2025-04-29 19:53:41.700 INFO: Epoch 181: head: train, loss=0.00032287, MAE_E=   14.63 meV, MAE_F=    8.02 meV / A
+2025-04-29 19:53:42.755 INFO: Epoch 181: head: validation, loss=0.00041787, MAE_E=   15.88 meV, MAE_F=    8.58 meV / A
+2025-04-29 19:53:45.918 INFO: Epoch 182: head: train, loss=0.00031882, MAE_E=   14.57 meV, MAE_F=    7.97 meV / A
+2025-04-29 19:53:47.076 INFO: Epoch 182: head: validation, loss=0.00041617, MAE_E=   15.85 meV, MAE_F=    8.56 meV / A
+2025-04-29 19:53:50.356 INFO: Epoch 183: head: train, loss=0.00032002, MAE_E=   14.67 meV, MAE_F=    8.00 meV / A
+2025-04-29 19:53:51.385 INFO: Epoch 183: head: validation, loss=0.00041429, MAE_E=   15.87 meV, MAE_F=    8.54 meV / A
+2025-04-29 19:53:54.379 INFO: Epoch 184: head: train, loss=0.00031723, MAE_E=   14.63 meV, MAE_F=    7.95 meV / A
+2025-04-29 19:53:55.301 INFO: Epoch 184: head: validation, loss=0.00041180, MAE_E=   15.85 meV, MAE_F=    8.52 meV / A
+2025-04-29 19:53:58.332 INFO: Epoch 185: head: train, loss=0.00031592, MAE_E=   14.54 meV, MAE_F=    7.94 meV / A
+2025-04-29 19:53:59.389 INFO: Epoch 185: head: validation, loss=0.00040955, MAE_E=   15.86 meV, MAE_F=    8.50 meV / A
+2025-04-29 19:54:02.537 INFO: Epoch 186: head: train, loss=0.00031373, MAE_E=   14.46 meV, MAE_F=    7.91 meV / A
+2025-04-29 19:54:03.686 INFO: Epoch 186: head: validation, loss=0.00040719, MAE_E=   15.85 meV, MAE_F=    8.48 meV / A
+2025-04-29 19:54:06.714 INFO: Epoch 187: head: train, loss=0.00031106, MAE_E=   14.67 meV, MAE_F=    7.89 meV / A
+2025-04-29 19:54:07.876 INFO: Epoch 187: head: validation, loss=0.00040499, MAE_E=   15.86 meV, MAE_F=    8.46 meV / A
+2025-04-29 19:54:10.914 INFO: Epoch 188: head: train, loss=0.00030890, MAE_E=   14.53 meV, MAE_F=    7.85 meV / A
+2025-04-29 19:54:11.935 INFO: Epoch 188: head: validation, loss=0.00040350, MAE_E=   15.85 meV, MAE_F=    8.44 meV / A
+2025-04-29 19:54:14.945 INFO: Epoch 189: head: train, loss=0.00030689, MAE_E=   14.68 meV, MAE_F=    7.84 meV / A
+2025-04-29 19:54:16.088 INFO: Epoch 189: head: validation, loss=0.00040184, MAE_E=   15.83 meV, MAE_F=    8.43 meV / A
+2025-04-29 19:54:19.350 INFO: Epoch 190: head: train, loss=0.00030691, MAE_E=   14.66 meV, MAE_F=    7.83 meV / A
+2025-04-29 19:54:20.413 INFO: Epoch 190: head: validation, loss=0.00039962, MAE_E=   15.86 meV, MAE_F=    8.41 meV / A
+2025-04-29 19:54:23.571 INFO: Epoch 191: head: train, loss=0.00030530, MAE_E=   14.83 meV, MAE_F=    7.81 meV / A
+2025-04-29 19:54:24.617 INFO: Epoch 191: head: validation, loss=0.00039866, MAE_E=   15.86 meV, MAE_F=    8.40 meV / A
+2025-04-29 19:54:27.983 INFO: Epoch 192: head: train, loss=0.00030460, MAE_E=   14.70 meV, MAE_F=    7.81 meV / A
+2025-04-29 19:54:29.089 INFO: Epoch 192: head: validation, loss=0.00039713, MAE_E=   15.84 meV, MAE_F=    8.39 meV / A
+2025-04-29 19:54:32.281 INFO: Epoch 193: head: train, loss=0.00030333, MAE_E=   14.68 meV, MAE_F=    7.79 meV / A
+2025-04-29 19:54:33.159 INFO: Epoch 193: head: validation, loss=0.00039609, MAE_E=   15.85 meV, MAE_F=    8.38 meV / A
+2025-04-29 19:54:36.358 INFO: Epoch 194: head: train, loss=0.00030044, MAE_E=   14.82 meV, MAE_F=    7.75 meV / A
+2025-04-29 19:54:37.483 INFO: Epoch 194: head: validation, loss=0.00039413, MAE_E=   15.86 meV, MAE_F=    8.36 meV / A
+2025-04-29 19:54:40.594 INFO: Epoch 195: head: train, loss=0.00030101, MAE_E=   14.69 meV, MAE_F=    7.77 meV / A
+2025-04-29 19:54:41.639 INFO: Epoch 195: head: validation, loss=0.00039333, MAE_E=   15.83 meV, MAE_F=    8.35 meV / A
+2025-04-29 19:54:44.903 INFO: Epoch 196: head: train, loss=0.00029870, MAE_E=   14.67 meV, MAE_F=    7.74 meV / A
+2025-04-29 19:54:45.911 INFO: Epoch 196: head: validation, loss=0.00039198, MAE_E=   15.87 meV, MAE_F=    8.33 meV / A
+2025-04-29 19:54:48.980 INFO: Epoch 197: head: train, loss=0.00029787, MAE_E=   14.76 meV, MAE_F=    7.72 meV / A
+2025-04-29 19:54:50.103 INFO: Epoch 197: head: validation, loss=0.00039074, MAE_E=   15.87 meV, MAE_F=    8.32 meV / A
+2025-04-29 19:54:53.011 INFO: Epoch 198: head: train, loss=0.00029575, MAE_E=   14.76 meV, MAE_F=    7.70 meV / A
+2025-04-29 19:54:54.019 INFO: Epoch 198: head: validation, loss=0.00038933, MAE_E=   15.87 meV, MAE_F=    8.30 meV / A
+2025-04-29 19:54:57.176 INFO: Epoch 199: head: train, loss=0.00029382, MAE_E=   14.81 meV, MAE_F=    7.67 meV / A
+2025-04-29 19:54:58.285 INFO: Epoch 199: head: validation, loss=0.00038785, MAE_E=   15.88 meV, MAE_F=    8.29 meV / A
+2025-04-29 19:54:58.349 INFO: Training complete
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+tensor([0.7654], device='cuda:0') tensor(0., device='cuda:0')
+2025-04-29 19:54:58.381 INFO: 
+2025-04-29 19:54:58.381 INFO: ===========FINISHED TRAINING===========
+2025-04-29 19:54:58.381 INFO: eveluation
+2025-04-29 19:54:58.381 INFO: The scale is [0.76544627] and shift is 0.0
+2025-04-29 19:54:58.527 INFO: Energy Mean: -40889.892621527775, Variance: 0.061687976224922836
+2025-04-29 19:54:58.862 INFO: Energy RMSE: 0.021196380257606506
+2025-04-29 19:54:58.862 INFO: Energy R2: 0.9927167886785244
+2025-04-29 19:54:58.862 INFO: Energy MAE: 0.01770833320915699
+90
+(90, 7, 3)
+torch.Size([90, 7, 3])
+2025-04-29 19:54:58.863 INFO: Forces RMSE: 0.03320581454627294
+2025-04-29 19:54:58.863 INFO: Forces R2: 0.9997206923875764
+2025-04-29 19:54:59.469 INFO: Energy Mean: -40889.888780381945, Variance: 0.057553512667432256
+2025-04-29 19:54:59.609 INFO: Loading checkpoint: results/charge_embedding/bi7-3_logs//sample_0//checkpoints/bi7-3_run-123_epoch-199.pt
+2025-04-29 19:54:59.664 INFO: Loaded Stage one model from epoch 199 for evaluation
+2025-04-29 19:54:59.665 INFO: Saving model to results/charge_embedding/bi7-3_logs/sample_0/checkpoints/bi7-3_run-123.model
+2025-04-29 19:54:59.870 INFO: Compiling model, saving metadata to results/charge_embedding/bi7-3_logs/sample_0/bi7-3_compiled.model
+2025-04-29 19:54:59.989 INFO: Done
+Loading saved bootstrap sample 1
+Training model 1
+2025-04-29 19:55:00.503 INFO: ===========VERIFYING SETTINGS===========
+2025-04-29 19:55:00.503 INFO: MACE version: 0.3.10
+2025-04-29 19:55:00.503 INFO: CUDA version: 12.1, CUDA device: 0
+default
+2025-04-29 19:55:00.511 INFO: ===========LOADING INPUT DATA===========
+2025-04-29 19:55:00.511 INFO: Using heads: ['default']
+2025-04-29 19:55:00.512 INFO: =============    Processing head default     ===========
+2025-04-29 19:55:00.512 INFO: Total number of configurations: train=360, valid=90, 
+2025-04-29 19:55:00.518 INFO: Atomic Numbers used: [83]
+2025-04-29 19:55:00.518 INFO: Computing average Atomic Energies using least squares regression
+{'default': {83: -5841.413199094743}}
+2025-04-29 19:55:00.523 INFO: Atomic Energies used (z: eV) for head default: {83: -5841.413199094743}
+2025-04-29 19:55:00.792 INFO: Computing average number of neighbors
+2025-04-29 19:55:01.823 INFO: Average number of neighbors: 6.0
+2025-04-29 19:55:01.823 INFO: During training the following quantities will be reported: energy, forces
+2025-04-29 19:55:01.823 INFO: ===========MODEL DETAILS===========
+2025-04-29 19:55:01.823 INFO: Building model
+2025-04-29 19:55:01.826 INFO: Message passing with 128 channels and max_L=1 (128x0e+128x1o)
+2025-04-29 19:55:01.826 INFO: 2 layers, each with correlation order: 3 (body order: 4) and spherical harmonics up to: l=3
+2025-04-29 19:55:01.826 INFO: 8 radial and 5 basis functions
+2025-04-29 19:55:01.827 INFO: Radial cutoff: 9.0 A (total receptive field for each atom: 18.0 A)
+2025-04-29 19:55:01.827 INFO: Distance transform for radial basis functions: None
+2025-04-29 19:55:01.827 INFO: Hidden irreps: 128x0e+128x1o
+2025-04-29 19:55:02.938 INFO: Mean: -5.0131616983169434e-05, Std: [0.76313349]
+0.0 [0.76313349]
+2025-04-29 19:55:02.939 INFO: Scale: [0.76313349], Shift: 0.0
+2025-04-29 19:55:04.772 INFO: Total number of parameters: 509618
+2025-04-29 19:55:04.772 INFO: 
+2025-04-29 19:55:04.773 INFO: ===========OPTIMIZER INFORMATION===========
+2025-04-29 19:55:04.773 INFO: Using ADAM as parameter optimizer
+2025-04-29 19:55:04.773 INFO: Batch size: 32
+2025-04-29 19:55:04.773 INFO: Using Exponential Moving Average with decay: 0.99
+2025-04-29 19:55:04.773 INFO: Number of gradient updates: 2250
+2025-04-29 19:55:04.773 INFO: Learning rate: 0.01, weight decay: 5e-07
+2025-04-29 19:55:04.773 INFO: WeightedEnergyForcesLoss(energy_weight=1.000, forces_weight=100.000)
+2025-04-29 19:55:04.775 INFO: Using gradient clipping with tolerance=10.000
+2025-04-29 19:55:04.775 INFO: 
+2025-04-29 19:55:04.775 INFO: ===========TRAINING===========
+2025-04-29 19:55:04.775 INFO: Started training, reporting errors on validation set
+2025-04-29 19:55:04.775 INFO: Loss metrics on validation set
+2025-04-29 19:55:06.309 INFO: Initial: head: validation, loss=2.63811812, MAE_E=20238.56 meV, MAE_F=  610.03 meV / A
+2025-04-29 19:55:09.557 INFO: Epoch 0: head: train, loss=0.33455545, MAE_E= 1744.29 meV, MAE_F=  250.86 meV / A
+2025-04-29 19:55:10.956 INFO: Epoch 0: head: validation, loss=0.36458572, MAE_E= 1729.45 meV, MAE_F=  252.27 meV / A
+2025-04-29 19:55:14.382 INFO: Epoch 1: head: train, loss=0.30734742, MAE_E= 5964.94 meV, MAE_F=  234.97 meV / A
+2025-04-29 19:55:15.562 INFO: Epoch 1: head: validation, loss=0.33774996, MAE_E= 5938.33 meV, MAE_F=  237.17 meV / A
+2025-04-29 19:55:18.902 INFO: Epoch 2: head: train, loss=0.26445528, MAE_E= 6242.81 meV, MAE_F=  213.39 meV / A
+2025-04-29 19:55:20.058 INFO: Epoch 2: head: validation, loss=0.29683805, MAE_E= 6217.35 meV, MAE_F=  218.22 meV / A
+2025-04-29 19:55:23.553 INFO: Epoch 3: head: train, loss=0.19512205, MAE_E= 1229.15 meV, MAE_F=  194.98 meV / A
+2025-04-29 19:55:24.740 INFO: Epoch 3: head: validation, loss=0.21872593, MAE_E= 1212.12 meV, MAE_F=  197.93 meV / A
+2025-04-29 19:55:28.131 INFO: Epoch 4: head: train, loss=0.11244510, MAE_E= 2884.34 meV, MAE_F=  150.49 meV / A
+2025-04-29 19:55:29.325 INFO: Epoch 4: head: validation, loss=0.12233256, MAE_E= 2866.11 meV, MAE_F=  151.37 meV / A
+2025-04-29 19:55:32.827 INFO: Epoch 5: head: train, loss=0.07604154, MAE_E=  278.38 meV, MAE_F=  124.95 meV / A
+2025-04-29 19:55:33.972 INFO: Epoch 5: head: validation, loss=0.08536275, MAE_E=  299.83 meV, MAE_F=  126.11 meV / A
+2025-04-29 19:55:37.290 INFO: Epoch 6: head: train, loss=0.07788804, MAE_E= 4646.27 meV, MAE_F=  113.34 meV / A
+2025-04-29 19:55:38.450 INFO: Epoch 6: head: validation, loss=0.07880114, MAE_E= 4662.50 meV, MAE_F=  109.16 meV / A
+2025-04-29 19:55:41.835 INFO: Epoch 7: head: train, loss=0.05593412, MAE_E= 2785.51 meV, MAE_F=   99.12 meV / A
+2025-04-29 19:55:42.915 INFO: Epoch 7: head: validation, loss=0.06154685, MAE_E= 2773.95 meV, MAE_F=   99.19 meV / A
+2025-04-29 19:55:46.083 INFO: Epoch 8: head: train, loss=0.03189278, MAE_E=   63.20 meV, MAE_F=   78.38 meV / A
+2025-04-29 19:55:47.272 INFO: Epoch 8: head: validation, loss=0.03267294, MAE_E=   54.65 meV, MAE_F=   76.17 meV / A
+2025-04-29 19:55:50.706 INFO: Epoch 9: head: train, loss=0.02827017, MAE_E=  633.05 meV, MAE_F=   73.21 meV / A
+2025-04-29 19:55:51.808 INFO: Epoch 9: head: validation, loss=0.02952245, MAE_E=  641.69 meV, MAE_F=   71.98 meV / A
+2025-04-29 19:55:55.023 INFO: Epoch 10: head: train, loss=0.02555518, MAE_E=  122.98 meV, MAE_F=   69.89 meV / A
+2025-04-29 19:55:56.207 INFO: Epoch 10: head: validation, loss=0.02740265, MAE_E=  132.18 meV, MAE_F=   69.79 meV / A
+2025-04-29 19:55:59.619 INFO: Epoch 11: head: train, loss=0.02318576, MAE_E=   78.34 meV, MAE_F=   65.55 meV / A
+2025-04-29 19:56:00.846 INFO: Epoch 11: head: validation, loss=0.02488989, MAE_E=   86.32 meV, MAE_F=   65.30 meV / A
+2025-04-29 19:56:04.148 INFO: Epoch 12: head: train, loss=0.01975954, MAE_E=   23.83 meV, MAE_F=   60.56 meV / A
+2025-04-29 19:56:05.323 INFO: Epoch 12: head: validation, loss=0.02073916, MAE_E=   20.88 meV, MAE_F=   59.65 meV / A
+2025-04-29 19:56:08.477 INFO: Epoch 13: head: train, loss=0.01897641, MAE_E=  345.46 meV, MAE_F=   59.50 meV / A
+2025-04-29 19:56:09.742 INFO: Epoch 13: head: validation, loss=0.01951337, MAE_E=  352.47 meV, MAE_F=   59.14 meV / A
+2025-04-29 19:56:13.010 INFO: Epoch 14: head: train, loss=0.01491956, MAE_E=  219.85 meV, MAE_F=   53.56 meV / A
+2025-04-29 19:56:14.136 INFO: Epoch 14: head: validation, loss=0.01523235, MAE_E=  212.06 meV, MAE_F=   52.88 meV / A
+2025-04-29 19:56:17.307 INFO: Epoch 15: head: train, loss=0.01220105, MAE_E=  264.55 meV, MAE_F=   47.54 meV / A
+2025-04-29 19:56:18.359 INFO: Epoch 15: head: validation, loss=0.01217703, MAE_E=  258.99 meV, MAE_F=   46.29 meV / A
+2025-04-29 19:56:21.598 INFO: Epoch 16: head: train, loss=0.00932970, MAE_E=  160.22 meV, MAE_F=   41.37 meV / A
+2025-04-29 19:56:22.688 INFO: Epoch 16: head: validation, loss=0.00923766, MAE_E=  155.75 meV, MAE_F=   40.21 meV / A
+2025-04-29 19:56:25.722 INFO: Epoch 17: head: train, loss=0.00714325, MAE_E=   83.09 meV, MAE_F=   36.45 meV / A
+2025-04-29 19:56:26.929 INFO: Epoch 17: head: validation, loss=0.00696348, MAE_E=   79.46 meV, MAE_F=   35.32 meV / A
+2025-04-29 19:56:30.207 INFO: Epoch 18: head: train, loss=0.00632686, MAE_E=  143.56 meV, MAE_F=   34.34 meV / A
+2025-04-29 19:56:31.497 INFO: Epoch 18: head: validation, loss=0.00610486, MAE_E=  140.53 meV, MAE_F=   33.21 meV / A
+2025-04-29 19:56:34.494 INFO: Epoch 19: head: train, loss=0.00613739, MAE_E=   15.83 meV, MAE_F=   33.65 meV / A
+2025-04-29 19:56:35.703 INFO: Epoch 19: head: validation, loss=0.00614985, MAE_E=   13.55 meV, MAE_F=   33.04 meV / A
+2025-04-29 19:56:38.887 INFO: Epoch 20: head: train, loss=0.00534437, MAE_E=   61.06 meV, MAE_F=   31.80 meV / A
+2025-04-29 19:56:40.048 INFO: Epoch 20: head: validation, loss=0.00525315, MAE_E=   63.70 meV, MAE_F=   30.95 meV / A
+2025-04-29 19:56:43.273 INFO: Epoch 21: head: train, loss=0.00529440, MAE_E=   28.57 meV, MAE_F=   31.81 meV / A
+2025-04-29 19:56:44.385 INFO: Epoch 21: head: validation, loss=0.00531334, MAE_E=   26.01 meV, MAE_F=   31.16 meV / A
+2025-04-29 19:56:47.423 INFO: Epoch 22: head: train, loss=0.00508204, MAE_E=   83.47 meV, MAE_F=   30.97 meV / A
+2025-04-29 19:56:48.644 INFO: Epoch 22: head: validation, loss=0.00522556, MAE_E=   80.58 meV, MAE_F=   30.54 meV / A
+2025-04-29 19:56:51.928 INFO: Epoch 23: head: train, loss=0.00464803, MAE_E=   16.53 meV, MAE_F=   29.34 meV / A
+2025-04-29 19:56:53.049 INFO: Epoch 23: head: validation, loss=0.00469457, MAE_E=   13.51 meV, MAE_F=   28.78 meV / A
+2025-04-29 19:56:56.380 INFO: Epoch 24: head: train, loss=0.00464351, MAE_E=  144.36 meV, MAE_F=   29.29 meV / A
+2025-04-29 19:56:57.614 INFO: Epoch 24: head: validation, loss=0.00480900, MAE_E=  141.83 meV, MAE_F=   29.09 meV / A
+2025-04-29 19:57:00.943 INFO: Epoch 25: head: train, loss=0.00481505, MAE_E=  121.73 meV, MAE_F=   30.02 meV / A
+2025-04-29 19:57:02.088 INFO: Epoch 25: head: validation, loss=0.00507021, MAE_E=  118.78 meV, MAE_F=   30.02 meV / A
+2025-04-29 19:57:05.361 INFO: Epoch 26: head: train, loss=0.00447917, MAE_E=   55.60 meV, MAE_F=   28.95 meV / A
+2025-04-29 19:57:06.525 INFO: Epoch 26: head: validation, loss=0.00462284, MAE_E=   52.67 meV, MAE_F=   28.75 meV / A
+2025-04-29 19:57:09.860 INFO: Epoch 27: head: train, loss=0.00428625, MAE_E=  119.37 meV, MAE_F=   28.26 meV / A
+2025-04-29 19:57:11.041 INFO: Epoch 27: head: validation, loss=0.00433642, MAE_E=  116.69 meV, MAE_F=   27.83 meV / A
+2025-04-29 19:57:14.321 INFO: Epoch 28: head: train, loss=0.00405504, MAE_E=   86.16 meV, MAE_F=   27.50 meV / A
+2025-04-29 19:57:15.383 INFO: Epoch 28: head: validation, loss=0.00415633, MAE_E=   83.14 meV, MAE_F=   27.23 meV / A
+2025-04-29 19:57:18.500 INFO: Epoch 29: head: train, loss=0.00393013, MAE_E=   58.26 meV, MAE_F=   27.13 meV / A
+2025-04-29 19:57:19.632 INFO: Epoch 29: head: validation, loss=0.00392221, MAE_E=   55.38 meV, MAE_F=   26.49 meV / A
+2025-04-29 19:57:22.768 INFO: Epoch 30: head: train, loss=0.00367583, MAE_E=   41.13 meV, MAE_F=   26.12 meV / A
+2025-04-29 19:57:23.853 INFO: Epoch 30: head: validation, loss=0.00371296, MAE_E=   38.61 meV, MAE_F=   25.69 meV / A
+2025-04-29 19:57:27.072 INFO: Epoch 31: head: train, loss=0.00338317, MAE_E=   37.11 meV, MAE_F=   24.92 meV / A
+2025-04-29 19:57:28.292 INFO: Epoch 31: head: validation, loss=0.00345759, MAE_E=   34.66 meV, MAE_F=   24.60 meV / A
+2025-04-29 19:57:31.610 INFO: Epoch 32: head: train, loss=0.00315245, MAE_E=   32.01 meV, MAE_F=   24.05 meV / A
+2025-04-29 19:57:32.848 INFO: Epoch 32: head: validation, loss=0.00327364, MAE_E=   29.53 meV, MAE_F=   23.81 meV / A
+2025-04-29 19:57:36.009 INFO: Epoch 33: head: train, loss=0.00287983, MAE_E=   16.89 meV, MAE_F=   23.01 meV / A
+2025-04-29 19:57:37.109 INFO: Epoch 33: head: validation, loss=0.00309513, MAE_E=   14.15 meV, MAE_F=   23.04 meV / A
+2025-04-29 19:57:40.319 INFO: Epoch 34: head: train, loss=0.00264681, MAE_E=   19.99 meV, MAE_F=   22.07 meV / A
+2025-04-29 19:57:41.422 INFO: Epoch 34: head: validation, loss=0.00286385, MAE_E=   17.45 meV, MAE_F=   22.08 meV / A
+2025-04-29 19:57:44.745 INFO: Epoch 35: head: train, loss=0.00244285, MAE_E=   17.98 meV, MAE_F=   21.21 meV / A
+2025-04-29 19:57:45.820 INFO: Epoch 35: head: validation, loss=0.00266765, MAE_E=   15.25 meV, MAE_F=   21.20 meV / A
+2025-04-29 19:57:48.968 INFO: Epoch 36: head: train, loss=0.00222900, MAE_E=   17.49 meV, MAE_F=   20.26 meV / A
+2025-04-29 19:57:50.135 INFO: Epoch 36: head: validation, loss=0.00247436, MAE_E=   14.87 meV, MAE_F=   20.36 meV / A
+2025-04-29 19:57:53.430 INFO: Epoch 37: head: train, loss=0.00200154, MAE_E=   18.57 meV, MAE_F=   19.25 meV / A
+2025-04-29 19:57:54.431 INFO: Epoch 37: head: validation, loss=0.00230047, MAE_E=   16.07 meV, MAE_F=   19.64 meV / A
+2025-04-29 19:57:57.734 INFO: Epoch 38: head: train, loss=0.00187481, MAE_E=   17.47 meV, MAE_F=   18.60 meV / A
+2025-04-29 19:57:58.986 INFO: Epoch 38: head: validation, loss=0.00215401, MAE_E=   14.95 meV, MAE_F=   18.98 meV / A
+2025-04-29 19:58:02.267 INFO: Epoch 39: head: train, loss=0.00175111, MAE_E=   16.30 meV, MAE_F=   17.95 meV / A
+2025-04-29 19:58:03.476 INFO: Epoch 39: head: validation, loss=0.00201064, MAE_E=   13.89 meV, MAE_F=   18.32 meV / A
+2025-04-29 19:58:06.769 INFO: Epoch 40: head: train, loss=0.00163891, MAE_E=   15.74 meV, MAE_F=   17.36 meV / A
+2025-04-29 19:58:07.929 INFO: Epoch 40: head: validation, loss=0.00189344, MAE_E=   13.37 meV, MAE_F=   17.78 meV / A
+2025-04-29 19:58:11.178 INFO: Epoch 41: head: train, loss=0.00154898, MAE_E=   15.43 meV, MAE_F=   16.89 meV / A
+2025-04-29 19:58:12.342 INFO: Epoch 41: head: validation, loss=0.00177545, MAE_E=   13.15 meV, MAE_F=   17.22 meV / A
+2025-04-29 19:58:15.465 INFO: Epoch 42: head: train, loss=0.00147012, MAE_E=   15.68 meV, MAE_F=   16.48 meV / A
+2025-04-29 19:58:16.493 INFO: Epoch 42: head: validation, loss=0.00169198, MAE_E=   13.34 meV, MAE_F=   16.80 meV / A
+2025-04-29 19:58:19.753 INFO: Epoch 43: head: train, loss=0.00141277, MAE_E=   14.69 meV, MAE_F=   16.11 meV / A
+2025-04-29 19:58:20.950 INFO: Epoch 43: head: validation, loss=0.00164329, MAE_E=   12.91 meV, MAE_F=   16.48 meV / A
+2025-04-29 19:58:24.273 INFO: Epoch 44: head: train, loss=0.00138060, MAE_E=   14.53 meV, MAE_F=   15.89 meV / A
+2025-04-29 19:58:25.478 INFO: Epoch 44: head: validation, loss=0.00162215, MAE_E=   12.84 meV, MAE_F=   16.30 meV / A
+2025-04-29 19:58:28.673 INFO: Epoch 45: head: train, loss=0.00133759, MAE_E=   17.28 meV, MAE_F=   15.67 meV / A
+2025-04-29 19:58:29.839 INFO: Epoch 45: head: validation, loss=0.00157613, MAE_E=   14.61 meV, MAE_F=   16.07 meV / A
+2025-04-29 19:58:33.163 INFO: Epoch 46: head: train, loss=0.00131511, MAE_E=   15.00 meV, MAE_F=   15.51 meV / A
+2025-04-29 19:58:34.270 INFO: Epoch 46: head: validation, loss=0.00153758, MAE_E=   12.84 meV, MAE_F=   15.86 meV / A
+2025-04-29 19:58:37.554 INFO: Epoch 47: head: train, loss=0.00125735, MAE_E=   15.96 meV, MAE_F=   15.16 meV / A
+2025-04-29 19:58:38.717 INFO: Epoch 47: head: validation, loss=0.00147993, MAE_E=   13.54 meV, MAE_F=   15.57 meV / A
+2025-04-29 19:58:41.986 INFO: Epoch 48: head: train, loss=0.00120823, MAE_E=   14.72 meV, MAE_F=   14.87 meV / A
+2025-04-29 19:58:43.126 INFO: Epoch 48: head: validation, loss=0.00142126, MAE_E=   12.85 meV, MAE_F=   15.27 meV / A
+2025-04-29 19:58:46.419 INFO: Epoch 49: head: train, loss=0.00116836, MAE_E=   14.68 meV, MAE_F=   14.63 meV / A
+2025-04-29 19:58:47.532 INFO: Epoch 49: head: validation, loss=0.00137107, MAE_E=   12.76 meV, MAE_F=   14.99 meV / A
+2025-04-29 19:58:50.901 INFO: Epoch 50: head: train, loss=0.00111166, MAE_E=   14.46 meV, MAE_F=   14.29 meV / A
+2025-04-29 19:58:52.027 INFO: Epoch 50: head: validation, loss=0.00132188, MAE_E=   12.72 meV, MAE_F=   14.74 meV / A
+2025-04-29 19:58:55.266 INFO: Epoch 51: head: train, loss=0.00109229, MAE_E=   14.28 meV, MAE_F=   14.19 meV / A
+2025-04-29 19:58:56.428 INFO: Epoch 51: head: validation, loss=0.00128233, MAE_E=   12.72 meV, MAE_F=   14.52 meV / A
+2025-04-29 19:58:59.788 INFO: Epoch 52: head: train, loss=0.00104535, MAE_E=   14.40 meV, MAE_F=   13.88 meV / A
+2025-04-29 19:59:00.969 INFO: Epoch 52: head: validation, loss=0.00124542, MAE_E=   12.68 meV, MAE_F=   14.31 meV / A
+2025-04-29 19:59:04.140 INFO: Epoch 53: head: train, loss=0.00102827, MAE_E=   14.27 meV, MAE_F=   13.78 meV / A
+2025-04-29 19:59:05.259 INFO: Epoch 53: head: validation, loss=0.00120972, MAE_E=   12.67 meV, MAE_F=   14.11 meV / A
+2025-04-29 19:59:08.539 INFO: Epoch 54: head: train, loss=0.00098721, MAE_E=   14.04 meV, MAE_F=   13.51 meV / A
+2025-04-29 19:59:09.720 INFO: Epoch 54: head: validation, loss=0.00117228, MAE_E=   12.70 meV, MAE_F=   13.90 meV / A
+2025-04-29 19:59:13.049 INFO: Epoch 55: head: train, loss=0.00096408, MAE_E=   14.18 meV, MAE_F=   13.37 meV / A
+2025-04-29 19:59:14.195 INFO: Epoch 55: head: validation, loss=0.00114374, MAE_E=   12.73 meV, MAE_F=   13.74 meV / A
+2025-04-29 19:59:17.423 INFO: Epoch 56: head: train, loss=0.00094860, MAE_E=   14.02 meV, MAE_F=   13.26 meV / A
+2025-04-29 19:59:18.607 INFO: Epoch 56: head: validation, loss=0.00111532, MAE_E=   12.73 meV, MAE_F=   13.58 meV / A
+2025-04-29 19:59:21.854 INFO: Epoch 57: head: train, loss=0.00092294, MAE_E=   14.00 meV, MAE_F=   13.10 meV / A
+2025-04-29 19:59:22.967 INFO: Epoch 57: head: validation, loss=0.00109169, MAE_E=   12.74 meV, MAE_F=   13.45 meV / A
+2025-04-29 19:59:26.325 INFO: Epoch 58: head: train, loss=0.00088665, MAE_E=   13.80 meV, MAE_F=   12.86 meV / A
+2025-04-29 19:59:27.535 INFO: Epoch 58: head: validation, loss=0.00106449, MAE_E=   12.73 meV, MAE_F=   13.29 meV / A
+2025-04-29 19:59:30.737 INFO: Epoch 59: head: train, loss=0.00086949, MAE_E=   14.01 meV, MAE_F=   12.74 meV / A
+2025-04-29 19:59:31.989 INFO: Epoch 59: head: validation, loss=0.00104150, MAE_E=   12.72 meV, MAE_F=   13.16 meV / A
+2025-04-29 19:59:35.307 INFO: Epoch 60: head: train, loss=0.00085559, MAE_E=   14.11 meV, MAE_F=   12.62 meV / A
+2025-04-29 19:59:36.549 INFO: Epoch 60: head: validation, loss=0.00102003, MAE_E=   12.74 meV, MAE_F=   13.03 meV / A
+2025-04-29 19:59:39.939 INFO: Epoch 61: head: train, loss=0.00084354, MAE_E=   13.77 meV, MAE_F=   12.55 meV / A
+2025-04-29 19:59:41.154 INFO: Epoch 61: head: validation, loss=0.00099883, MAE_E=   12.78 meV, MAE_F=   12.90 meV / A
+2025-04-29 19:59:44.520 INFO: Epoch 62: head: train, loss=0.00082092, MAE_E=   13.98 meV, MAE_F=   12.38 meV / A
+2025-04-29 19:59:45.696 INFO: Epoch 62: head: validation, loss=0.00097876, MAE_E=   12.77 meV, MAE_F=   12.78 meV / A
+2025-04-29 19:59:49.094 INFO: Epoch 63: head: train, loss=0.00080763, MAE_E=   13.90 meV, MAE_F=   12.28 meV / A
+2025-04-29 19:59:50.298 INFO: Epoch 63: head: validation, loss=0.00095858, MAE_E=   12.69 meV, MAE_F=   12.66 meV / A
+2025-04-29 19:59:53.485 INFO: Epoch 64: head: train, loss=0.00077662, MAE_E=   14.01 meV, MAE_F=   12.08 meV / A
+2025-04-29 19:59:54.706 INFO: Epoch 64: head: validation, loss=0.00094100, MAE_E=   12.70 meV, MAE_F=   12.55 meV / A
+2025-04-29 19:59:57.973 INFO: Epoch 65: head: train, loss=0.00077058, MAE_E=   14.15 meV, MAE_F=   12.00 meV / A
+2025-04-29 19:59:59.221 INFO: Epoch 65: head: validation, loss=0.00092267, MAE_E=   12.68 meV, MAE_F=   12.44 meV / A
+2025-04-29 20:00:02.609 INFO: Epoch 66: head: train, loss=0.00074740, MAE_E=   14.09 meV, MAE_F=   11.86 meV / A
+2025-04-29 20:00:03.809 INFO: Epoch 66: head: validation, loss=0.00090353, MAE_E=   12.67 meV, MAE_F=   12.32 meV / A
+2025-04-29 20:00:07.145 INFO: Epoch 67: head: train, loss=0.00075073, MAE_E=   13.99 meV, MAE_F=   11.88 meV / A
+2025-04-29 20:00:08.236 INFO: Epoch 67: head: validation, loss=0.00088768, MAE_E=   12.64 meV, MAE_F=   12.22 meV / A
+2025-04-29 20:00:11.472 INFO: Epoch 68: head: train, loss=0.00073206, MAE_E=   13.77 meV, MAE_F=   11.72 meV / A
+2025-04-29 20:00:12.670 INFO: Epoch 68: head: validation, loss=0.00087115, MAE_E=   12.62 meV, MAE_F=   12.10 meV / A
+2025-04-29 20:00:15.834 INFO: Epoch 69: head: train, loss=0.00072117, MAE_E=   13.88 meV, MAE_F=   11.64 meV / A
+2025-04-29 20:00:16.999 INFO: Epoch 69: head: validation, loss=0.00085728, MAE_E=   12.63 meV, MAE_F=   12.01 meV / A
+2025-04-29 20:00:20.384 INFO: Epoch 70: head: train, loss=0.00070044, MAE_E=   14.03 meV, MAE_F=   11.47 meV / A
+2025-04-29 20:00:21.587 INFO: Epoch 70: head: validation, loss=0.00084256, MAE_E=   12.60 meV, MAE_F=   11.92 meV / A
+2025-04-29 20:00:24.749 INFO: Epoch 71: head: train, loss=0.00069467, MAE_E=   13.98 meV, MAE_F=   11.43 meV / A
+2025-04-29 20:00:25.861 INFO: Epoch 71: head: validation, loss=0.00083326, MAE_E=   12.52 meV, MAE_F=   11.83 meV / A
+2025-04-29 20:00:29.158 INFO: Epoch 72: head: train, loss=0.00068131, MAE_E=   13.86 meV, MAE_F=   11.34 meV / A
+2025-04-29 20:00:30.269 INFO: Epoch 72: head: validation, loss=0.00082201, MAE_E=   12.45 meV, MAE_F=   11.76 meV / A
+2025-04-29 20:00:33.590 INFO: Epoch 73: head: train, loss=0.00068617, MAE_E=   13.77 meV, MAE_F=   11.35 meV / A
+2025-04-29 20:00:34.595 INFO: Epoch 73: head: validation, loss=0.00082354, MAE_E=   12.47 meV, MAE_F=   11.75 meV / A
+2025-04-29 20:00:37.924 INFO: Epoch 74: head: train, loss=0.00076986, MAE_E=   36.09 meV, MAE_F=   11.94 meV / A
+2025-04-29 20:00:39.213 INFO: Epoch 74: head: validation, loss=0.00091573, MAE_E=   33.67 meV, MAE_F=   12.42 meV / A
+2025-04-29 20:00:42.495 INFO: Epoch 75: head: train, loss=0.00800978, MAE_E=  212.28 meV, MAE_F=   39.91 meV / A
+2025-04-29 20:00:43.587 INFO: Epoch 75: head: validation, loss=0.00826284, MAE_E=  218.46 meV, MAE_F=   38.92 meV / A
+2025-04-29 20:00:46.793 INFO: Epoch 76: head: train, loss=0.02344739, MAE_E=  482.50 meV, MAE_F=   67.43 meV / A
+2025-04-29 20:00:47.899 INFO: Epoch 76: head: validation, loss=0.02395431, MAE_E=  492.31 meV, MAE_F=   64.88 meV / A
+2025-04-29 20:00:51.369 INFO: Epoch 77: head: train, loss=0.03060367, MAE_E=  357.41 meV, MAE_F=   77.00 meV / A
+2025-04-29 20:00:52.504 INFO: Epoch 77: head: validation, loss=0.03137594, MAE_E=  368.79 meV, MAE_F=   74.18 meV / A
+2025-04-29 20:00:55.682 INFO: Epoch 78: head: train, loss=0.03287948, MAE_E=  584.99 meV, MAE_F=   80.27 meV / A
+2025-04-29 20:00:56.854 INFO: Epoch 78: head: validation, loss=0.03359915, MAE_E=  597.05 meV, MAE_F=   77.20 meV / A
+2025-04-29 20:01:00.000 INFO: Epoch 79: head: train, loss=0.03368275, MAE_E=  345.13 meV, MAE_F=   79.97 meV / A
+2025-04-29 20:01:01.164 INFO: Epoch 79: head: validation, loss=0.03476405, MAE_E=  357.93 meV, MAE_F=   77.41 meV / A
+2025-04-29 20:01:04.465 INFO: Epoch 80: head: train, loss=0.03087462, MAE_E=  211.54 meV, MAE_F=   77.16 meV / A
+2025-04-29 20:01:05.594 INFO: Epoch 80: head: validation, loss=0.03176013, MAE_E=  224.19 meV, MAE_F=   74.67 meV / A
+2025-04-29 20:01:08.849 INFO: Epoch 81: head: train, loss=0.03178983, MAE_E=  296.94 meV, MAE_F=   79.72 meV / A
+2025-04-29 20:01:09.995 INFO: Epoch 81: head: validation, loss=0.03263173, MAE_E=  308.56 meV, MAE_F=   77.24 meV / A
+2025-04-29 20:01:13.247 INFO: Epoch 82: head: train, loss=0.03304325, MAE_E=   78.59 meV, MAE_F=   81.76 meV / A
+2025-04-29 20:01:14.438 INFO: Epoch 82: head: validation, loss=0.03350685, MAE_E=   87.01 meV, MAE_F=   78.87 meV / A
+2025-04-29 20:01:17.509 INFO: Epoch 83: head: train, loss=0.03215708, MAE_E=  225.30 meV, MAE_F=   80.72 meV / A
+2025-04-29 20:01:18.857 INFO: Epoch 83: head: validation, loss=0.03269927, MAE_E=  235.93 meV, MAE_F=   78.06 meV / A
+2025-04-29 20:01:22.051 INFO: Epoch 84: head: train, loss=0.02905993, MAE_E=   67.19 meV, MAE_F=   76.86 meV / A
+2025-04-29 20:01:23.217 INFO: Epoch 84: head: validation, loss=0.02947309, MAE_E=   74.58 meV, MAE_F=   74.17 meV / A
+2025-04-29 20:01:26.382 INFO: Epoch 85: head: train, loss=0.02624357, MAE_E=   64.99 meV, MAE_F=   73.00 meV / A
+2025-04-29 20:01:27.633 INFO: Epoch 85: head: validation, loss=0.02640080, MAE_E=   73.02 meV, MAE_F=   70.17 meV / A
+2025-04-29 20:01:30.950 INFO: Epoch 86: head: train, loss=0.02367432, MAE_E=   64.63 meV, MAE_F=   69.16 meV / A
+2025-04-29 20:01:32.058 INFO: Epoch 86: head: validation, loss=0.02357499, MAE_E=   71.98 meV, MAE_F=   66.15 meV / A
+2025-04-29 20:01:35.316 INFO: Epoch 87: head: train, loss=0.02058536, MAE_E=   62.44 meV, MAE_F=   64.21 meV / A
+2025-04-29 20:01:36.388 INFO: Epoch 87: head: validation, loss=0.02043888, MAE_E=   69.68 meV, MAE_F=   61.40 meV / A
+2025-04-29 20:01:39.735 INFO: Epoch 88: head: train, loss=0.01770730, MAE_E=   52.71 meV, MAE_F=   59.37 meV / A
+2025-04-29 20:01:40.929 INFO: Epoch 88: head: validation, loss=0.01746017, MAE_E=   58.97 meV, MAE_F=   56.63 meV / A
+2025-04-29 20:01:44.290 INFO: Epoch 89: head: train, loss=0.01517551, MAE_E=   44.92 meV, MAE_F=   54.80 meV / A
+2025-04-29 20:01:45.481 INFO: Epoch 89: head: validation, loss=0.01495215, MAE_E=   50.15 meV, MAE_F=   52.33 meV / A
+2025-04-29 20:01:48.750 INFO: Epoch 90: head: train, loss=0.01302380, MAE_E=   36.39 meV, MAE_F=   50.88 meV / A
+2025-04-29 20:01:49.877 INFO: Epoch 90: head: validation, loss=0.01284642, MAE_E=   40.04 meV, MAE_F=   48.45 meV / A
+2025-04-29 20:01:53.144 INFO: Epoch 91: head: train, loss=0.01121941, MAE_E=   33.32 meV, MAE_F=   47.06 meV / A
+2025-04-29 20:01:54.300 INFO: Epoch 91: head: validation, loss=0.01102363, MAE_E=   36.16 meV, MAE_F=   44.87 meV / A
+2025-04-29 20:01:57.519 INFO: Epoch 92: head: train, loss=0.00969817, MAE_E=   31.41 meV, MAE_F=   43.71 meV / A
+2025-04-29 20:01:58.782 INFO: Epoch 92: head: validation, loss=0.00954066, MAE_E=   33.62 meV, MAE_F=   41.76 meV / A
+2025-04-29 20:01:58.783 INFO: Stopping optimization after 20 epochs without improvement
+2025-04-29 20:01:58.783 INFO: Training complete
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+tensor([0.7631], device='cuda:0') tensor(0., device='cuda:0')
+2025-04-29 20:01:58.788 INFO: 
+2025-04-29 20:01:58.789 INFO: ===========FINISHED TRAINING===========
+2025-04-29 20:01:58.789 INFO: eveluation
+2025-04-29 20:01:58.789 INFO: The scale is [0.76313349] and shift is 0.0
+2025-04-29 20:01:58.957 INFO: Energy Mean: -40889.89483506944, Variance: 0.06443929978358891
+2025-04-29 20:01:59.321 INFO: Energy RMSE: 0.03995932266116142
+2025-04-29 20:01:59.322 INFO: Energy R2: 0.9752209054148206
+2025-04-29 20:01:59.322 INFO: Energy MAE: 0.0373263880610466
+90
+(90, 7, 3)
+torch.Size([90, 7, 3])
+2025-04-29 20:01:59.323 INFO: Forces RMSE: 0.06842773260873092
+2025-04-29 20:01:59.323 INFO: Forces R2: 0.9988576775761331
+2025-04-29 20:02:01.985 INFO: Energy Mean: -40889.89239366319, Variance: 0.04941012900552631
+2025-04-29 20:02:02.154 INFO: Loading checkpoint: results/charge_embedding/bi7-3_logs//sample_1//checkpoints/bi7-3_run-123_epoch-72.pt
+2025-04-29 20:02:02.229 INFO: Loaded Stage one model from epoch 72 for evaluation
+2025-04-29 20:02:02.229 INFO: Saving model to results/charge_embedding/bi7-3_logs/sample_1/checkpoints/bi7-3_run-123.model
+2025-04-29 20:02:02.445 INFO: Compiling model, saving metadata to results/charge_embedding/bi7-3_logs/sample_1/bi7-3_compiled.model
+2025-04-29 20:02:02.562 INFO: Done
+Loading saved bootstrap sample 2
+Training model 2
+2025-04-29 20:02:03.325 INFO: ===========VERIFYING SETTINGS===========
+2025-04-29 20:02:03.325 INFO: MACE version: 0.3.10
+2025-04-29 20:02:03.325 INFO: CUDA version: 12.1, CUDA device: 0
+default
+2025-04-29 20:02:03.332 INFO: ===========LOADING INPUT DATA===========
+2025-04-29 20:02:03.332 INFO: Using heads: ['default']
+2025-04-29 20:02:03.332 INFO: =============    Processing head default     ===========
+2025-04-29 20:02:03.332 INFO: Total number of configurations: train=360, valid=90, 
+2025-04-29 20:02:03.338 INFO: Atomic Numbers used: [83]
+2025-04-29 20:02:03.338 INFO: Computing average Atomic Energies using least squares regression
+{'default': {83: -5841.417911396329}}
+2025-04-29 20:02:03.342 INFO: Atomic Energies used (z: eV) for head default: {83: -5841.417911396329}
+2025-04-29 20:02:03.623 INFO: Computing average number of neighbors
+2025-04-29 20:02:04.701 INFO: Average number of neighbors: 6.0
+2025-04-29 20:02:04.701 INFO: During training the following quantities will be reported: energy, forces
+2025-04-29 20:02:04.701 INFO: ===========MODEL DETAILS===========
+2025-04-29 20:02:04.701 INFO: Building model
+2025-04-29 20:02:04.705 INFO: Message passing with 128 channels and max_L=1 (128x0e+128x1o)
+2025-04-29 20:02:04.705 INFO: 2 layers, each with correlation order: 3 (body order: 4) and spherical harmonics up to: l=3
+2025-04-29 20:02:04.705 INFO: 8 radial and 5 basis functions
+2025-04-29 20:02:04.705 INFO: Radial cutoff: 9.0 A (total receptive field for each atom: 18.0 A)
+2025-04-29 20:02:04.705 INFO: Distance transform for radial basis functions: None
+2025-04-29 20:02:04.705 INFO: Hidden irreps: 128x0e+128x1o
+2025-04-29 20:02:05.818 INFO: Mean: -2.247643923120746e-05, Std: [0.72024295]
+0.0 [0.72024295]
+2025-04-29 20:02:05.818 INFO: Scale: [0.72024295], Shift: 0.0
+2025-04-29 20:02:07.289 INFO: Total number of parameters: 509618
+2025-04-29 20:02:07.290 INFO: 
+2025-04-29 20:02:07.290 INFO: ===========OPTIMIZER INFORMATION===========
+2025-04-29 20:02:07.290 INFO: Using ADAM as parameter optimizer
+2025-04-29 20:02:07.290 INFO: Batch size: 32
+2025-04-29 20:02:07.290 INFO: Using Exponential Moving Average with decay: 0.99
+2025-04-29 20:02:07.290 INFO: Number of gradient updates: 2250
+2025-04-29 20:02:07.290 INFO: Learning rate: 0.01, weight decay: 5e-07
+2025-04-29 20:02:07.290 INFO: WeightedEnergyForcesLoss(energy_weight=1.000, forces_weight=100.000)
+2025-04-29 20:02:07.292 INFO: Using gradient clipping with tolerance=10.000
+2025-04-29 20:02:07.292 INFO: 
+2025-04-29 20:02:07.292 INFO: ===========TRAINING===========
+2025-04-29 20:02:07.292 INFO: Started training, reporting errors on validation set
+2025-04-29 20:02:07.292 INFO: Loss metrics on validation set
+2025-04-29 20:02:08.825 INFO: Initial: head: validation, loss=2.38758420, MAE_E=19097.16 meV, MAE_F=  577.27 meV / A
+2025-04-29 20:02:12.044 INFO: Epoch 0: head: train, loss=0.35179114, MAE_E= 2812.66 meV, MAE_F=  249.23 meV / A
+2025-04-29 20:02:13.406 INFO: Epoch 0: head: validation, loss=0.37703285, MAE_E= 2810.21 meV, MAE_F=  256.55 meV / A
+2025-04-29 20:02:16.718 INFO: Epoch 1: head: train, loss=0.29180531, MAE_E= 6130.94 meV, MAE_F=  225.17 meV / A
+2025-04-29 20:02:17.914 INFO: Epoch 1: head: validation, loss=0.30152389, MAE_E= 6146.99 meV, MAE_F=  226.89 meV / A
+2025-04-29 20:02:21.292 INFO: Epoch 2: head: train, loss=0.24512679, MAE_E=  484.23 meV, MAE_F=  219.06 meV / A
+2025-04-29 20:02:22.507 INFO: Epoch 2: head: validation, loss=0.26025589, MAE_E=  466.68 meV, MAE_F=  222.10 meV / A
+2025-04-29 20:02:25.833 INFO: Epoch 3: head: train, loss=0.16877674, MAE_E=   68.58 meV, MAE_F=  182.56 meV / A
+2025-04-29 20:02:27.105 INFO: Epoch 3: head: validation, loss=0.17771024, MAE_E=   71.88 meV, MAE_F=  183.84 meV / A
+2025-04-29 20:02:30.419 INFO: Epoch 4: head: train, loss=0.08307512, MAE_E=  355.45 meV, MAE_F=  128.69 meV / A
+2025-04-29 20:02:31.596 INFO: Epoch 4: head: validation, loss=0.09025670, MAE_E=  357.30 meV, MAE_F=  129.37 meV / A
+2025-04-29 20:02:34.975 INFO: Epoch 5: head: train, loss=0.07883068, MAE_E=  155.16 meV, MAE_F=  120.53 meV / A
+2025-04-29 20:02:36.116 INFO: Epoch 5: head: validation, loss=0.08374683, MAE_E=  155.69 meV, MAE_F=  122.72 meV / A
+2025-04-29 20:02:39.494 INFO: Epoch 6: head: train, loss=0.04533897, MAE_E=   61.42 meV, MAE_F=   92.85 meV / A
+2025-04-29 20:02:40.649 INFO: Epoch 6: head: validation, loss=0.04830999, MAE_E=   61.37 meV, MAE_F=   93.90 meV / A
+2025-04-29 20:02:44.033 INFO: Epoch 7: head: train, loss=0.03325143, MAE_E=   64.84 meV, MAE_F=   79.48 meV / A
+2025-04-29 20:02:45.205 INFO: Epoch 7: head: validation, loss=0.03635928, MAE_E=   62.54 meV, MAE_F=   80.83 meV / A
+2025-04-29 20:02:48.524 INFO: Epoch 8: head: train, loss=0.05359780, MAE_E=  705.00 meV, MAE_F=  105.62 meV / A
+2025-04-29 20:02:49.660 INFO: Epoch 8: head: validation, loss=0.05889693, MAE_E=  698.51 meV, MAE_F=  108.08 meV / A
+2025-04-29 20:02:52.942 INFO: Epoch 9: head: train, loss=0.05582854, MAE_E=  370.76 meV, MAE_F=  106.78 meV / A
+2025-04-29 20:02:54.091 INFO: Epoch 9: head: validation, loss=0.06061541, MAE_E=  367.70 meV, MAE_F=  107.97 meV / A
+2025-04-29 20:02:57.372 INFO: Epoch 10: head: train, loss=0.07634363, MAE_E=  688.74 meV, MAE_F=  121.82 meV / A
+2025-04-29 20:02:58.604 INFO: Epoch 10: head: validation, loss=0.07941988, MAE_E=  681.47 meV, MAE_F=  122.39 meV / A
+2025-04-29 20:03:01.854 INFO: Epoch 11: head: train, loss=0.04022784, MAE_E=  260.65 meV, MAE_F=   88.23 meV / A
+2025-04-29 20:03:03.040 INFO: Epoch 11: head: validation, loss=0.04179553, MAE_E=  255.48 meV, MAE_F=   88.26 meV / A
+2025-04-29 20:03:06.172 INFO: Epoch 12: head: train, loss=0.02109225, MAE_E=  113.18 meV, MAE_F=   64.13 meV / A
+2025-04-29 20:03:07.374 INFO: Epoch 12: head: validation, loss=0.02262390, MAE_E=  109.48 meV, MAE_F=   63.95 meV / A
+2025-04-29 20:03:10.730 INFO: Epoch 13: head: train, loss=0.01749305, MAE_E=   87.21 meV, MAE_F=   57.83 meV / A
+2025-04-29 20:03:11.887 INFO: Epoch 13: head: validation, loss=0.01946272, MAE_E=   83.01 meV, MAE_F=   58.40 meV / A
+2025-04-29 20:03:15.236 INFO: Epoch 14: head: train, loss=0.01574912, MAE_E=   23.86 meV, MAE_F=   54.64 meV / A
+2025-04-29 20:03:16.459 INFO: Epoch 14: head: validation, loss=0.01772745, MAE_E=   25.39 meV, MAE_F=   55.39 meV / A
+2025-04-29 20:03:19.747 INFO: Epoch 15: head: train, loss=0.01299892, MAE_E=   36.44 meV, MAE_F=   49.35 meV / A
+2025-04-29 20:03:21.009 INFO: Epoch 15: head: validation, loss=0.01500259, MAE_E=   34.30 meV, MAE_F=   50.93 meV / A
+2025-04-29 20:03:24.267 INFO: Epoch 16: head: train, loss=0.01166764, MAE_E=   87.29 meV, MAE_F=   46.60 meV / A
+2025-04-29 20:03:25.445 INFO: Epoch 16: head: validation, loss=0.01354705, MAE_E=   83.71 meV, MAE_F=   48.12 meV / A
+2025-04-29 20:03:28.872 INFO: Epoch 17: head: train, loss=0.01018587, MAE_E=   34.01 meV, MAE_F=   43.24 meV / A
+2025-04-29 20:03:30.078 INFO: Epoch 17: head: validation, loss=0.01191162, MAE_E=   32.53 meV, MAE_F=   44.99 meV / A
+2025-04-29 20:03:33.512 INFO: Epoch 18: head: train, loss=0.00881916, MAE_E=   35.26 meV, MAE_F=   40.12 meV / A
+2025-04-29 20:03:34.755 INFO: Epoch 18: head: validation, loss=0.01040060, MAE_E=   37.83 meV, MAE_F=   41.98 meV / A
+2025-04-29 20:03:38.097 INFO: Epoch 19: head: train, loss=0.00933024, MAE_E=  329.25 meV, MAE_F=   41.00 meV / A
+2025-04-29 20:03:39.324 INFO: Epoch 19: head: validation, loss=0.01059826, MAE_E=  326.96 meV, MAE_F=   42.59 meV / A
+2025-04-29 20:03:42.674 INFO: Epoch 20: head: train, loss=0.00882799, MAE_E=  175.23 meV, MAE_F=   39.92 meV / A
+2025-04-29 20:03:43.812 INFO: Epoch 20: head: validation, loss=0.01014847, MAE_E=  173.06 meV, MAE_F=   41.78 meV / A
+2025-04-29 20:03:47.222 INFO: Epoch 21: head: train, loss=0.00685972, MAE_E=   46.19 meV, MAE_F=   35.54 meV / A
+2025-04-29 20:03:48.419 INFO: Epoch 21: head: validation, loss=0.00799035, MAE_E=   48.32 meV, MAE_F=   37.23 meV / A
+2025-04-29 20:03:51.813 INFO: Epoch 22: head: train, loss=0.00623442, MAE_E=   80.13 meV, MAE_F=   33.94 meV / A
+2025-04-29 20:03:52.999 INFO: Epoch 22: head: validation, loss=0.00722542, MAE_E=   82.11 meV, MAE_F=   35.44 meV / A
+2025-04-29 20:03:56.353 INFO: Epoch 23: head: train, loss=0.00558702, MAE_E=  160.00 meV, MAE_F=   32.07 meV / A
+2025-04-29 20:03:57.597 INFO: Epoch 23: head: validation, loss=0.00665338, MAE_E=  161.82 meV, MAE_F=   33.85 meV / A
+2025-04-29 20:04:01.000 INFO: Epoch 24: head: train, loss=0.00523949, MAE_E=  196.19 meV, MAE_F=   31.06 meV / A
+2025-04-29 20:04:02.143 INFO: Epoch 24: head: validation, loss=0.00605875, MAE_E=  198.01 meV, MAE_F=   32.28 meV / A
+2025-04-29 20:04:05.402 INFO: Epoch 25: head: train, loss=0.00506336, MAE_E=   68.76 meV, MAE_F=   30.44 meV / A
+2025-04-29 20:04:06.602 INFO: Epoch 25: head: validation, loss=0.00578712, MAE_E=   70.54 meV, MAE_F=   31.48 meV / A
+2025-04-29 20:04:10.006 INFO: Epoch 26: head: train, loss=0.00460317, MAE_E=   65.52 meV, MAE_F=   29.19 meV / A
+2025-04-29 20:04:11.179 INFO: Epoch 26: head: validation, loss=0.00530946, MAE_E=   67.87 meV, MAE_F=   30.08 meV / A
+2025-04-29 20:04:14.502 INFO: Epoch 27: head: train, loss=0.03336807, MAE_E=  626.37 meV, MAE_F=   86.76 meV / A
+2025-04-29 20:04:15.643 INFO: Epoch 27: head: validation, loss=0.03689056, MAE_E=  632.54 meV, MAE_F=   87.83 meV / A
+2025-04-29 20:04:19.024 INFO: Epoch 28: head: train, loss=0.06287797, MAE_E=  801.78 meV, MAE_F=  119.21 meV / A
+2025-04-29 20:04:20.245 INFO: Epoch 28: head: validation, loss=0.06736984, MAE_E=  809.75 meV, MAE_F=  118.79 meV / A
+2025-04-29 20:04:23.488 INFO: Epoch 29: head: train, loss=0.05435967, MAE_E=  639.07 meV, MAE_F=  110.21 meV / A
+2025-04-29 20:04:24.670 INFO: Epoch 29: head: validation, loss=0.05682399, MAE_E=  646.91 meV, MAE_F=  108.09 meV / A
+2025-04-29 20:04:28.023 INFO: Epoch 30: head: train, loss=0.03806564, MAE_E=  472.75 meV, MAE_F=   91.12 meV / A
+2025-04-29 20:04:29.339 INFO: Epoch 30: head: validation, loss=0.03987731, MAE_E=  479.22 meV, MAE_F=   89.62 meV / A
+2025-04-29 20:04:32.716 INFO: Epoch 31: head: train, loss=0.02770396, MAE_E=  437.00 meV, MAE_F=   76.99 meV / A
+2025-04-29 20:04:33.851 INFO: Epoch 31: head: validation, loss=0.02970383, MAE_E=  441.96 meV, MAE_F=   76.97 meV / A
+2025-04-29 20:04:36.971 INFO: Epoch 32: head: train, loss=0.01880761, MAE_E=  491.23 meV, MAE_F=   62.94 meV / A
+2025-04-29 20:04:38.185 INFO: Epoch 32: head: validation, loss=0.02065794, MAE_E=  495.35 meV, MAE_F=   63.59 meV / A
+2025-04-29 20:04:41.547 INFO: Epoch 33: head: train, loss=0.01360377, MAE_E=  395.12 meV, MAE_F=   53.11 meV / A
+2025-04-29 20:04:42.747 INFO: Epoch 33: head: validation, loss=0.01511937, MAE_E=  398.69 meV, MAE_F=   53.87 meV / A
+2025-04-29 20:04:46.061 INFO: Epoch 34: head: train, loss=0.01029721, MAE_E=  315.73 meV, MAE_F=   45.88 meV / A
+2025-04-29 20:04:47.248 INFO: Epoch 34: head: validation, loss=0.01149996, MAE_E=  318.86 meV, MAE_F=   46.65 meV / A
+2025-04-29 20:04:50.373 INFO: Epoch 35: head: train, loss=0.00799656, MAE_E=  252.88 meV, MAE_F=   40.15 meV / A
+2025-04-29 20:04:51.525 INFO: Epoch 35: head: validation, loss=0.00896162, MAE_E=  255.85 meV, MAE_F=   40.94 meV / A
+2025-04-29 20:04:54.677 INFO: Epoch 36: head: train, loss=0.00636817, MAE_E=  214.14 meV, MAE_F=   35.57 meV / A
+2025-04-29 20:04:55.862 INFO: Epoch 36: head: validation, loss=0.00715794, MAE_E=  216.91 meV, MAE_F=   36.32 meV / A
+2025-04-29 20:04:59.103 INFO: Epoch 37: head: train, loss=0.00509757, MAE_E=  174.69 meV, MAE_F=   31.69 meV / A
+2025-04-29 20:05:00.356 INFO: Epoch 37: head: validation, loss=0.00590183, MAE_E=  177.16 meV, MAE_F=   32.76 meV / A
+2025-04-29 20:05:03.555 INFO: Epoch 38: head: train, loss=0.00649630, MAE_E=  773.01 meV, MAE_F=   35.13 meV / A
+2025-04-29 20:05:04.772 INFO: Epoch 38: head: validation, loss=0.00763131, MAE_E=  775.58 meV, MAE_F=   36.68 meV / A
+2025-04-29 20:05:08.064 INFO: Epoch 39: head: train, loss=0.00619634, MAE_E=   71.02 meV, MAE_F=   34.81 meV / A
+2025-04-29 20:05:09.313 INFO: Epoch 39: head: validation, loss=0.00703799, MAE_E=   68.20 meV, MAE_F=   35.67 meV / A
+2025-04-29 20:05:12.587 INFO: Epoch 40: head: train, loss=0.00600853, MAE_E=  326.23 meV, MAE_F=   33.77 meV / A
+2025-04-29 20:05:13.734 INFO: Epoch 40: head: validation, loss=0.00669434, MAE_E=  329.82 meV, MAE_F=   34.42 meV / A
+2025-04-29 20:05:16.988 INFO: Epoch 41: head: train, loss=0.00770408, MAE_E= 1116.91 meV, MAE_F=   35.74 meV / A
+2025-04-29 20:05:18.167 INFO: Epoch 41: head: validation, loss=0.00877824, MAE_E= 1112.80 meV, MAE_F=   37.20 meV / A
+2025-04-29 20:05:21.519 INFO: Epoch 42: head: train, loss=0.00789680, MAE_E=  429.63 meV, MAE_F=   37.72 meV / A
+2025-04-29 20:05:22.644 INFO: Epoch 42: head: validation, loss=0.00905823, MAE_E=  425.88 meV, MAE_F=   39.48 meV / A
+2025-04-29 20:05:25.929 INFO: Epoch 43: head: train, loss=0.00756959, MAE_E=  233.51 meV, MAE_F=   37.01 meV / A
+2025-04-29 20:05:27.117 INFO: Epoch 43: head: validation, loss=0.00872684, MAE_E=  229.98 meV, MAE_F=   38.93 meV / A
+2025-04-29 20:05:30.442 INFO: Epoch 44: head: train, loss=0.00673513, MAE_E=  224.03 meV, MAE_F=   34.87 meV / A
+2025-04-29 20:05:31.595 INFO: Epoch 44: head: validation, loss=0.00778213, MAE_E=  220.58 meV, MAE_F=   36.76 meV / A
+2025-04-29 20:05:34.908 INFO: Epoch 45: head: train, loss=0.00618420, MAE_E=  122.40 meV, MAE_F=   33.35 meV / A
+2025-04-29 20:05:36.031 INFO: Epoch 45: head: validation, loss=0.00720579, MAE_E=  118.99 meV, MAE_F=   35.31 meV / A
+2025-04-29 20:05:39.353 INFO: Epoch 46: head: train, loss=0.00540208, MAE_E=   28.45 meV, MAE_F=   31.21 meV / A
+2025-04-29 20:05:40.528 INFO: Epoch 46: head: validation, loss=0.00626311, MAE_E=   26.27 meV, MAE_F=   32.95 meV / A
+2025-04-29 20:05:40.529 INFO: Stopping optimization after 20 epochs without improvement
+2025-04-29 20:05:40.529 INFO: Training complete
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+tensor([0.7202], device='cuda:0') tensor(0., device='cuda:0')
+2025-04-29 20:05:40.533 INFO: 
+2025-04-29 20:05:40.534 INFO: ===========FINISHED TRAINING===========
+2025-04-29 20:05:40.534 INFO: eveluation
+2025-04-29 20:05:40.534 INFO: The scale is [0.72024295] and shift is 0.0
+2025-04-29 20:05:40.703 INFO: Energy Mean: -40889.91219618056, Variance: 0.047144649175950036
+2025-04-29 20:05:41.089 INFO: Energy RMSE: 0.16021287441253662
+2025-04-29 20:05:41.089 INFO: Energy R2: 0.45554446013502325
+2025-04-29 20:05:41.089 INFO: Energy MAE: 0.15915799140930176
+90
+(90, 7, 3)
+torch.Size([90, 7, 3])
+2025-04-29 20:05:41.091 INFO: Forces RMSE: 0.1152704160684441
+2025-04-29 20:05:41.091 INFO: Forces R2: 0.996439963713982
+2025-04-29 20:05:41.682 INFO: Energy Mean: -40889.92537977431, Variance: 0.051109279938686046
+2025-04-29 20:05:41.858 INFO: Loading checkpoint: results/charge_embedding/bi7-3_logs//sample_2//checkpoints/bi7-3_run-123_epoch-26.pt
+2025-04-29 20:05:41.930 INFO: Loaded Stage one model from epoch 26 for evaluation
+2025-04-29 20:05:41.931 INFO: Saving model to results/charge_embedding/bi7-3_logs/sample_2/checkpoints/bi7-3_run-123.model
+2025-04-29 20:05:42.145 INFO: Compiling model, saving metadata to results/charge_embedding/bi7-3_logs/sample_2/bi7-3_compiled.model
+2025-04-29 20:05:42.258 INFO: Done
+Loading saved bootstrap sample 3
+Training model 3
+2025-04-29 20:05:43.013 INFO: ===========VERIFYING SETTINGS===========
+2025-04-29 20:05:43.013 INFO: MACE version: 0.3.10
+2025-04-29 20:05:43.013 INFO: CUDA version: 12.1, CUDA device: 0
+default
+2025-04-29 20:05:43.020 INFO: ===========LOADING INPUT DATA===========
+2025-04-29 20:05:43.020 INFO: Using heads: ['default']
+2025-04-29 20:05:43.020 INFO: =============    Processing head default     ===========
+2025-04-29 20:05:43.020 INFO: Total number of configurations: train=360, valid=90, 
+2025-04-29 20:05:43.027 INFO: Atomic Numbers used: [83]
+2025-04-29 20:05:43.027 INFO: Computing average Atomic Energies using least squares regression
+{'default': {83: -5841.413079737103}}
+2025-04-29 20:05:43.032 INFO: Atomic Energies used (z: eV) for head default: {83: -5841.413079737103}
+2025-04-29 20:05:43.297 INFO: Computing average number of neighbors
+2025-04-29 20:05:44.319 INFO: Average number of neighbors: 6.0
+2025-04-29 20:05:44.320 INFO: During training the following quantities will be reported: energy, forces
+2025-04-29 20:05:44.320 INFO: ===========MODEL DETAILS===========
+2025-04-29 20:05:44.320 INFO: Building model
+2025-04-29 20:05:44.323 INFO: Message passing with 128 channels and max_L=1 (128x0e+128x1o)
+2025-04-29 20:05:44.323 INFO: 2 layers, each with correlation order: 3 (body order: 4) and spherical harmonics up to: l=3
+2025-04-29 20:05:44.323 INFO: 8 radial and 5 basis functions
+2025-04-29 20:05:44.323 INFO: Radial cutoff: 9.0 A (total receptive field for each atom: 18.0 A)
+2025-04-29 20:05:44.323 INFO: Distance transform for radial basis functions: None
+2025-04-29 20:05:44.323 INFO: Hidden irreps: 128x0e+128x1o
+2025-04-29 20:05:45.425 INFO: Mean: 0.0004868368387060521, Std: [0.7639961]
+0.0 [0.7639961]
+2025-04-29 20:05:45.426 INFO: Scale: [0.7639961], Shift: 0.0
+2025-04-29 20:05:46.935 INFO: Total number of parameters: 509618
+2025-04-29 20:05:46.935 INFO: 
+2025-04-29 20:05:46.935 INFO: ===========OPTIMIZER INFORMATION===========
+2025-04-29 20:05:46.935 INFO: Using ADAM as parameter optimizer
+2025-04-29 20:05:46.935 INFO: Batch size: 32
+2025-04-29 20:05:46.935 INFO: Using Exponential Moving Average with decay: 0.99
+2025-04-29 20:05:46.935 INFO: Number of gradient updates: 2250
+2025-04-29 20:05:46.935 INFO: Learning rate: 0.01, weight decay: 5e-07
+2025-04-29 20:05:46.935 INFO: WeightedEnergyForcesLoss(energy_weight=1.000, forces_weight=100.000)
+2025-04-29 20:05:46.937 INFO: Using gradient clipping with tolerance=10.000
+2025-04-29 20:05:46.938 INFO: 
+2025-04-29 20:05:46.938 INFO: ===========TRAINING===========
+2025-04-29 20:05:46.938 INFO: Started training, reporting errors on validation set
+2025-04-29 20:05:46.938 INFO: Loss metrics on validation set
+2025-04-29 20:05:48.444 INFO: Initial: head: validation, loss=2.66995324, MAE_E=20270.71 meV, MAE_F=  603.42 meV / A
+2025-04-29 20:05:51.720 INFO: Epoch 0: head: train, loss=0.38389886, MAE_E=  190.71 meV, MAE_F=  280.95 meV / A
+2025-04-29 20:05:53.076 INFO: Epoch 0: head: validation, loss=0.41664952, MAE_E=  194.61 meV, MAE_F=  283.43 meV / A
+2025-04-29 20:05:56.398 INFO: Epoch 1: head: train, loss=0.25904514, MAE_E= 1886.44 meV, MAE_F=  216.98 meV / A
+2025-04-29 20:05:57.631 INFO: Epoch 1: head: validation, loss=0.27094173, MAE_E= 1889.31 meV, MAE_F=  217.33 meV / A
+2025-04-29 20:06:01.030 INFO: Epoch 2: head: train, loss=0.13788929, MAE_E= 2293.66 meV, MAE_F=  161.48 meV / A
+2025-04-29 20:06:02.246 INFO: Epoch 2: head: validation, loss=0.15205885, MAE_E= 2296.02 meV, MAE_F=  162.73 meV / A
+2025-04-29 20:06:05.647 INFO: Epoch 3: head: train, loss=0.11449538, MAE_E=  802.48 meV, MAE_F=  149.69 meV / A
+2025-04-29 20:06:06.832 INFO: Epoch 3: head: validation, loss=0.12597257, MAE_E=  798.25 meV, MAE_F=  149.36 meV / A
+2025-04-29 20:06:10.235 INFO: Epoch 4: head: train, loss=0.08131119, MAE_E=  966.93 meV, MAE_F=  126.21 meV / A
+2025-04-29 20:06:11.438 INFO: Epoch 4: head: validation, loss=0.09092123, MAE_E=  967.64 meV, MAE_F=  127.19 meV / A
+2025-04-29 20:06:14.825 INFO: Epoch 5: head: train, loss=0.20135884, MAE_E=  134.73 meV, MAE_F=  188.19 meV / A
+2025-04-29 20:06:16.029 INFO: Epoch 5: head: validation, loss=0.22143161, MAE_E=  137.63 meV, MAE_F=  189.90 meV / A
+2025-04-29 20:06:19.431 INFO: Epoch 6: head: train, loss=0.12358059, MAE_E=  380.32 meV, MAE_F=  152.55 meV / A
+2025-04-29 20:06:20.663 INFO: Epoch 6: head: validation, loss=0.13886152, MAE_E=  380.29 meV, MAE_F=  155.97 meV / A
+2025-04-29 20:06:23.971 INFO: Epoch 7: head: train, loss=0.06377641, MAE_E=  160.29 meV, MAE_F=  108.91 meV / A
+2025-04-29 20:06:25.175 INFO: Epoch 7: head: validation, loss=0.07284010, MAE_E=  161.14 meV, MAE_F=  110.93 meV / A
+2025-04-29 20:06:28.543 INFO: Epoch 8: head: train, loss=0.05623470, MAE_E=  483.72 meV, MAE_F=  101.17 meV / A
+2025-04-29 20:06:29.775 INFO: Epoch 8: head: validation, loss=0.06539807, MAE_E=  486.21 meV, MAE_F=  103.89 meV / A
+2025-04-29 20:06:33.052 INFO: Epoch 9: head: train, loss=0.03603695, MAE_E=  142.21 meV, MAE_F=   83.43 meV / A
+2025-04-29 20:06:34.152 INFO: Epoch 9: head: validation, loss=0.04077786, MAE_E=  146.18 meV, MAE_F=   84.56 meV / A
+2025-04-29 20:06:37.453 INFO: Epoch 10: head: train, loss=0.02994021, MAE_E=   62.63 meV, MAE_F=   75.12 meV / A
+2025-04-29 20:06:38.607 INFO: Epoch 10: head: validation, loss=0.03504176, MAE_E=   66.66 meV, MAE_F=   77.33 meV / A
+2025-04-29 20:06:41.966 INFO: Epoch 11: head: train, loss=0.02361944, MAE_E=  489.49 meV, MAE_F=   66.28 meV / A
+2025-04-29 20:06:43.133 INFO: Epoch 11: head: validation, loss=0.02816355, MAE_E=  484.64 meV, MAE_F=   68.58 meV / A
+2025-04-29 20:06:46.466 INFO: Epoch 12: head: train, loss=0.02181617, MAE_E= 1839.10 meV, MAE_F=   60.83 meV / A
+2025-04-29 20:06:47.667 INFO: Epoch 12: head: validation, loss=0.02513853, MAE_E= 1833.79 meV, MAE_F=   62.13 meV / A
+2025-04-29 20:06:50.799 INFO: Epoch 13: head: train, loss=0.09955140, MAE_E= 5672.48 meV, MAE_F=  132.48 meV / A
+2025-04-29 20:06:51.973 INFO: Epoch 13: head: validation, loss=0.10877180, MAE_E= 5670.41 meV, MAE_F=  133.54 meV / A
+2025-04-29 20:06:55.255 INFO: Epoch 14: head: train, loss=0.31061584, MAE_E=12456.53 meV, MAE_F=  222.56 meV / A
+2025-04-29 20:06:56.486 INFO: Epoch 14: head: validation, loss=0.33338186, MAE_E=12446.75 meV, MAE_F=  223.05 meV / A
+2025-04-29 20:06:59.869 INFO: Epoch 15: head: train, loss=0.27344421, MAE_E=11347.71 meV, MAE_F=  208.57 meV / A
+2025-04-29 20:07:01.098 INFO: Epoch 15: head: validation, loss=0.28995464, MAE_E=11340.03 meV, MAE_F=  208.19 meV / A
+2025-04-29 20:07:04.529 INFO: Epoch 16: head: train, loss=0.18102207, MAE_E= 8345.79 meV, MAE_F=  173.71 meV / A
+2025-04-29 20:07:05.707 INFO: Epoch 16: head: validation, loss=0.19258860, MAE_E= 8340.93 meV, MAE_F=  173.66 meV / A
+2025-04-29 20:07:09.173 INFO: Epoch 17: head: train, loss=0.11384939, MAE_E= 5198.49 meV, MAE_F=  142.78 meV / A
+2025-04-29 20:07:10.394 INFO: Epoch 17: head: validation, loss=0.11955390, MAE_E= 5198.24 meV, MAE_F=  142.40 meV / A
+2025-04-29 20:07:13.612 INFO: Epoch 18: head: train, loss=0.07412339, MAE_E= 3032.88 meV, MAE_F=  118.50 meV / A
+2025-04-29 20:07:14.765 INFO: Epoch 18: head: validation, loss=0.07687583, MAE_E= 3033.71 meV, MAE_F=  117.93 meV / A
+2025-04-29 20:07:18.176 INFO: Epoch 19: head: train, loss=0.04709947, MAE_E= 1959.81 meV, MAE_F=   97.22 meV / A
+2025-04-29 20:07:19.364 INFO: Epoch 19: head: validation, loss=0.04945685, MAE_E= 1960.79 meV, MAE_F=   96.88 meV / A
+2025-04-29 20:07:22.646 INFO: Epoch 20: head: train, loss=0.03997619, MAE_E= 1191.93 meV, MAE_F=   92.05 meV / A
+2025-04-29 20:07:23.805 INFO: Epoch 20: head: validation, loss=0.04294697, MAE_E= 1192.60 meV, MAE_F=   92.68 meV / A
+2025-04-29 20:07:27.114 INFO: Epoch 21: head: train, loss=0.02669806, MAE_E=  849.41 meV, MAE_F=   74.21 meV / A
+2025-04-29 20:07:28.227 INFO: Epoch 21: head: validation, loss=0.02981794, MAE_E=  851.53 meV, MAE_F=   75.52 meV / A
+2025-04-29 20:07:31.578 INFO: Epoch 22: head: train, loss=0.05142850, MAE_E=   85.99 meV, MAE_F=  104.72 meV / A
+2025-04-29 20:07:32.812 INFO: Epoch 22: head: validation, loss=0.05630065, MAE_E=   83.94 meV, MAE_F=  105.84 meV / A
+2025-04-29 20:07:36.170 INFO: Epoch 23: head: train, loss=0.14333306, MAE_E= 1601.77 meV, MAE_F=  175.30 meV / A
+2025-04-29 20:07:37.387 INFO: Epoch 23: head: validation, loss=0.15132979, MAE_E= 1608.60 meV, MAE_F=  173.94 meV / A
+2025-04-29 20:07:40.659 INFO: Epoch 24: head: train, loss=0.15063772, MAE_E= 2039.07 meV, MAE_F=  177.47 meV / A
+2025-04-29 20:07:41.932 INFO: Epoch 24: head: validation, loss=0.15876625, MAE_E= 2046.84 meV, MAE_F=  175.93 meV / A
+2025-04-29 20:07:45.268 INFO: Epoch 25: head: train, loss=0.12382905, MAE_E= 1917.31 meV, MAE_F=  160.64 meV / A
+2025-04-29 20:07:46.399 INFO: Epoch 25: head: validation, loss=0.13135356, MAE_E= 1921.55 meV, MAE_F=  159.63 meV / A
+2025-04-29 20:07:49.806 INFO: Epoch 26: head: train, loss=0.09760968, MAE_E= 2083.50 meV, MAE_F=  141.42 meV / A
+2025-04-29 20:07:51.060 INFO: Epoch 26: head: validation, loss=0.10365600, MAE_E= 2086.90 meV, MAE_F=  140.54 meV / A
+2025-04-29 20:07:54.322 INFO: Epoch 27: head: train, loss=0.06715224, MAE_E= 1710.59 meV, MAE_F=  116.37 meV / A
+2025-04-29 20:07:55.455 INFO: Epoch 27: head: validation, loss=0.07115103, MAE_E= 1713.25 meV, MAE_F=  115.19 meV / A
+2025-04-29 20:07:58.823 INFO: Epoch 28: head: train, loss=0.04803244, MAE_E= 1541.41 meV, MAE_F=   97.68 meV / A
+2025-04-29 20:08:00.030 INFO: Epoch 28: head: validation, loss=0.05201206, MAE_E= 1541.99 meV, MAE_F=   97.55 meV / A
+2025-04-29 20:08:03.406 INFO: Epoch 29: head: train, loss=0.05552688, MAE_E= 1106.58 meV, MAE_F=  107.65 meV / A
+2025-04-29 20:08:04.607 INFO: Epoch 29: head: validation, loss=0.06069554, MAE_E= 1108.42 meV, MAE_F=  107.82 meV / A
+2025-04-29 20:08:07.932 INFO: Epoch 30: head: train, loss=0.06936556, MAE_E=  877.42 meV, MAE_F=  120.41 meV / A
+2025-04-29 20:08:09.235 INFO: Epoch 30: head: validation, loss=0.07767127, MAE_E=  877.93 meV, MAE_F=  122.23 meV / A
+2025-04-29 20:08:12.558 INFO: Epoch 31: head: train, loss=0.07544094, MAE_E= 1067.18 meV, MAE_F=  125.52 meV / A
+2025-04-29 20:08:13.757 INFO: Epoch 31: head: validation, loss=0.08415219, MAE_E= 1067.69 meV, MAE_F=  127.84 meV / A
+2025-04-29 20:08:17.072 INFO: Epoch 32: head: train, loss=0.07056644, MAE_E= 1056.09 meV, MAE_F=  122.50 meV / A
+2025-04-29 20:08:18.285 INFO: Epoch 32: head: validation, loss=0.07733501, MAE_E= 1056.53 meV, MAE_F=  123.84 meV / A
+2025-04-29 20:08:18.285 INFO: Stopping optimization after 20 epochs without improvement
+2025-04-29 20:08:18.285 INFO: Training complete
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+tensor([0.7640], device='cuda:0') tensor(0., device='cuda:0')
+2025-04-29 20:08:18.289 INFO: 
+2025-04-29 20:08:18.289 INFO: ===========FINISHED TRAINING===========
+2025-04-29 20:08:18.289 INFO: eveluation
+2025-04-29 20:08:18.289 INFO: The scale is [0.7639961] and shift is 0.0
+2025-04-29 20:08:18.459 INFO: Energy Mean: -40889.896527777775, Variance: 0.06657011055652005
+2025-04-29 20:08:18.807 INFO: Energy RMSE: 1.24379563331604
+2025-04-29 20:08:18.807 INFO: Energy R2: -22.239074481020307
+2025-04-29 20:08:18.807 INFO: Energy MAE: 1.2433593273162842
+90
+(90, 7, 3)
+torch.Size([90, 7, 3])
+2025-04-29 20:08:18.808 INFO: Forces RMSE: 0.20551740489279274
+2025-04-29 20:08:18.808 INFO: Forces R2: 0.9897618368205607
+2025-04-29 20:08:19.405 INFO: Energy Mean: -40889.891558159725, Variance: 0.06125697901219497
+2025-04-29 20:08:19.562 INFO: Loading checkpoint: results/charge_embedding/bi7-3_logs//sample_3//checkpoints/bi7-3_run-123_epoch-12.pt
+2025-04-29 20:08:19.644 INFO: Loaded Stage one model from epoch 12 for evaluation
+2025-04-29 20:08:19.645 INFO: Saving model to results/charge_embedding/bi7-3_logs/sample_3/checkpoints/bi7-3_run-123.model
+2025-04-29 20:08:19.855 INFO: Compiling model, saving metadata to results/charge_embedding/bi7-3_logs/sample_3/bi7-3_compiled.model
+2025-04-29 20:08:19.968 INFO: Done
+Loading saved bootstrap sample 4
+Training model 4
+2025-04-29 20:08:20.502 INFO: ===========VERIFYING SETTINGS===========
+2025-04-29 20:08:20.502 INFO: MACE version: 0.3.10
+2025-04-29 20:08:20.503 INFO: CUDA version: 12.1, CUDA device: 0
+default
+2025-04-29 20:08:20.510 INFO: ===========LOADING INPUT DATA===========
+2025-04-29 20:08:20.510 INFO: Using heads: ['default']
+2025-04-29 20:08:20.510 INFO: =============    Processing head default     ===========
+2025-04-29 20:08:20.510 INFO: Total number of configurations: train=360, valid=90, 
+2025-04-29 20:08:20.516 INFO: Atomic Numbers used: [83]
+2025-04-29 20:08:20.516 INFO: Computing average Atomic Energies using least squares regression
+{'default': {83: -5841.4155645461315}}
+2025-04-29 20:08:20.521 INFO: Atomic Energies used (z: eV) for head default: {83: -5841.4155645461315}
+2025-04-29 20:08:20.802 INFO: Computing average number of neighbors
+2025-04-29 20:08:21.923 INFO: Average number of neighbors: 6.0
+2025-04-29 20:08:21.923 INFO: During training the following quantities will be reported: energy, forces
+2025-04-29 20:08:21.923 INFO: ===========MODEL DETAILS===========
+2025-04-29 20:08:21.923 INFO: Building model
+2025-04-29 20:08:21.927 INFO: Message passing with 128 channels and max_L=1 (128x0e+128x1o)
+2025-04-29 20:08:21.927 INFO: 2 layers, each with correlation order: 3 (body order: 4) and spherical harmonics up to: l=3
+2025-04-29 20:08:21.927 INFO: 8 radial and 5 basis functions
+2025-04-29 20:08:21.927 INFO: Radial cutoff: 9.0 A (total receptive field for each atom: 18.0 A)
+2025-04-29 20:08:21.927 INFO: Distance transform for radial basis functions: None
+2025-04-29 20:08:21.927 INFO: Hidden irreps: 128x0e+128x1o
+2025-04-29 20:08:23.758 INFO: Mean: -0.00013401312243296125, Std: [0.74387575]
+0.0 [0.74387575]
+2025-04-29 20:08:23.759 INFO: Scale: [0.74387575], Shift: 0.0
+2025-04-29 20:08:25.221 INFO: Total number of parameters: 509618
+2025-04-29 20:08:25.222 INFO: 
+2025-04-29 20:08:25.222 INFO: ===========OPTIMIZER INFORMATION===========
+2025-04-29 20:08:25.222 INFO: Using ADAM as parameter optimizer
+2025-04-29 20:08:25.222 INFO: Batch size: 32
+2025-04-29 20:08:25.222 INFO: Using Exponential Moving Average with decay: 0.99
+2025-04-29 20:08:25.222 INFO: Number of gradient updates: 2250
+2025-04-29 20:08:25.222 INFO: Learning rate: 0.01, weight decay: 5e-07
+2025-04-29 20:08:25.222 INFO: WeightedEnergyForcesLoss(energy_weight=1.000, forces_weight=100.000)
+2025-04-29 20:08:25.224 INFO: Using gradient clipping with tolerance=10.000
+2025-04-29 20:08:25.224 INFO: 
+2025-04-29 20:08:25.224 INFO: ===========TRAINING===========
+2025-04-29 20:08:25.224 INFO: Started training, reporting errors on validation set
+2025-04-29 20:08:25.224 INFO: Loss metrics on validation set
+2025-04-29 20:08:26.735 INFO: Initial: head: validation, loss=2.45317456, MAE_E=19745.02 meV, MAE_F=  583.73 meV / A
+2025-04-29 20:08:30.139 INFO: Epoch 0: head: train, loss=0.49262344, MAE_E=  359.10 meV, MAE_F=  317.67 meV / A
+2025-04-29 20:08:31.616 INFO: Epoch 0: head: validation, loss=0.54074512, MAE_E=  361.21 meV, MAE_F=  321.82 meV / A
+2025-04-29 20:08:34.897 INFO: Epoch 1: head: train, loss=0.23648278, MAE_E=  154.67 meV, MAE_F=  199.54 meV / A
+2025-04-29 20:08:36.134 INFO: Epoch 1: head: validation, loss=0.26343918, MAE_E=  155.11 meV, MAE_F=  208.26 meV / A
+2025-04-29 20:08:39.632 INFO: Epoch 2: head: train, loss=0.18222935, MAE_E=  294.69 meV, MAE_F=  183.71 meV / A
+2025-04-29 20:08:40.895 INFO: Epoch 2: head: validation, loss=0.19752074, MAE_E=  299.53 meV, MAE_F=  186.78 meV / A
+2025-04-29 20:08:44.106 INFO: Epoch 3: head: train, loss=0.09219053, MAE_E=   91.69 meV, MAE_F=  135.49 meV / A
+2025-04-29 20:08:45.349 INFO: Epoch 3: head: validation, loss=0.10253389, MAE_E=   89.04 meV, MAE_F=  137.84 meV / A
+2025-04-29 20:08:48.639 INFO: Epoch 4: head: train, loss=0.06628127, MAE_E=   57.51 meV, MAE_F=  111.66 meV / A
+2025-04-29 20:08:49.771 INFO: Epoch 4: head: validation, loss=0.07202349, MAE_E=   52.08 meV, MAE_F=  113.34 meV / A
+2025-04-29 20:08:53.116 INFO: Epoch 5: head: train, loss=0.04122423, MAE_E=  768.69 meV, MAE_F=   88.52 meV / A
+2025-04-29 20:08:54.193 INFO: Epoch 5: head: validation, loss=0.04567061, MAE_E=  770.91 meV, MAE_F=   90.15 meV / A
+2025-04-29 20:08:57.499 INFO: Epoch 6: head: train, loss=0.03187612, MAE_E=  523.59 meV, MAE_F=   78.52 meV / A
+2025-04-29 20:08:58.776 INFO: Epoch 6: head: validation, loss=0.03389696, MAE_E=  522.05 meV, MAE_F=   77.37 meV / A
+2025-04-29 20:09:02.222 INFO: Epoch 7: head: train, loss=0.02913598, MAE_E=   81.50 meV, MAE_F=   74.48 meV / A
+2025-04-29 20:09:03.449 INFO: Epoch 7: head: validation, loss=0.02981135, MAE_E=   84.08 meV, MAE_F=   72.65 meV / A
+2025-04-29 20:09:06.660 INFO: Epoch 8: head: train, loss=0.05729215, MAE_E= 2966.65 meV, MAE_F=   95.20 meV / A
+2025-04-29 20:09:07.805 INFO: Epoch 8: head: validation, loss=0.05927544, MAE_E= 2965.55 meV, MAE_F=   94.85 meV / A
+2025-04-29 20:09:11.166 INFO: Epoch 9: head: train, loss=0.11491982, MAE_E= 1432.92 meV, MAE_F=  137.16 meV / A
+2025-04-29 20:09:12.382 INFO: Epoch 9: head: validation, loss=0.12231759, MAE_E= 1430.53 meV, MAE_F=  136.54 meV / A
+2025-04-29 20:09:15.619 INFO: Epoch 10: head: train, loss=0.21029203, MAE_E= 7334.86 meV, MAE_F=  198.10 meV / A
+2025-04-29 20:09:16.781 INFO: Epoch 10: head: validation, loss=0.22953547, MAE_E= 7339.13 meV, MAE_F=  200.08 meV / A
+2025-04-29 20:09:20.142 INFO: Epoch 11: head: train, loss=0.46736184, MAE_E=16263.04 meV, MAE_F=  249.98 meV / A
+2025-04-29 20:09:21.410 INFO: Epoch 11: head: validation, loss=0.50804177, MAE_E=16269.42 meV, MAE_F=  255.45 meV / A
+2025-04-29 20:09:24.734 INFO: Epoch 12: head: train, loss=0.44372181, MAE_E=16935.41 meV, MAE_F=  225.57 meV / A
+2025-04-29 20:09:25.829 INFO: Epoch 12: head: validation, loss=0.48346976, MAE_E=16942.14 meV, MAE_F=  231.39 meV / A
+2025-04-29 20:09:29.289 INFO: Epoch 13: head: train, loss=0.18365967, MAE_E= 8487.39 meV, MAE_F=  165.04 meV / A
+2025-04-29 20:09:30.368 INFO: Epoch 13: head: validation, loss=0.20362059, MAE_E= 8494.08 meV, MAE_F=  169.40 meV / A
+2025-04-29 20:09:33.879 INFO: Epoch 14: head: train, loss=0.08464339, MAE_E= 3930.59 meV, MAE_F=  123.39 meV / A
+2025-04-29 20:09:35.113 INFO: Epoch 14: head: validation, loss=0.09565726, MAE_E= 3933.94 meV, MAE_F=  127.75 meV / A
+2025-04-29 20:09:38.344 INFO: Epoch 15: head: train, loss=0.05652010, MAE_E= 2679.24 meV, MAE_F=  101.85 meV / A
+2025-04-29 20:09:39.532 INFO: Epoch 15: head: validation, loss=0.06392357, MAE_E= 2680.31 meV, MAE_F=  104.73 meV / A
+2025-04-29 20:09:42.916 INFO: Epoch 16: head: train, loss=0.03922962, MAE_E= 1459.01 meV, MAE_F=   87.33 meV / A
+2025-04-29 20:09:44.103 INFO: Epoch 16: head: validation, loss=0.04427543, MAE_E= 1459.24 meV, MAE_F=   89.74 meV / A
+2025-04-29 20:09:47.458 INFO: Epoch 17: head: train, loss=0.02765158, MAE_E= 1003.38 meV, MAE_F=   72.94 meV / A
+2025-04-29 20:09:48.646 INFO: Epoch 17: head: validation, loss=0.03133266, MAE_E= 1003.33 meV, MAE_F=   74.90 meV / A
+2025-04-29 20:09:51.975 INFO: Epoch 18: head: train, loss=0.04796199, MAE_E=  966.19 meV, MAE_F=   99.14 meV / A
+2025-04-29 20:09:53.204 INFO: Epoch 18: head: validation, loss=0.05446129, MAE_E=  967.25 meV, MAE_F=  101.70 meV / A
+2025-04-29 20:09:56.574 INFO: Epoch 19: head: train, loss=0.04252665, MAE_E=  766.89 meV, MAE_F=   90.87 meV / A
+2025-04-29 20:09:57.808 INFO: Epoch 19: head: validation, loss=0.04847595, MAE_E=  767.51 meV, MAE_F=   94.30 meV / A
+2025-04-29 20:10:01.052 INFO: Epoch 20: head: train, loss=0.03493227, MAE_E=  321.75 meV, MAE_F=   82.81 meV / A
+2025-04-29 20:10:02.144 INFO: Epoch 20: head: validation, loss=0.03931537, MAE_E=  321.75 meV, MAE_F=   85.56 meV / A
+2025-04-29 20:10:05.452 INFO: Epoch 21: head: train, loss=0.02600091, MAE_E=  267.34 meV, MAE_F=   70.74 meV / A
+2025-04-29 20:10:06.668 INFO: Epoch 21: head: validation, loss=0.02928124, MAE_E=  266.34 meV, MAE_F=   73.14 meV / A
+2025-04-29 20:10:09.928 INFO: Epoch 22: head: train, loss=0.02709418, MAE_E=   91.35 meV, MAE_F=   73.54 meV / A
+2025-04-29 20:10:11.223 INFO: Epoch 22: head: validation, loss=0.03045245, MAE_E=   90.69 meV, MAE_F=   75.94 meV / A
+2025-04-29 20:10:14.610 INFO: Epoch 23: head: train, loss=0.03352381, MAE_E=   92.48 meV, MAE_F=   81.78 meV / A
+2025-04-29 20:10:15.839 INFO: Epoch 23: head: validation, loss=0.03711582, MAE_E=   91.63 meV, MAE_F=   84.44 meV / A
+2025-04-29 20:10:19.390 INFO: Epoch 24: head: train, loss=0.03002617, MAE_E=   70.77 meV, MAE_F=   77.88 meV / A
+2025-04-29 20:10:20.643 INFO: Epoch 24: head: validation, loss=0.03353191, MAE_E=   69.38 meV, MAE_F=   80.75 meV / A
+2025-04-29 20:10:24.008 INFO: Epoch 25: head: train, loss=0.02154751, MAE_E=   87.70 meV, MAE_F=   65.34 meV / A
+2025-04-29 20:10:25.195 INFO: Epoch 25: head: validation, loss=0.02401981, MAE_E=   86.99 meV, MAE_F=   67.81 meV / A
+2025-04-29 20:10:28.597 INFO: Epoch 26: head: train, loss=0.01426630, MAE_E=   68.27 meV, MAE_F=   52.17 meV / A
+2025-04-29 20:10:29.745 INFO: Epoch 26: head: validation, loss=0.01637695, MAE_E=   67.56 meV, MAE_F=   54.73 meV / A
+2025-04-29 20:10:33.136 INFO: Epoch 27: head: train, loss=0.02086863, MAE_E=   49.24 meV, MAE_F=   64.22 meV / A
+2025-04-29 20:10:34.332 INFO: Epoch 27: head: validation, loss=0.02377018, MAE_E=   49.00 meV, MAE_F=   66.29 meV / A
+2025-04-29 20:10:37.673 INFO: Epoch 28: head: train, loss=0.01437388, MAE_E=   29.68 meV, MAE_F=   53.64 meV / A
+2025-04-29 20:10:39.054 INFO: Epoch 28: head: validation, loss=0.01643037, MAE_E=   28.56 meV, MAE_F=   55.89 meV / A
+2025-04-29 20:10:42.349 INFO: Epoch 29: head: train, loss=0.01061093, MAE_E=   18.63 meV, MAE_F=   45.83 meV / A
+2025-04-29 20:10:43.586 INFO: Epoch 29: head: validation, loss=0.01218411, MAE_E=   17.11 meV, MAE_F=   47.93 meV / A
+2025-04-29 20:10:46.999 INFO: Epoch 30: head: train, loss=0.00880442, MAE_E=   65.34 meV, MAE_F=   41.64 meV / A
+2025-04-29 20:10:48.177 INFO: Epoch 30: head: validation, loss=0.01017328, MAE_E=   65.20 meV, MAE_F=   43.54 meV / A
+2025-04-29 20:10:51.518 INFO: Epoch 31: head: train, loss=0.00702225, MAE_E=   32.22 meV, MAE_F=   36.86 meV / A
+2025-04-29 20:10:52.676 INFO: Epoch 31: head: validation, loss=0.00809621, MAE_E=   32.64 meV, MAE_F=   38.46 meV / A
+2025-04-29 20:10:56.235 INFO: Epoch 32: head: train, loss=0.00586803, MAE_E=   23.56 meV, MAE_F=   33.49 meV / A
+2025-04-29 20:10:57.463 INFO: Epoch 32: head: validation, loss=0.00683241, MAE_E=   24.46 meV, MAE_F=   34.99 meV / A
+2025-04-29 20:11:00.834 INFO: Epoch 33: head: train, loss=0.00493875, MAE_E=   16.61 meV, MAE_F=   30.67 meV / A
+2025-04-29 20:11:02.057 INFO: Epoch 33: head: validation, loss=0.00568726, MAE_E=   17.89 meV, MAE_F=   31.76 meV / A
+2025-04-29 20:11:05.396 INFO: Epoch 34: head: train, loss=0.00447782, MAE_E=   17.12 meV, MAE_F=   29.13 meV / A
+2025-04-29 20:11:06.623 INFO: Epoch 34: head: validation, loss=0.00506778, MAE_E=   17.98 meV, MAE_F=   29.84 meV / A
+2025-04-29 20:11:10.144 INFO: Epoch 35: head: train, loss=0.00407487, MAE_E=   21.49 meV, MAE_F=   27.68 meV / A
+2025-04-29 20:11:11.427 INFO: Epoch 35: head: validation, loss=0.00450502, MAE_E=   22.09 meV, MAE_F=   27.95 meV / A
+2025-04-29 20:11:14.723 INFO: Epoch 36: head: train, loss=0.00367549, MAE_E=   16.11 meV, MAE_F=   26.22 meV / A
+2025-04-29 20:11:15.929 INFO: Epoch 36: head: validation, loss=0.00405231, MAE_E=   17.15 meV, MAE_F=   26.47 meV / A
+2025-04-29 20:11:19.320 INFO: Epoch 37: head: train, loss=0.00332216, MAE_E=   16.86 meV, MAE_F=   24.95 meV / A
+2025-04-29 20:11:20.518 INFO: Epoch 37: head: validation, loss=0.00370118, MAE_E=   18.04 meV, MAE_F=   25.28 meV / A
+2025-04-29 20:11:23.890 INFO: Epoch 38: head: train, loss=0.00310971, MAE_E=   15.16 meV, MAE_F=   24.07 meV / A
+2025-04-29 20:11:25.078 INFO: Epoch 38: head: validation, loss=0.00343881, MAE_E=   16.28 meV, MAE_F=   24.33 meV / A
+2025-04-29 20:11:28.342 INFO: Epoch 39: head: train, loss=0.00291521, MAE_E=   15.18 meV, MAE_F=   23.35 meV / A
+2025-04-29 20:11:29.617 INFO: Epoch 39: head: validation, loss=0.00319580, MAE_E=   16.17 meV, MAE_F=   23.43 meV / A
+2025-04-29 20:11:33.011 INFO: Epoch 40: head: train, loss=0.00278244, MAE_E=   14.49 meV, MAE_F=   22.78 meV / A
+2025-04-29 20:11:34.095 INFO: Epoch 40: head: validation, loss=0.00301532, MAE_E=   14.98 meV, MAE_F=   22.73 meV / A
+2025-04-29 20:11:37.510 INFO: Epoch 41: head: train, loss=0.00261892, MAE_E=   14.48 meV, MAE_F=   22.00 meV / A
+2025-04-29 20:11:38.792 INFO: Epoch 41: head: validation, loss=0.00285273, MAE_E=   15.06 meV, MAE_F=   22.04 meV / A
+2025-04-29 20:11:42.216 INFO: Epoch 42: head: train, loss=0.00246495, MAE_E=   15.04 meV, MAE_F=   21.29 meV / A
+2025-04-29 20:11:43.278 INFO: Epoch 42: head: validation, loss=0.00268021, MAE_E=   15.48 meV, MAE_F=   21.35 meV / A
+2025-04-29 20:11:46.529 INFO: Epoch 43: head: train, loss=0.00231301, MAE_E=   14.91 meV, MAE_F=   20.67 meV / A
+2025-04-29 20:11:47.602 INFO: Epoch 43: head: validation, loss=0.00250723, MAE_E=   15.19 meV, MAE_F=   20.63 meV / A
+2025-04-29 20:11:50.901 INFO: Epoch 44: head: train, loss=0.00217307, MAE_E=   14.73 meV, MAE_F=   19.99 meV / A
+2025-04-29 20:11:52.110 INFO: Epoch 44: head: validation, loss=0.00233379, MAE_E=   15.01 meV, MAE_F=   19.90 meV / A
+2025-04-29 20:11:55.494 INFO: Epoch 45: head: train, loss=0.00205432, MAE_E=   14.73 meV, MAE_F=   19.44 meV / A
+2025-04-29 20:11:56.696 INFO: Epoch 45: head: validation, loss=0.00217777, MAE_E=   15.05 meV, MAE_F=   19.23 meV / A
+2025-04-29 20:11:59.847 INFO: Epoch 46: head: train, loss=0.00191536, MAE_E=   14.49 meV, MAE_F=   18.81 meV / A
+2025-04-29 20:12:01.121 INFO: Epoch 46: head: validation, loss=0.00203211, MAE_E=   14.74 meV, MAE_F=   18.58 meV / A
+2025-04-29 20:12:04.152 INFO: Epoch 47: head: train, loss=0.00176056, MAE_E=   14.24 meV, MAE_F=   18.04 meV / A
+2025-04-29 20:12:05.235 INFO: Epoch 47: head: validation, loss=0.00189680, MAE_E=   14.56 meV, MAE_F=   17.96 meV / A
+2025-04-29 20:12:08.521 INFO: Epoch 48: head: train, loss=0.00167027, MAE_E=   14.42 meV, MAE_F=   17.57 meV / A
+2025-04-29 20:12:09.723 INFO: Epoch 48: head: validation, loss=0.00176948, MAE_E=   14.50 meV, MAE_F=   17.35 meV / A
+2025-04-29 20:12:13.091 INFO: Epoch 49: head: train, loss=0.00156998, MAE_E=   14.48 meV, MAE_F=   17.05 meV / A
+2025-04-29 20:12:14.183 INFO: Epoch 49: head: validation, loss=0.00166590, MAE_E=   14.47 meV, MAE_F=   16.85 meV / A
+2025-04-29 20:12:17.417 INFO: Epoch 50: head: train, loss=0.00149691, MAE_E=   14.31 meV, MAE_F=   16.65 meV / A
+2025-04-29 20:12:18.561 INFO: Epoch 50: head: validation, loss=0.00157096, MAE_E=   14.25 meV, MAE_F=   16.36 meV / A
+2025-04-29 20:12:21.950 INFO: Epoch 51: head: train, loss=0.00139915, MAE_E=   14.19 meV, MAE_F=   16.10 meV / A
+2025-04-29 20:12:23.082 INFO: Epoch 51: head: validation, loss=0.00148709, MAE_E=   14.18 meV, MAE_F=   15.89 meV / A
+2025-04-29 20:12:26.370 INFO: Epoch 52: head: train, loss=0.00132661, MAE_E=   13.91 meV, MAE_F=   15.70 meV / A
+2025-04-29 20:12:27.408 INFO: Epoch 52: head: validation, loss=0.00142065, MAE_E=   14.04 meV, MAE_F=   15.52 meV / A
+2025-04-29 20:12:30.749 INFO: Epoch 53: head: train, loss=0.00127100, MAE_E=   13.58 meV, MAE_F=   15.36 meV / A
+2025-04-29 20:12:31.953 INFO: Epoch 53: head: validation, loss=0.00135847, MAE_E=   13.88 meV, MAE_F=   15.18 meV / A
+2025-04-29 20:12:35.136 INFO: Epoch 54: head: train, loss=0.00122043, MAE_E=   13.64 meV, MAE_F=   15.06 meV / A
+2025-04-29 20:12:36.363 INFO: Epoch 54: head: validation, loss=0.00130035, MAE_E=   13.86 meV, MAE_F=   14.84 meV / A
+2025-04-29 20:12:39.789 INFO: Epoch 55: head: train, loss=0.00116590, MAE_E=   13.61 meV, MAE_F=   14.75 meV / A
+2025-04-29 20:12:40.951 INFO: Epoch 55: head: validation, loss=0.00124858, MAE_E=   13.81 meV, MAE_F=   14.55 meV / A
+2025-04-29 20:12:44.258 INFO: Epoch 56: head: train, loss=0.00111977, MAE_E=   13.56 meV, MAE_F=   14.45 meV / A
+2025-04-29 20:12:45.422 INFO: Epoch 56: head: validation, loss=0.00120353, MAE_E=   13.75 meV, MAE_F=   14.28 meV / A
+2025-04-29 20:12:48.622 INFO: Epoch 57: head: train, loss=0.00109193, MAE_E=   13.46 meV, MAE_F=   14.29 meV / A
+2025-04-29 20:12:49.752 INFO: Epoch 57: head: validation, loss=0.00116518, MAE_E=   13.73 meV, MAE_F=   14.05 meV / A
+2025-04-29 20:12:52.869 INFO: Epoch 58: head: train, loss=0.00105325, MAE_E=   13.62 meV, MAE_F=   14.05 meV / A
+2025-04-29 20:12:54.078 INFO: Epoch 58: head: validation, loss=0.00112775, MAE_E=   13.70 meV, MAE_F=   13.83 meV / A
+2025-04-29 20:12:57.409 INFO: Epoch 59: head: train, loss=0.00102676, MAE_E=   13.62 meV, MAE_F=   13.88 meV / A
+2025-04-29 20:12:58.545 INFO: Epoch 59: head: validation, loss=0.00110009, MAE_E=   13.68 meV, MAE_F=   13.66 meV / A
+2025-04-29 20:13:01.840 INFO: Epoch 60: head: train, loss=0.00099996, MAE_E=   13.47 meV, MAE_F=   13.71 meV / A
+2025-04-29 20:13:03.072 INFO: Epoch 60: head: validation, loss=0.00107070, MAE_E=   13.61 meV, MAE_F=   13.49 meV / A
+2025-04-29 20:13:06.495 INFO: Epoch 61: head: train, loss=0.00097232, MAE_E=   13.62 meV, MAE_F=   13.53 meV / A
+2025-04-29 20:13:07.711 INFO: Epoch 61: head: validation, loss=0.00104623, MAE_E=   13.64 meV, MAE_F=   13.32 meV / A
+2025-04-29 20:13:11.246 INFO: Epoch 62: head: train, loss=0.00094225, MAE_E=   13.33 meV, MAE_F=   13.34 meV / A
+2025-04-29 20:13:12.345 INFO: Epoch 62: head: validation, loss=0.00102204, MAE_E=   13.59 meV, MAE_F=   13.16 meV / A
+2025-04-29 20:13:15.433 INFO: Epoch 63: head: train, loss=0.00092382, MAE_E=   13.53 meV, MAE_F=   13.21 meV / A
+2025-04-29 20:13:16.510 INFO: Epoch 63: head: validation, loss=0.00100082, MAE_E=   13.60 meV, MAE_F=   13.02 meV / A
+2025-04-29 20:13:19.713 INFO: Epoch 64: head: train, loss=0.00089748, MAE_E=   13.49 meV, MAE_F=   13.04 meV / A
+2025-04-29 20:13:20.986 INFO: Epoch 64: head: validation, loss=0.00098026, MAE_E=   13.59 meV, MAE_F=   12.89 meV / A
+2025-04-29 20:13:24.356 INFO: Epoch 65: head: train, loss=0.00088645, MAE_E=   13.56 meV, MAE_F=   12.95 meV / A
+2025-04-29 20:13:25.446 INFO: Epoch 65: head: validation, loss=0.00096101, MAE_E=   13.56 meV, MAE_F=   12.75 meV / A
+2025-04-29 20:13:28.658 INFO: Epoch 66: head: train, loss=0.00085496, MAE_E=   13.47 meV, MAE_F=   12.71 meV / A
+2025-04-29 20:13:29.680 INFO: Epoch 66: head: validation, loss=0.00094103, MAE_E=   13.58 meV, MAE_F=   12.61 meV / A
+2025-04-29 20:13:33.116 INFO: Epoch 67: head: train, loss=0.00084547, MAE_E=   13.43 meV, MAE_F=   12.66 meV / A
+2025-04-29 20:13:34.123 INFO: Epoch 67: head: validation, loss=0.00092258, MAE_E=   13.55 meV, MAE_F=   12.49 meV / A
+2025-04-29 20:13:37.268 INFO: Epoch 68: head: train, loss=0.00082786, MAE_E=   13.47 meV, MAE_F=   12.53 meV / A
+2025-04-29 20:13:38.391 INFO: Epoch 68: head: validation, loss=0.00090468, MAE_E=   13.56 meV, MAE_F=   12.38 meV / A
+2025-04-29 20:13:41.744 INFO: Epoch 69: head: train, loss=0.00081001, MAE_E=   13.48 meV, MAE_F=   12.40 meV / A
+2025-04-29 20:13:42.799 INFO: Epoch 69: head: validation, loss=0.00088847, MAE_E=   13.58 meV, MAE_F=   12.27 meV / A
+2025-04-29 20:13:45.921 INFO: Epoch 70: head: train, loss=0.00079420, MAE_E=   13.50 meV, MAE_F=   12.29 meV / A
+2025-04-29 20:13:47.018 INFO: Epoch 70: head: validation, loss=0.00087201, MAE_E=   13.59 meV, MAE_F=   12.17 meV / A
+2025-04-29 20:13:50.294 INFO: Epoch 71: head: train, loss=0.00077676, MAE_E=   13.52 meV, MAE_F=   12.18 meV / A
+2025-04-29 20:13:51.573 INFO: Epoch 71: head: validation, loss=0.00085654, MAE_E=   13.57 meV, MAE_F=   12.07 meV / A
+2025-04-29 20:13:54.800 INFO: Epoch 72: head: train, loss=0.00076195, MAE_E=   13.55 meV, MAE_F=   12.06 meV / A
+2025-04-29 20:13:56.007 INFO: Epoch 72: head: validation, loss=0.00084504, MAE_E=   13.58 meV, MAE_F=   12.00 meV / A
+2025-04-29 20:13:59.498 INFO: Epoch 73: head: train, loss=0.00075146, MAE_E=   13.66 meV, MAE_F=   11.99 meV / A
+2025-04-29 20:14:00.609 INFO: Epoch 73: head: validation, loss=0.00083456, MAE_E=   13.73 meV, MAE_F=   11.94 meV / A
+2025-04-29 20:14:03.882 INFO: Epoch 74: head: train, loss=0.00074638, MAE_E=   13.62 meV, MAE_F=   11.92 meV / A
+2025-04-29 20:14:04.932 INFO: Epoch 74: head: validation, loss=0.00082938, MAE_E=   13.72 meV, MAE_F=   11.90 meV / A
+2025-04-29 20:14:08.289 INFO: Epoch 75: head: train, loss=0.00073550, MAE_E=   13.80 meV, MAE_F=   11.85 meV / A
+2025-04-29 20:14:09.518 INFO: Epoch 75: head: validation, loss=0.00082366, MAE_E=   13.77 meV, MAE_F=   11.86 meV / A
+2025-04-29 20:14:12.690 INFO: Epoch 76: head: train, loss=0.00073208, MAE_E=   13.67 meV, MAE_F=   11.81 meV / A
+2025-04-29 20:14:13.759 INFO: Epoch 76: head: validation, loss=0.00081785, MAE_E=   13.74 meV, MAE_F=   11.81 meV / A
+2025-04-29 20:14:17.009 INFO: Epoch 77: head: train, loss=0.00071549, MAE_E=   13.54 meV, MAE_F=   11.69 meV / A
+2025-04-29 20:14:18.124 INFO: Epoch 77: head: validation, loss=0.00080693, MAE_E=   13.70 meV, MAE_F=   11.74 meV / A
+2025-04-29 20:14:21.253 INFO: Epoch 78: head: train, loss=0.00071800, MAE_E=   13.48 meV, MAE_F=   11.71 meV / A
+2025-04-29 20:14:22.337 INFO: Epoch 78: head: validation, loss=0.00080194, MAE_E=   13.65 meV, MAE_F=   11.71 meV / A
+2025-04-29 20:14:25.497 INFO: Epoch 79: head: train, loss=0.00070554, MAE_E=   13.61 meV, MAE_F=   11.60 meV / A
+2025-04-29 20:14:26.607 INFO: Epoch 79: head: validation, loss=0.00079454, MAE_E=   13.66 meV, MAE_F=   11.65 meV / A
+2025-04-29 20:14:29.950 INFO: Epoch 80: head: train, loss=0.00069107, MAE_E=   13.51 meV, MAE_F=   11.48 meV / A
+2025-04-29 20:14:31.094 INFO: Epoch 80: head: validation, loss=0.00078612, MAE_E=   13.66 meV, MAE_F=   11.60 meV / A
+2025-04-29 20:14:34.432 INFO: Epoch 81: head: train, loss=0.00069276, MAE_E=   13.50 meV, MAE_F=   11.51 meV / A
+2025-04-29 20:14:35.614 INFO: Epoch 81: head: validation, loss=0.00077761, MAE_E=   13.63 meV, MAE_F=   11.54 meV / A
+2025-04-29 20:14:39.019 INFO: Epoch 82: head: train, loss=0.00067909, MAE_E=   13.31 meV, MAE_F=   11.40 meV / A
+2025-04-29 20:14:40.169 INFO: Epoch 82: head: validation, loss=0.00076979, MAE_E=   13.64 meV, MAE_F=   11.49 meV / A
+2025-04-29 20:14:43.512 INFO: Epoch 83: head: train, loss=0.00067531, MAE_E=   13.51 meV, MAE_F=   11.37 meV / A
+2025-04-29 20:14:44.711 INFO: Epoch 83: head: validation, loss=0.00076164, MAE_E=   13.62 meV, MAE_F=   11.43 meV / A
+2025-04-29 20:14:48.091 INFO: Epoch 84: head: train, loss=0.00066218, MAE_E=   13.45 meV, MAE_F=   11.26 meV / A
+2025-04-29 20:14:49.394 INFO: Epoch 84: head: validation, loss=0.00075331, MAE_E=   13.61 meV, MAE_F=   11.38 meV / A
+2025-04-29 20:14:52.656 INFO: Epoch 85: head: train, loss=0.00065236, MAE_E=   13.45 meV, MAE_F=   11.19 meV / A
+2025-04-29 20:14:53.799 INFO: Epoch 85: head: validation, loss=0.00074446, MAE_E=   13.61 meV, MAE_F=   11.30 meV / A
+2025-04-29 20:14:56.924 INFO: Epoch 86: head: train, loss=0.00064210, MAE_E=   13.36 meV, MAE_F=   11.09 meV / A
+2025-04-29 20:14:58.138 INFO: Epoch 86: head: validation, loss=0.00073680, MAE_E=   13.58 meV, MAE_F=   11.25 meV / A
+2025-04-29 20:15:01.536 INFO: Epoch 87: head: train, loss=0.00063921, MAE_E=   13.52 meV, MAE_F=   11.06 meV / A
+2025-04-29 20:15:02.738 INFO: Epoch 87: head: validation, loss=0.00073600, MAE_E=   13.63 meV, MAE_F=   11.24 meV / A
+2025-04-29 20:15:06.072 INFO: Epoch 88: head: train, loss=0.00064288, MAE_E=   13.67 meV, MAE_F=   11.10 meV / A
+2025-04-29 20:15:07.274 INFO: Epoch 88: head: validation, loss=0.00073567, MAE_E=   13.69 meV, MAE_F=   11.26 meV / A
+2025-04-29 20:15:10.664 INFO: Epoch 89: head: train, loss=0.00064535, MAE_E=   13.48 meV, MAE_F=   11.10 meV / A
+2025-04-29 20:15:11.942 INFO: Epoch 89: head: validation, loss=0.00073615, MAE_E=   13.37 meV, MAE_F=   11.25 meV / A
+2025-04-29 20:15:15.096 INFO: Epoch 90: head: train, loss=0.00064845, MAE_E=   13.53 meV, MAE_F=   11.13 meV / A
+2025-04-29 20:15:16.268 INFO: Epoch 90: head: validation, loss=0.00073536, MAE_E=   13.46 meV, MAE_F=   11.24 meV / A
+2025-04-29 20:15:19.741 INFO: Epoch 91: head: train, loss=0.00064426, MAE_E=   13.64 meV, MAE_F=   11.09 meV / A
+2025-04-29 20:15:20.960 INFO: Epoch 91: head: validation, loss=0.00073160, MAE_E=   13.51 meV, MAE_F=   11.21 meV / A
+2025-04-29 20:15:24.220 INFO: Epoch 92: head: train, loss=0.00063983, MAE_E=   13.40 meV, MAE_F=   11.06 meV / A
+2025-04-29 20:15:25.386 INFO: Epoch 92: head: validation, loss=0.00072825, MAE_E=   13.43 meV, MAE_F=   11.19 meV / A
+2025-04-29 20:15:28.719 INFO: Epoch 93: head: train, loss=0.00063717, MAE_E=   13.41 meV, MAE_F=   11.07 meV / A
+2025-04-29 20:15:29.905 INFO: Epoch 93: head: validation, loss=0.00072387, MAE_E=   13.39 meV, MAE_F=   11.16 meV / A
+2025-04-29 20:15:33.357 INFO: Epoch 94: head: train, loss=0.00063136, MAE_E=   13.52 meV, MAE_F=   11.01 meV / A
+2025-04-29 20:15:34.551 INFO: Epoch 94: head: validation, loss=0.00071723, MAE_E=   13.41 meV, MAE_F=   11.11 meV / A
+2025-04-29 20:15:37.774 INFO: Epoch 95: head: train, loss=0.00062101, MAE_E=   13.43 meV, MAE_F=   10.92 meV / A
+2025-04-29 20:15:39.135 INFO: Epoch 95: head: validation, loss=0.00071101, MAE_E=   13.41 meV, MAE_F=   11.06 meV / A
+2025-04-29 20:15:42.461 INFO: Epoch 96: head: train, loss=0.00061723, MAE_E=   13.33 meV, MAE_F=   10.89 meV / A
+2025-04-29 20:15:43.492 INFO: Epoch 96: head: validation, loss=0.00070465, MAE_E=   13.39 meV, MAE_F=   11.02 meV / A
+2025-04-29 20:15:46.823 INFO: Epoch 97: head: train, loss=0.00060675, MAE_E=   13.52 meV, MAE_F=   10.80 meV / A
+2025-04-29 20:15:47.932 INFO: Epoch 97: head: validation, loss=0.00069743, MAE_E=   13.40 meV, MAE_F=   10.97 meV / A
+2025-04-29 20:15:51.198 INFO: Epoch 98: head: train, loss=0.00060457, MAE_E=   13.50 meV, MAE_F=   10.78 meV / A
+2025-04-29 20:15:52.248 INFO: Epoch 98: head: validation, loss=0.00069341, MAE_E=   13.42 meV, MAE_F=   10.93 meV / A
+2025-04-29 20:15:55.468 INFO: Epoch 99: head: train, loss=0.00059514, MAE_E=   13.48 meV, MAE_F=   10.71 meV / A
+2025-04-29 20:15:56.761 INFO: Epoch 99: head: validation, loss=0.00068824, MAE_E=   13.43 meV, MAE_F=   10.89 meV / A
+2025-04-29 20:16:00.084 INFO: Epoch 100: head: train, loss=0.00058489, MAE_E=   13.36 meV, MAE_F=   10.61 meV / A
+2025-04-29 20:16:01.239 INFO: Epoch 100: head: validation, loss=0.00068267, MAE_E=   13.48 meV, MAE_F=   10.85 meV / A
+2025-04-29 20:16:04.465 INFO: Epoch 101: head: train, loss=0.00058323, MAE_E=   13.50 meV, MAE_F=   10.60 meV / A
+2025-04-29 20:16:05.670 INFO: Epoch 101: head: validation, loss=0.00067774, MAE_E=   13.47 meV, MAE_F=   10.81 meV / A
+2025-04-29 20:16:08.960 INFO: Epoch 102: head: train, loss=0.00057317, MAE_E=   13.45 meV, MAE_F=   10.52 meV / A
+2025-04-29 20:16:10.057 INFO: Epoch 102: head: validation, loss=0.00067210, MAE_E=   13.49 meV, MAE_F=   10.76 meV / A
+2025-04-29 20:16:13.381 INFO: Epoch 103: head: train, loss=0.00057065, MAE_E=   13.43 meV, MAE_F=   10.47 meV / A
+2025-04-29 20:16:14.361 INFO: Epoch 103: head: validation, loss=0.00066876, MAE_E=   13.52 meV, MAE_F=   10.73 meV / A
+2025-04-29 20:16:17.564 INFO: Epoch 104: head: train, loss=0.00056043, MAE_E=   13.38 meV, MAE_F=   10.41 meV / A
+2025-04-29 20:16:18.929 INFO: Epoch 104: head: validation, loss=0.00066881, MAE_E=   13.50 meV, MAE_F=   10.71 meV / A
+2025-04-29 20:16:22.057 INFO: Epoch 105: head: train, loss=0.00056340, MAE_E=   13.44 meV, MAE_F=   10.41 meV / A
+2025-04-29 20:16:23.201 INFO: Epoch 105: head: validation, loss=0.00067129, MAE_E=   13.55 meV, MAE_F=   10.71 meV / A
+2025-04-29 20:16:26.454 INFO: Epoch 106: head: train, loss=0.00055907, MAE_E=   13.41 meV, MAE_F=   10.37 meV / A
+2025-04-29 20:16:27.607 INFO: Epoch 106: head: validation, loss=0.00066880, MAE_E=   13.55 meV, MAE_F=   10.69 meV / A
+2025-04-29 20:16:31.156 INFO: Epoch 107: head: train, loss=0.00055706, MAE_E=   13.45 meV, MAE_F=   10.35 meV / A
+2025-04-29 20:16:32.333 INFO: Epoch 107: head: validation, loss=0.00067046, MAE_E=   13.61 meV, MAE_F=   10.68 meV / A
+2025-04-29 20:16:35.526 INFO: Epoch 108: head: train, loss=0.00055272, MAE_E=   13.55 meV, MAE_F=   10.30 meV / A
+2025-04-29 20:16:36.718 INFO: Epoch 108: head: validation, loss=0.00066721, MAE_E=   13.67 meV, MAE_F=   10.66 meV / A
+2025-04-29 20:16:39.882 INFO: Epoch 109: head: train, loss=0.00054918, MAE_E=   13.47 meV, MAE_F=   10.27 meV / A
+2025-04-29 20:16:41.192 INFO: Epoch 109: head: validation, loss=0.00066269, MAE_E=   13.67 meV, MAE_F=   10.63 meV / A
+2025-04-29 20:16:44.580 INFO: Epoch 110: head: train, loss=0.00054624, MAE_E=   13.47 meV, MAE_F=   10.24 meV / A
+2025-04-29 20:16:45.752 INFO: Epoch 110: head: validation, loss=0.00066015, MAE_E=   13.71 meV, MAE_F=   10.61 meV / A
+2025-04-29 20:16:49.148 INFO: Epoch 111: head: train, loss=0.00053840, MAE_E=   13.64 meV, MAE_F=   10.17 meV / A
+2025-04-29 20:16:50.419 INFO: Epoch 111: head: validation, loss=0.00065781, MAE_E=   13.68 meV, MAE_F=   10.58 meV / A
+2025-04-29 20:16:53.763 INFO: Epoch 112: head: train, loss=0.00053808, MAE_E=   13.45 meV, MAE_F=   10.16 meV / A
+2025-04-29 20:16:54.851 INFO: Epoch 112: head: validation, loss=0.00065703, MAE_E=   13.71 meV, MAE_F=   10.57 meV / A
+2025-04-29 20:16:58.102 INFO: Epoch 113: head: train, loss=0.00053599, MAE_E=   13.59 meV, MAE_F=   10.15 meV / A
+2025-04-29 20:16:59.360 INFO: Epoch 113: head: validation, loss=0.00065559, MAE_E=   13.71 meV, MAE_F=   10.55 meV / A
+2025-04-29 20:17:02.687 INFO: Epoch 114: head: train, loss=0.00053184, MAE_E=   13.45 meV, MAE_F=   10.11 meV / A
+2025-04-29 20:17:03.874 INFO: Epoch 114: head: validation, loss=0.00065076, MAE_E=   13.73 meV, MAE_F=   10.51 meV / A
+2025-04-29 20:17:07.846 INFO: Epoch 115: head: train, loss=0.00052599, MAE_E=   13.55 meV, MAE_F=   10.06 meV / A
+2025-04-29 20:17:09.247 INFO: Epoch 115: head: validation, loss=0.00064616, MAE_E=   13.73 meV, MAE_F=   10.47 meV / A
+2025-04-29 20:17:12.484 INFO: Epoch 116: head: train, loss=0.00052407, MAE_E=   13.45 meV, MAE_F=   10.05 meV / A
+2025-04-29 20:17:13.595 INFO: Epoch 116: head: validation, loss=0.00064105, MAE_E=   13.67 meV, MAE_F=   10.42 meV / A
+2025-04-29 20:17:16.845 INFO: Epoch 117: head: train, loss=0.00051553, MAE_E=   13.55 meV, MAE_F=    9.96 meV / A
+2025-04-29 20:17:17.833 INFO: Epoch 117: head: validation, loss=0.00063933, MAE_E=   13.68 meV, MAE_F=   10.40 meV / A
+2025-04-29 20:17:21.242 INFO: Epoch 118: head: train, loss=0.00051324, MAE_E=   13.42 meV, MAE_F=    9.95 meV / A
+2025-04-29 20:17:22.400 INFO: Epoch 118: head: validation, loss=0.00063590, MAE_E=   13.76 meV, MAE_F=   10.37 meV / A
+2025-04-29 20:17:25.593 INFO: Epoch 119: head: train, loss=0.00050757, MAE_E=   13.50 meV, MAE_F=    9.90 meV / A
+2025-04-29 20:17:26.662 INFO: Epoch 119: head: validation, loss=0.00063366, MAE_E=   13.75 meV, MAE_F=   10.34 meV / A
+2025-04-29 20:17:29.958 INFO: Epoch 120: head: train, loss=0.00050868, MAE_E=   13.62 meV, MAE_F=    9.91 meV / A
+2025-04-29 20:17:31.292 INFO: Epoch 120: head: validation, loss=0.00063211, MAE_E=   13.78 meV, MAE_F=   10.32 meV / A
+2025-04-29 20:17:34.431 INFO: Epoch 121: head: train, loss=0.00049241, MAE_E=   13.69 meV, MAE_F=    9.80 meV / A
+2025-04-29 20:17:35.669 INFO: Epoch 121: head: validation, loss=0.00062991, MAE_E=   13.83 meV, MAE_F=   10.29 meV / A
+2025-04-29 20:17:38.973 INFO: Epoch 122: head: train, loss=0.00049512, MAE_E=   13.67 meV, MAE_F=    9.77 meV / A
+2025-04-29 20:17:40.226 INFO: Epoch 122: head: validation, loss=0.00062906, MAE_E=   13.72 meV, MAE_F=   10.27 meV / A
+2025-04-29 20:17:43.352 INFO: Epoch 123: head: train, loss=0.00049404, MAE_E=   13.54 meV, MAE_F=    9.78 meV / A
+2025-04-29 20:17:44.425 INFO: Epoch 123: head: validation, loss=0.00062581, MAE_E=   13.74 meV, MAE_F=   10.25 meV / A
+2025-04-29 20:17:47.738 INFO: Epoch 124: head: train, loss=0.00049090, MAE_E=   13.61 meV, MAE_F=    9.74 meV / A
+2025-04-29 20:17:49.122 INFO: Epoch 124: head: validation, loss=0.00062336, MAE_E=   13.78 meV, MAE_F=   10.22 meV / A
+2025-04-29 20:17:52.433 INFO: Epoch 125: head: train, loss=0.00049495, MAE_E=   13.66 meV, MAE_F=    9.76 meV / A
+2025-04-29 20:17:53.630 INFO: Epoch 125: head: validation, loss=0.00062555, MAE_E=   13.73 meV, MAE_F=   10.23 meV / A
+2025-04-29 20:17:56.858 INFO: Epoch 126: head: train, loss=0.00049106, MAE_E=   13.61 meV, MAE_F=    9.71 meV / A
+2025-04-29 20:17:58.000 INFO: Epoch 126: head: validation, loss=0.00062466, MAE_E=   13.77 meV, MAE_F=   10.22 meV / A
+2025-04-29 20:18:01.476 INFO: Epoch 127: head: train, loss=0.00049053, MAE_E=   13.78 meV, MAE_F=    9.69 meV / A
+2025-04-29 20:18:02.664 INFO: Epoch 127: head: validation, loss=0.00062196, MAE_E=   13.77 meV, MAE_F=   10.20 meV / A
+2025-04-29 20:18:06.039 INFO: Epoch 128: head: train, loss=0.00048797, MAE_E=   13.62 meV, MAE_F=    9.68 meV / A
+2025-04-29 20:18:07.093 INFO: Epoch 128: head: validation, loss=0.00061744, MAE_E=   13.75 meV, MAE_F=   10.17 meV / A
+2025-04-29 20:18:10.460 INFO: Epoch 129: head: train, loss=0.00048483, MAE_E=   13.58 meV, MAE_F=    9.66 meV / A
+2025-04-29 20:18:11.648 INFO: Epoch 129: head: validation, loss=0.00061429, MAE_E=   13.76 meV, MAE_F=   10.14 meV / A
+2025-04-29 20:18:14.886 INFO: Epoch 130: head: train, loss=0.00048076, MAE_E=   13.64 meV, MAE_F=    9.63 meV / A
+2025-04-29 20:18:16.079 INFO: Epoch 130: head: validation, loss=0.00061124, MAE_E=   13.76 meV, MAE_F=   10.12 meV / A
+2025-04-29 20:18:19.319 INFO: Epoch 131: head: train, loss=0.00047760, MAE_E=   13.61 meV, MAE_F=    9.59 meV / A
+2025-04-29 20:18:20.505 INFO: Epoch 131: head: validation, loss=0.00060752, MAE_E=   13.75 meV, MAE_F=   10.09 meV / A
+2025-04-29 20:18:23.742 INFO: Epoch 132: head: train, loss=0.00047526, MAE_E=   13.71 meV, MAE_F=    9.57 meV / A
+2025-04-29 20:18:24.813 INFO: Epoch 132: head: validation, loss=0.00060457, MAE_E=   13.78 meV, MAE_F=   10.06 meV / A
+2025-04-29 20:18:27.945 INFO: Epoch 133: head: train, loss=0.00047196, MAE_E=   13.52 meV, MAE_F=    9.54 meV / A
+2025-04-29 20:18:29.288 INFO: Epoch 133: head: validation, loss=0.00060058, MAE_E=   13.75 meV, MAE_F=   10.02 meV / A
+2025-04-29 20:18:32.723 INFO: Epoch 134: head: train, loss=0.00046650, MAE_E=   13.72 meV, MAE_F=    9.49 meV / A
+2025-04-29 20:18:33.985 INFO: Epoch 134: head: validation, loss=0.00059847, MAE_E=   13.73 meV, MAE_F=   10.00 meV / A
+2025-04-29 20:18:37.121 INFO: Epoch 135: head: train, loss=0.00046299, MAE_E=   13.63 meV, MAE_F=    9.45 meV / A
+2025-04-29 20:18:38.091 INFO: Epoch 135: head: validation, loss=0.00059487, MAE_E=   13.75 meV, MAE_F=    9.97 meV / A
+2025-04-29 20:18:41.657 INFO: Epoch 136: head: train, loss=0.00046104, MAE_E=   13.58 meV, MAE_F=    9.44 meV / A
+2025-04-29 20:18:42.783 INFO: Epoch 136: head: validation, loss=0.00059223, MAE_E=   13.75 meV, MAE_F=    9.94 meV / A
+2025-04-29 20:18:46.189 INFO: Epoch 137: head: train, loss=0.00045260, MAE_E=   13.61 meV, MAE_F=    9.37 meV / A
+2025-04-29 20:18:47.227 INFO: Epoch 137: head: validation, loss=0.00058829, MAE_E=   13.78 meV, MAE_F=    9.91 meV / A
+2025-04-29 20:18:50.520 INFO: Epoch 138: head: train, loss=0.00045224, MAE_E=   13.51 meV, MAE_F=    9.35 meV / A
+2025-04-29 20:18:51.776 INFO: Epoch 138: head: validation, loss=0.00058614, MAE_E=   13.74 meV, MAE_F=    9.88 meV / A
+2025-04-29 20:18:54.953 INFO: Epoch 139: head: train, loss=0.00044940, MAE_E=   13.59 meV, MAE_F=    9.34 meV / A
+2025-04-29 20:18:56.044 INFO: Epoch 139: head: validation, loss=0.00058371, MAE_E=   13.73 meV, MAE_F=    9.86 meV / A
+2025-04-29 20:18:59.564 INFO: Epoch 140: head: train, loss=0.00044434, MAE_E=   13.64 meV, MAE_F=    9.28 meV / A
+2025-04-29 20:19:00.839 INFO: Epoch 140: head: validation, loss=0.00058121, MAE_E=   13.71 meV, MAE_F=    9.84 meV / A
+2025-04-29 20:19:03.929 INFO: Epoch 141: head: train, loss=0.00044450, MAE_E=   13.58 meV, MAE_F=    9.28 meV / A
+2025-04-29 20:19:05.063 INFO: Epoch 141: head: validation, loss=0.00057974, MAE_E=   13.77 meV, MAE_F=    9.82 meV / A
+2025-04-29 20:19:08.411 INFO: Epoch 142: head: train, loss=0.00044113, MAE_E=   13.57 meV, MAE_F=    9.24 meV / A
+2025-04-29 20:19:09.638 INFO: Epoch 142: head: validation, loss=0.00057742, MAE_E=   13.77 meV, MAE_F=    9.79 meV / A
+2025-04-29 20:19:12.897 INFO: Epoch 143: head: train, loss=0.00043614, MAE_E=   13.64 meV, MAE_F=    9.19 meV / A
+2025-04-29 20:19:14.059 INFO: Epoch 143: head: validation, loss=0.00057526, MAE_E=   13.75 meV, MAE_F=    9.76 meV / A
+2025-04-29 20:19:17.382 INFO: Epoch 144: head: train, loss=0.00043586, MAE_E=   13.63 meV, MAE_F=    9.20 meV / A
+2025-04-29 20:19:18.627 INFO: Epoch 144: head: validation, loss=0.00057206, MAE_E=   13.75 meV, MAE_F=    9.73 meV / A
+2025-04-29 20:19:21.881 INFO: Epoch 145: head: train, loss=0.00043132, MAE_E=   13.61 meV, MAE_F=    9.15 meV / A
+2025-04-29 20:19:23.071 INFO: Epoch 145: head: validation, loss=0.00056929, MAE_E=   13.73 meV, MAE_F=    9.70 meV / A
+2025-04-29 20:19:26.301 INFO: Epoch 146: head: train, loss=0.00042758, MAE_E=   13.44 meV, MAE_F=    9.10 meV / A
+2025-04-29 20:19:27.482 INFO: Epoch 146: head: validation, loss=0.00056651, MAE_E=   13.73 meV, MAE_F=    9.68 meV / A
+2025-04-29 20:19:30.856 INFO: Epoch 147: head: train, loss=0.00042507, MAE_E=   13.61 meV, MAE_F=    9.08 meV / A
+2025-04-29 20:19:32.101 INFO: Epoch 147: head: validation, loss=0.00056314, MAE_E=   13.72 meV, MAE_F=    9.65 meV / A
+2025-04-29 20:19:35.207 INFO: Epoch 148: head: train, loss=0.00041953, MAE_E=   13.59 meV, MAE_F=    9.03 meV / A
+2025-04-29 20:19:36.374 INFO: Epoch 148: head: validation, loss=0.00055941, MAE_E=   13.77 meV, MAE_F=    9.62 meV / A
+2025-04-29 20:19:39.725 INFO: Epoch 149: head: train, loss=0.00041965, MAE_E=   13.61 meV, MAE_F=    9.03 meV / A
+2025-04-29 20:19:40.933 INFO: Epoch 149: head: validation, loss=0.00055670, MAE_E=   13.77 meV, MAE_F=    9.60 meV / A
+2025-04-29 20:19:44.282 INFO: Epoch 150: head: train, loss=0.00041594, MAE_E=   13.49 meV, MAE_F=    8.98 meV / A
+2025-04-29 20:19:45.459 INFO: Epoch 150: head: validation, loss=0.00055261, MAE_E=   13.71 meV, MAE_F=    9.56 meV / A
+2025-04-29 20:19:48.759 INFO: Epoch 151: head: train, loss=0.00041394, MAE_E=   13.67 meV, MAE_F=    8.96 meV / A
+2025-04-29 20:19:49.841 INFO: Epoch 151: head: validation, loss=0.00054949, MAE_E=   13.82 meV, MAE_F=    9.54 meV / A
+2025-04-29 20:19:53.231 INFO: Epoch 152: head: train, loss=0.00040930, MAE_E=   13.45 meV, MAE_F=    8.92 meV / A
+2025-04-29 20:19:54.387 INFO: Epoch 152: head: validation, loss=0.00054643, MAE_E=   13.79 meV, MAE_F=    9.51 meV / A
+2025-04-29 20:19:57.554 INFO: Epoch 153: head: train, loss=0.00040651, MAE_E=   13.55 meV, MAE_F=    8.88 meV / A
+2025-04-29 20:19:58.852 INFO: Epoch 153: head: validation, loss=0.00054418, MAE_E=   13.81 meV, MAE_F=    9.49 meV / A
+2025-04-29 20:20:01.970 INFO: Epoch 154: head: train, loss=0.00040406, MAE_E=   13.64 meV, MAE_F=    8.86 meV / A
+2025-04-29 20:20:03.177 INFO: Epoch 154: head: validation, loss=0.00054136, MAE_E=   13.74 meV, MAE_F=    9.46 meV / A
+2025-04-29 20:20:06.458 INFO: Epoch 155: head: train, loss=0.00040316, MAE_E=   13.58 meV, MAE_F=    8.85 meV / A
+2025-04-29 20:20:07.618 INFO: Epoch 155: head: validation, loss=0.00054145, MAE_E=   13.83 meV, MAE_F=    9.45 meV / A
+2025-04-29 20:20:10.863 INFO: Epoch 156: head: train, loss=0.00039982, MAE_E=   13.61 meV, MAE_F=    8.82 meV / A
+2025-04-29 20:20:12.055 INFO: Epoch 156: head: validation, loss=0.00053998, MAE_E=   13.82 meV, MAE_F=    9.44 meV / A
+2025-04-29 20:20:15.207 INFO: Epoch 157: head: train, loss=0.00040109, MAE_E=   13.79 meV, MAE_F=    8.82 meV / A
+2025-04-29 20:20:16.361 INFO: Epoch 157: head: validation, loss=0.00053852, MAE_E=   13.91 meV, MAE_F=    9.43 meV / A
+2025-04-29 20:20:19.501 INFO: Epoch 158: head: train, loss=0.00039675, MAE_E=   13.68 meV, MAE_F=    8.79 meV / A
+2025-04-29 20:20:20.624 INFO: Epoch 158: head: validation, loss=0.00053536, MAE_E=   13.78 meV, MAE_F=    9.40 meV / A
+2025-04-29 20:20:23.722 INFO: Epoch 159: head: train, loss=0.00039753, MAE_E=   13.57 meV, MAE_F=    8.79 meV / A
+2025-04-29 20:20:24.937 INFO: Epoch 159: head: validation, loss=0.00053281, MAE_E=   13.78 meV, MAE_F=    9.37 meV / A
+2025-04-29 20:20:27.967 INFO: Epoch 160: head: train, loss=0.00039418, MAE_E=   13.70 meV, MAE_F=    8.74 meV / A
+2025-04-29 20:20:29.297 INFO: Epoch 160: head: validation, loss=0.00053012, MAE_E=   13.83 meV, MAE_F=    9.36 meV / A
+2025-04-29 20:20:32.511 INFO: Epoch 161: head: train, loss=0.00039212, MAE_E=   13.65 meV, MAE_F=    8.72 meV / A
+2025-04-29 20:20:33.604 INFO: Epoch 161: head: validation, loss=0.00052695, MAE_E=   13.81 meV, MAE_F=    9.33 meV / A
+2025-04-29 20:20:36.726 INFO: Epoch 162: head: train, loss=0.00039292, MAE_E=   13.61 meV, MAE_F=    8.74 meV / A
+2025-04-29 20:20:37.931 INFO: Epoch 162: head: validation, loss=0.00052458, MAE_E=   13.79 meV, MAE_F=    9.31 meV / A
+2025-04-29 20:20:41.223 INFO: Epoch 163: head: train, loss=0.00038762, MAE_E=   13.60 meV, MAE_F=    8.69 meV / A
+2025-04-29 20:20:42.403 INFO: Epoch 163: head: validation, loss=0.00052199, MAE_E=   13.84 meV, MAE_F=    9.30 meV / A
+2025-04-29 20:20:45.816 INFO: Epoch 164: head: train, loss=0.00038725, MAE_E=   13.57 meV, MAE_F=    8.68 meV / A
+2025-04-29 20:20:47.055 INFO: Epoch 164: head: validation, loss=0.00052004, MAE_E=   13.84 meV, MAE_F=    9.28 meV / A
+2025-04-29 20:20:50.313 INFO: Epoch 165: head: train, loss=0.00038684, MAE_E=   13.77 meV, MAE_F=    8.68 meV / A
+2025-04-29 20:20:51.523 INFO: Epoch 165: head: validation, loss=0.00051721, MAE_E=   13.75 meV, MAE_F=    9.25 meV / A
+2025-04-29 20:20:54.849 INFO: Epoch 166: head: train, loss=0.00038073, MAE_E=   13.53 meV, MAE_F=    8.62 meV / A
+2025-04-29 20:20:56.037 INFO: Epoch 166: head: validation, loss=0.00051552, MAE_E=   13.75 meV, MAE_F=    9.23 meV / A
+2025-04-29 20:20:59.522 INFO: Epoch 167: head: train, loss=0.00038173, MAE_E=   13.59 meV, MAE_F=    8.63 meV / A
+2025-04-29 20:21:00.753 INFO: Epoch 167: head: validation, loss=0.00051446, MAE_E=   13.84 meV, MAE_F=    9.22 meV / A
+2025-04-29 20:21:03.971 INFO: Epoch 168: head: train, loss=0.00037601, MAE_E=   13.71 meV, MAE_F=    8.56 meV / A
+2025-04-29 20:21:05.079 INFO: Epoch 168: head: validation, loss=0.00051498, MAE_E=   13.90 meV, MAE_F=    9.20 meV / A
+2025-04-29 20:21:08.312 INFO: Epoch 169: head: train, loss=0.00037735, MAE_E=   13.45 meV, MAE_F=    8.58 meV / A
+2025-04-29 20:21:09.590 INFO: Epoch 169: head: validation, loss=0.00051307, MAE_E=   13.79 meV, MAE_F=    9.19 meV / A
+2025-04-29 20:21:12.982 INFO: Epoch 170: head: train, loss=0.00037751, MAE_E=   13.70 meV, MAE_F=    8.58 meV / A
+2025-04-29 20:21:14.175 INFO: Epoch 170: head: validation, loss=0.00051200, MAE_E=   13.81 meV, MAE_F=    9.19 meV / A
+2025-04-29 20:21:17.253 INFO: Epoch 171: head: train, loss=0.00037615, MAE_E=   13.55 meV, MAE_F=    8.56 meV / A
+2025-04-29 20:21:18.427 INFO: Epoch 171: head: validation, loss=0.00051174, MAE_E=   13.75 meV, MAE_F=    9.18 meV / A
+2025-04-29 20:21:21.851 INFO: Epoch 172: head: train, loss=0.00037556, MAE_E=   13.52 meV, MAE_F=    8.56 meV / A
+2025-04-29 20:21:23.019 INFO: Epoch 172: head: validation, loss=0.00050967, MAE_E=   13.74 meV, MAE_F=    9.16 meV / A
+2025-04-29 20:21:26.343 INFO: Epoch 173: head: train, loss=0.00037473, MAE_E=   13.69 meV, MAE_F=    8.54 meV / A
+2025-04-29 20:21:27.416 INFO: Epoch 173: head: validation, loss=0.00050928, MAE_E=   13.77 meV, MAE_F=    9.15 meV / A
+2025-04-29 20:21:30.771 INFO: Epoch 174: head: train, loss=0.00037204, MAE_E=   13.77 meV, MAE_F=    8.52 meV / A
+2025-04-29 20:21:32.032 INFO: Epoch 174: head: validation, loss=0.00050825, MAE_E=   13.79 meV, MAE_F=    9.13 meV / A
+2025-04-29 20:21:35.212 INFO: Epoch 175: head: train, loss=0.00036937, MAE_E=   13.71 meV, MAE_F=    8.50 meV / A
+2025-04-29 20:21:36.278 INFO: Epoch 175: head: validation, loss=0.00050537, MAE_E=   13.76 meV, MAE_F=    9.12 meV / A
+2025-04-29 20:21:39.542 INFO: Epoch 176: head: train, loss=0.00036792, MAE_E=   13.78 meV, MAE_F=    8.47 meV / A
+2025-04-29 20:21:40.824 INFO: Epoch 176: head: validation, loss=0.00050396, MAE_E=   13.76 meV, MAE_F=    9.10 meV / A
+2025-04-29 20:21:44.068 INFO: Epoch 177: head: train, loss=0.00036579, MAE_E=   13.54 meV, MAE_F=    8.46 meV / A
+2025-04-29 20:21:45.161 INFO: Epoch 177: head: validation, loss=0.00050134, MAE_E=   13.84 meV, MAE_F=    9.09 meV / A
+2025-04-29 20:21:48.627 INFO: Epoch 178: head: train, loss=0.00036449, MAE_E=   13.74 meV, MAE_F=    8.44 meV / A
+2025-04-29 20:21:49.694 INFO: Epoch 178: head: validation, loss=0.00049641, MAE_E=   13.77 meV, MAE_F=    9.06 meV / A
+2025-04-29 20:21:53.018 INFO: Epoch 179: head: train, loss=0.00036439, MAE_E=   13.55 meV, MAE_F=    8.43 meV / A
+2025-04-29 20:21:54.217 INFO: Epoch 179: head: validation, loss=0.00049603, MAE_E=   13.80 meV, MAE_F=    9.05 meV / A
+2025-04-29 20:21:57.491 INFO: Epoch 180: head: train, loss=0.00036550, MAE_E=   13.64 meV, MAE_F=    8.44 meV / A
+2025-04-29 20:21:58.753 INFO: Epoch 180: head: validation, loss=0.00049432, MAE_E=   13.75 meV, MAE_F=    9.03 meV / A
+2025-04-29 20:22:01.977 INFO: Epoch 181: head: train, loss=0.00035884, MAE_E=   13.67 meV, MAE_F=    8.37 meV / A
+2025-04-29 20:22:03.110 INFO: Epoch 181: head: validation, loss=0.00049248, MAE_E=   13.79 meV, MAE_F=    9.02 meV / A
+2025-04-29 20:22:06.426 INFO: Epoch 182: head: train, loss=0.00036177, MAE_E=   13.60 meV, MAE_F=    8.40 meV / A
+2025-04-29 20:22:07.523 INFO: Epoch 182: head: validation, loss=0.00048908, MAE_E=   13.79 meV, MAE_F=    9.00 meV / A
+2025-04-29 20:22:11.000 INFO: Epoch 183: head: train, loss=0.00035881, MAE_E=   13.48 meV, MAE_F=    8.38 meV / A
+2025-04-29 20:22:12.171 INFO: Epoch 183: head: validation, loss=0.00048681, MAE_E=   13.72 meV, MAE_F=    8.98 meV / A
+2025-04-29 20:22:15.548 INFO: Epoch 184: head: train, loss=0.00035889, MAE_E=   13.62 meV, MAE_F=    8.38 meV / A
+2025-04-29 20:22:16.635 INFO: Epoch 184: head: validation, loss=0.00048462, MAE_E=   13.78 meV, MAE_F=    8.96 meV / A
+2025-04-29 20:22:19.875 INFO: Epoch 185: head: train, loss=0.00035541, MAE_E=   13.71 meV, MAE_F=    8.34 meV / A
+2025-04-29 20:22:20.999 INFO: Epoch 185: head: validation, loss=0.00048193, MAE_E=   13.80 meV, MAE_F=    8.93 meV / A
+2025-04-29 20:22:24.353 INFO: Epoch 186: head: train, loss=0.00035124, MAE_E=   13.61 meV, MAE_F=    8.30 meV / A
+2025-04-29 20:22:25.540 INFO: Epoch 186: head: validation, loss=0.00047984, MAE_E=   13.78 meV, MAE_F=    8.91 meV / A
+2025-04-29 20:22:29.015 INFO: Epoch 187: head: train, loss=0.00035453, MAE_E=   13.59 meV, MAE_F=    8.33 meV / A
+2025-04-29 20:22:30.139 INFO: Epoch 187: head: validation, loss=0.00047814, MAE_E=   13.81 meV, MAE_F=    8.89 meV / A
+2025-04-29 20:22:33.567 INFO: Epoch 188: head: train, loss=0.00035240, MAE_E=   13.67 meV, MAE_F=    8.32 meV / A
+2025-04-29 20:22:34.803 INFO: Epoch 188: head: validation, loss=0.00047503, MAE_E=   13.81 meV, MAE_F=    8.87 meV / A
+2025-04-29 20:22:37.984 INFO: Epoch 189: head: train, loss=0.00034790, MAE_E=   13.70 meV, MAE_F=    8.25 meV / A
+2025-04-29 20:22:39.108 INFO: Epoch 189: head: validation, loss=0.00047329, MAE_E=   13.74 meV, MAE_F=    8.85 meV / A
+2025-04-29 20:22:41.884 INFO: Epoch 190: head: train, loss=0.00034701, MAE_E=   13.74 meV, MAE_F=    8.25 meV / A
+2025-04-29 20:22:42.682 INFO: Epoch 190: head: validation, loss=0.00047157, MAE_E=   13.77 meV, MAE_F=    8.84 meV / A
+2025-04-29 20:22:45.426 INFO: Epoch 191: head: train, loss=0.00034380, MAE_E=   13.62 meV, MAE_F=    8.22 meV / A
+2025-04-29 20:22:46.232 INFO: Epoch 191: head: validation, loss=0.00046806, MAE_E=   13.84 meV, MAE_F=    8.81 meV / A
+2025-04-29 20:22:49.006 INFO: Epoch 192: head: train, loss=0.00034190, MAE_E=   13.54 meV, MAE_F=    8.19 meV / A
+2025-04-29 20:22:50.130 INFO: Epoch 192: head: validation, loss=0.00046758, MAE_E=   13.82 meV, MAE_F=    8.80 meV / A
+2025-04-29 20:22:52.666 INFO: Epoch 193: head: train, loss=0.00033911, MAE_E=   13.48 meV, MAE_F=    8.16 meV / A
+2025-04-29 20:22:53.567 INFO: Epoch 193: head: validation, loss=0.00046644, MAE_E=   13.74 meV, MAE_F=    8.79 meV / A
+2025-04-29 20:22:56.208 INFO: Epoch 194: head: train, loss=0.00034266, MAE_E=   13.77 meV, MAE_F=    8.21 meV / A
+2025-04-29 20:22:57.024 INFO: Epoch 194: head: validation, loss=0.00046668, MAE_E=   13.92 meV, MAE_F=    8.79 meV / A
+2025-04-29 20:22:59.953 INFO: Epoch 195: head: train, loss=0.00033836, MAE_E=   13.68 meV, MAE_F=    8.15 meV / A
+2025-04-29 20:23:01.097 INFO: Epoch 195: head: validation, loss=0.00046328, MAE_E=   13.87 meV, MAE_F=    8.77 meV / A
+2025-04-29 20:23:04.523 INFO: Epoch 196: head: train, loss=0.00033662, MAE_E=   13.65 meV, MAE_F=    8.14 meV / A
+2025-04-29 20:23:05.755 INFO: Epoch 196: head: validation, loss=0.00045902, MAE_E=   13.95 meV, MAE_F=    8.73 meV / A
+2025-04-29 20:23:09.140 INFO: Epoch 197: head: train, loss=0.00033870, MAE_E=   13.67 meV, MAE_F=    8.16 meV / A
+2025-04-29 20:23:10.382 INFO: Epoch 197: head: validation, loss=0.00045842, MAE_E=   13.78 meV, MAE_F=    8.74 meV / A
+2025-04-29 20:23:13.783 INFO: Epoch 198: head: train, loss=0.00034042, MAE_E=   13.77 meV, MAE_F=    8.19 meV / A
+2025-04-29 20:23:15.048 INFO: Epoch 198: head: validation, loss=0.00045754, MAE_E=   13.67 meV, MAE_F=    8.73 meV / A
+2025-04-29 20:23:18.405 INFO: Epoch 199: head: train, loss=0.00034717, MAE_E=   13.80 meV, MAE_F=    8.25 meV / A
+2025-04-29 20:23:19.601 INFO: Epoch 199: head: validation, loss=0.00047176, MAE_E=   13.79 meV, MAE_F=    8.83 meV / A
+2025-04-29 20:23:19.602 INFO: Training complete
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+tensor([0.7439], device='cuda:0') tensor(0., device='cuda:0')
+2025-04-29 20:23:19.607 INFO: 
+2025-04-29 20:23:19.607 INFO: ===========FINISHED TRAINING===========
+2025-04-29 20:23:19.607 INFO: eveluation
+2025-04-29 20:23:19.608 INFO: The scale is [0.74387575] and shift is 0.0
+2025-04-29 20:23:19.748 INFO: Energy Mean: -40889.913585069444, Variance: 0.05766256638515144
+2025-04-29 20:23:20.076 INFO: Energy RMSE: 0.03895384073257446
+2025-04-29 20:23:20.076 INFO: Energy R2: 0.9736848028740182
+2025-04-29 20:23:20.076 INFO: Energy MAE: 0.0347222238779068
+90
+(90, 7, 3)
+torch.Size([90, 7, 3])
+2025-04-29 20:23:20.078 INFO: Forces RMSE: 0.05580390053102379
+2025-04-29 20:23:20.078 INFO: Forces R2: 0.9991899311289458
+2025-04-29 20:23:20.674 INFO: Energy Mean: -40889.908951822916, Variance: 0.057377318276299376
+2025-04-29 20:23:20.863 INFO: Loading checkpoint: results/charge_embedding/bi7-3_logs//sample_4//checkpoints/bi7-3_run-123_epoch-198.pt
+2025-04-29 20:23:20.935 INFO: Loaded Stage one model from epoch 198 for evaluation
+2025-04-29 20:23:20.936 INFO: Saving model to results/charge_embedding/bi7-3_logs/sample_4/checkpoints/bi7-3_run-123.model
+2025-04-29 20:23:21.150 INFO: Compiling model, saving metadata to results/charge_embedding/bi7-3_logs/sample_4/bi7-3_compiled.model
+2025-04-29 20:23:21.260 INFO: Done
+
+============================= JOB FEEDBACK =============================
+
+Job ID: 3119719
+Cluster: hk
+User/Group: hv3694/hk-project-aimat2
+Account: hk-project-aimat2
+State: COMPLETED (exit code 0)
+Partition: accelerated
+Nodes: 1
+Cores per node: 8
+Nodelist: hkn0503
+CPU Utilized: 01:20:23
+CPU Efficiency: 24.61% of 05:26:40 core-walltime
+Job Wall-clock time: 00:40:50
+Starttime: Tue Apr 29 19:42:32 2025
+Endtime: Tue Apr 29 20:23:22 2025
+Memory Utilized: 1.72 GB
+Memory Efficiency: 0.00% of 0.00 MB
+Energy Consumed: 2426055 Joule / 673.904166666667 Watthours
+Average node power draw: 990.226530612245 Watt

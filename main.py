@@ -998,6 +998,8 @@ if __name__ == "__main__":
                     # organize the oracle buffer
                     orcl_size = []
                     orcl_data = []
+                    # TODO: check if the oracle buffer is empty
+                    print(f"Rank {rank}: Sending {len(to_orcl_buffer)} predictions to ML for oracle buffer.")
                     for d in to_orcl_buffer:
                         orcl_size.append(d.shape[0])
                         orcl_data = np.append(orcl_data, d, axis=0)
@@ -1020,6 +1022,8 @@ if __name__ == "__main__":
                     data_section = [np.sum(orcl_size[:i]) for i in range(1, orcl_size.shape[0])]
                     orcl_pred_data = np.split(orcl_pred_data, data_section, axis=1)
                     assert len(orcl_pred_data) == len(to_orcl_buffer), f"Error at MG: number of predictions ({len(orcl_pred_data)}) differs from number of inputs ({len(to_orcl_buffer)}) for oracle buffer."
+                    # TODO: check if the oracle buffer is empty
+                    print(f"Rank {rank}: Received {len(to_orcl_buffer)} predictions from ML for oracle buffer.")
                     to_orcl_buffer = util_module.adjust_input_for_oracle(to_orcl_buffer, orcl_pred_data)
                 # distribute only new training data to ML
                 else:
