@@ -506,6 +506,10 @@ if __name__ == "__main__":
 
             # organize received data
             stop_run_2 = True if recv_data[0] == 1 else False
+
+            if stop_run_2:
+                break
+            
             oracl_data_arrive = int(recv_data[1])    # indicate the number of data in the oracle buffer of MG
             data_section = [sum(data_size_recv[:i]) for i in range(1, data_size_recv.shape[0])]
             new_data = np.split(recv_data, data_section, axis=0)[1:]
@@ -514,9 +518,6 @@ if __name__ == "__main__":
             dataset_new = []
             for i in range(0, len(new_data), 2):
                 dataset_new.append([new_data[i], new_data[i+1]])
-
-            if stop_run_2:
-                break
             
             if adjust_orcale and oracl_data_arrive != -1:
                 # receive data size info
