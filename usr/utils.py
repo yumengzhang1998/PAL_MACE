@@ -35,7 +35,20 @@ np.random.seed(random_seed)
 
 # Set a random seed for PyTorch
 #torch.manual_seed(random_seed)
+def compute_rmsd(P, Q):
+    """Align P to Q and compute RMSD (P and Q are Nx3 arrays)"""
+    # Subtract centroid
+    P -= P.mean(axis=0)
+    Q -= Q.mean(axis=0)
 
+    # Kabsch alignment
+    C = np.dot(P.T, Q)
+    V, S, W = np.linalg.svd(C)
+    d = np.sign(np.linalg.det(np.dot(V, W)))
+    U = np.dot(V, np.dot(np.diag([1, 1, d]), W))
+    P_aligned = np.dot(P, U)
+
+    return np.sqrt(np.mean(np.sum((P_aligned - Q) ** 2, axis=1)))
 def prediction_check(list_data_to_pred, list_data_to_gene):
     """
     User defined predictions check function.
@@ -59,6 +72,7 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     """
     config = ConfigLoader("config.yaml")
     metadata = config['metadata']
+
     num_generators = len(list_data_to_pred)
     input_to_orcl = []
     # print(len(list_data_to_pred[0])) 32
@@ -88,6 +102,7 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     patience_threshold = config['patience_threshold']
     energy_threshold = config['energy_threshold']
     boundary = config['bound']
+    optimal_coord = config['coord']
     upper_bound = energy_threshold + boundary
     lower_bound = energy_threshold - boundary
     avg_energy_pred = np.mean(np.array(pred_list, dtype=float), axis=0)
@@ -98,19 +113,16 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
         # print('COORIDNATES:', input_list[0]['data_list'][0])
         # print('pred ENERGY:', avg_energy_pred)
 
-
-
-    # identify PL input with high prediction std
-    # print('std:', std)
+    # std filter
     if std.ndim == 1:
-        i_orcl = np.where(std >= threshold)[0]
+        i_orcl_std = np.where(std >= threshold)[0]
     else:
-        i_orcl = np.where((std >= threshold).any(axis=1))[0]
+        i_orcl_std = np.where((std >= threshold).any(axis=1))[0]
+    # RMSD filter
+    i_orcl_rmsd = []
 
-    # i_orcl = np.where((std >= threshold).any(axis=1))[0]
-    # add energy threshold
-    # patience for stpes above std, or only one step.
-    # print('data send to oracle:', i_orcl)
+    i_orcl = sorted(set(i_orcl_std).union(set(i_orcl_rmsd)))
+
     input_to_orcl = [convert_to_1d_float_array(input_list[i]) for i in i_orcl]
 
     pred_list = np.mean(np.array(pred_list, dtype=float), axis=0)  # take the mean of predictions to send to generator
@@ -128,16 +140,6 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     
     if data_to_gene is None:
         print('no data to gene')
-    # if len(input_to_orcl) == 0:
-    #     pass
-    # #     print(input_to_orcl)
-    # #     print(std)
-    # #     print('no data to oracle')
-    # elif input_to_orcl[0].shape != (56,) or data_to_gene[0].shape != (56,):
-    #     print('wrong shape')
-    # print('number of data send to oracle:', len(input_to_orcl), input_to_orcl[0].shape)
-    # print('number of data send to generator:', len(data_to_gene), data_to_gene[0].shape)
-    #print('send to oracle:', input_to_orcl[0].x)
 
     return input_to_orcl, data_to_gene
 
@@ -164,9 +166,12 @@ def adjust_input_for_oracle(to_orcl_buffer, pred_list):
     # print('to_orcl_buffer:', to_orcl_buffer) list of arrays representing the 1d arrya of data
     # print('pred_list:', pred_list) list of arrays representing the 1d array of predictions energy and flattened forces
     print('dynamic retraining data adjustment')
-    threshold = 0.0  # set the threhold for standard deviation (std)
+    config = ConfigLoader("config.yaml")
+    threshold = config['std_threshold']
     pred_list = [k[:, 0] for k in pred_list]
     std = [np.std(k, axis=0, ddof=1) for k in pred_list]  # calculation std of predictions from retrained ML
+    # remove data with prediction std not exceeding the threshold
+
 
     #std = np.std(np.array(pred_list, dtype=float), axis=0, ddof=1)  # calculation std of predictions from retrained ML
     # sort the to_orcl_buffer list based on the std
@@ -178,20 +183,13 @@ def adjust_input_for_oracle(to_orcl_buffer, pred_list):
     # # Sort the combined_lists based on the standard deviation values
     # sorted_combined_lists = sorted(combined_lists, key=lambda x: x[0])
     sorted_indices = np.argsort(std)  # Get sorted index order
-    #   TODO check if the sorted_indices is correct
     print(f"Before sorting, to_orcl_buffer size = {len(to_orcl_buffer)}")
 
-    # to_orcl_buffer = [to_orcl_buffer[i] for i in sorted_indices if std[i] > threshold]
-    to_orcl_buffer = [to_orcl_buffer[i] for i in sorted_indices]
+    to_orcl_buffer = [to_orcl_buffer[i] for i in sorted_indices if std[i] > threshold]
+    # to_orcl_buffer = [to_orcl_buffer[i] for i in sorted_indices]
     std_sorted = [std[i] for i in sorted_indices]
     print(f"After sorting, to_orcl_buffer size = {len(to_orcl_buffer)}")
 
-    # to_orcl_buffer = [to_orcl_buffer[i] for i in range(len(to_orcl_buffer)) if std_sorted[i] > threshold]
-    # print(f"After threshold, to_orcl_buffer size = {len(to_orcl_buffer)}")
-
-    # Extract the sorted list1 from the sorted_combined_lists
-    # to_orcl_buffer = [value for std, value in sorted_combined_lists if std > threshold]
-    # to_orcl_buffer = [np.array(item) for item in to_orcl_buffer]
     to_orcl_buffer = [np.asarray(item, dtype=np.float64) for item in to_orcl_buffer]
     print(f"After ensurance of type, to_orcl_buffer size = {len(to_orcl_buffer)}")
     # check if every item in the list has the same shape
@@ -654,3 +652,31 @@ def unflatten_predictions(flattened_preds):
         force_pred_list.append(force_pred)
     
     return y_pred_list, force_pred_list
+
+
+def kabsch_rmsd(P, Q):
+    """
+    Calculate the RMSD between two point sets P and Q using the Kabsch algorithm.
+    Both P and Q must be NumPy arrays of shape (N, 3).
+    """
+
+    # Center both sets to their centroids
+    P_centered = P - np.mean(P, axis=0)
+    Q_centered = Q - np.mean(Q, axis=0)
+
+    # Covariance matrix
+    C = np.dot(P_centered.T, Q_centered)
+
+    # Optimal rotation matrix using SVD
+    V, S, Wt = np.linalg.svd(C)
+    d = np.sign(np.linalg.det(np.dot(V, Wt)))
+    D = np.diag([1.0, 1.0, d])
+    U = np.dot(V, np.dot(D, Wt))
+
+    # Rotate P
+    P_rotated = np.dot(P_centered, U)
+
+    # Calculate RMSD
+    diff = P_rotated - Q_centered
+    rmsd = np.sqrt(np.mean(np.sum(diff**2, axis=1)))
+    return rmsd

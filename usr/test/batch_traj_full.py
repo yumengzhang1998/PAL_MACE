@@ -335,6 +335,7 @@ if __name__ == "__main__":
 
     # Define the directory path
     dir_path = f'../../trajs/{prefix}'
+    print("finished generating batch trajectories")
 
     # Ensure the directory exists
     os.makedirs(dir_path, exist_ok=True)
@@ -354,4 +355,4 @@ if __name__ == "__main__":
             # Save the trajectory data to HDF5
             # traj_grp.create_dataset(f"traj_{i}", data=traj, compression="gzip")
 
-    print('Batch trajectory generation complete.')
+    print('Batch trajectory generation complete and saved.')

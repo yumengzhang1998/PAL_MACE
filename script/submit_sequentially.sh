@@ -8,7 +8,9 @@ jobs=(
     "bi11-3.sh"
     "bi11-3_samples.sh"
 )
-
+jobs=(
+    "bi11-3_samples.sh"
+)
 # Loop over each job
 for job_script in "${jobs[@]}"; do
     # Submit the job

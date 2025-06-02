@@ -336,6 +336,7 @@ if __name__ == "__main__":
     os.makedirs(dir_path, exist_ok=True)
     traj_gen = Generate_TrajsBatch(data_batch, result_path, model_number, dir_path)
     batch_trajs = traj_gen.generate_batch_trajs(steps)
+    print("finished generating batch trajectories")
 
     with open(f'{dir_path}/{model_number}_{steps}steps_traj.pkl', 'wb') as f:
             
@@ -356,4 +357,4 @@ if __name__ == "__main__":
             # traj_grp.create_dataset(f"traj_{i}", data=traj, compression="gzip")
 
     print(f"✅ Saved {len(batch_trajs)} trajectories to {h5_path}")
-    print('Batch trajectory generation complete.')
+    print('Batch trajectory generation complete and saved.')

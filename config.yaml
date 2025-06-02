@@ -1,13 +1,12 @@
 # MACE
 args_dict: {
-    "name": "MACE_on_bi11-3_samples",
+    "name": "MACE_on_bi4-2",
     "num_workers": 16,
     "train_file": "train.xyz",
     "valid_file": "test.xyz",
     "test_file": "test.xyz",
     "results_dir": "results",
     "E0s": "average",
-    # "E0s": {83: -5802.83},
     "statistics_file": None,
     "model": "MACE_with_charge",
     "num_interactions": 2,
@@ -19,8 +18,7 @@ args_dict: {
     "batch_size": 32,
     "valid_batch_size": 32,
     "max_num_epochs": 200,
-    "swa": False,  # Flags set to True if present
-    # "start_swa": 60,
+    "swa": False,
     "ema": True,
     "ema_decay": 0.99,
     "amsgrad": True,
@@ -28,7 +26,6 @@ args_dict: {
     "device": "cpu",
     "seed": 123
 }
-
 
 # active learning
 patience_threshold: 10
@@ -40,34 +37,35 @@ retrain_size: 50
 
 full_dataset: True
 
-prefix: bi11-3_samples
-energy_threshold: -64250.5
-std_threshold: 0.06
+prefix: bi4-2
+energy_threshold: -23365.0
+std_threshold: 0.007
 bound: 10
-num_atom: 11
+num_atom: 4
+coord: [[-5.708457, 5.415795, -0.046961], [-2.776947, 5.638126, -0.169972], [-5.47989, 2.48558, 0.099518], [-2.548224, 2.708247, -0.023387]]
 
 # data metadata
 metadata:
   - type: array # coordinates
-    shape: [11, 3]
+    shape: [4, 3]
     dtype: float
   - type: tensor # atom_number
-    shape: [11]
+    shape: [4]
     dtype: torch.int64
   - type: scalar_nullable # true_energy
     dtype: int
   - type: array # true_forces
-    shape: [11, 3]
+    shape: [4, 3]
     dtype: float
   - type: charge # charge
     dtype: torch.long
   - type: array # pred_forces
-    shape: [11, 3]
+    shape: [4, 3]
     dtype: float
   - type: scalar_nullable # pred_energy
     dtype: int
   - type: scalar # patience
     dtype: int
-  - type: array #velocities
-    shape: [11, 3]
+  - type: array # velocities
+    shape: [4, 3]
     dtype: float

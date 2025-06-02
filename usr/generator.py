@@ -190,6 +190,7 @@ class UserGene(object):
             data_to_gene = None
             print('trajecory is reached 100000 steps, start to generate new trajectory')
             self.starting_point = 0
+            self.history.append([])  # start a new history for the new trajectory
         # initialize data: first iteration or when patience is exceeded
         if data_to_gene is None:
             print(f'initializing data, force to number {self.counter} in the initial data')

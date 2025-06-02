@@ -1,9 +1,19 @@
-
-from ast import arg
-import yaml
 import os
 import argparse
+import ast
+import pandas as pd
 
+# Load extra data from CSV
+def load_coord_from_csv(csv_path):
+    df = pd.read_csv(csv_path)
+    coord_dict = {}
+    for _, row in df.iterrows():
+        name = row["Name"].lower()
+        coord = ast.literal_eval(row["coord"])
+        coord_dict[name] = coord
+    return coord_dict
+
+# Prefix base settings (excluding coord)
 prefix_settings = {
     "bi4-2": {
         "energy_threshold": -23365.0,
@@ -37,11 +47,14 @@ prefix_settings = {
     }
 }
 
-def generate_config_yaml(prefix, full_dataset):
+def generate_config_yaml(prefix, full_dataset, coord_dict):
     if prefix not in prefix_settings:
         raise ValueError(f"Prefix '{prefix}' is not recognized. Available: {list(prefix_settings.keys())}")
+    if prefix not in coord_dict:
+        raise ValueError(f"Coordinates not found in CSV for prefix '{prefix}'.")
 
     settings = prefix_settings[prefix]
+    coord = coord_dict[prefix]
 
     content = f'''# MACE
 args_dict: {{
@@ -52,7 +65,6 @@ args_dict: {{
     "test_file": "test.xyz",
     "results_dir": "results",
     "E0s": "average",
-    # "E0s": {{83: -5802.83}},
     "statistics_file": None,
     "model": "MACE_with_charge",
     "num_interactions": 2,
@@ -64,8 +76,7 @@ args_dict: {{
     "batch_size": 32,
     "valid_batch_size": 32,
     "max_num_epochs": 200,
-    "swa": False,  # Flags set to True if present
-    # "start_swa": 60,
+    "swa": False,
     "ema": True,
     "ema_decay": 0.99,
     "amsgrad": True,
@@ -73,7 +84,6 @@ args_dict: {{
     "device": "cpu",
     "seed": 123
 }}
-
 
 # active learning
 patience_threshold: 10
@@ -90,6 +100,7 @@ energy_threshold: {settings['energy_threshold']}
 std_threshold: {settings['std_threshold']}
 bound: {settings['bound']}
 num_atom: {settings['num_atom']}
+coord: {coord}
 
 # data metadata
 metadata:
@@ -113,7 +124,7 @@ metadata:
     dtype: int
   - type: scalar # patience
     dtype: int
-  - type: array #velocities
+  - type: array # velocities
     shape: [{settings['num_atom']}, 3]
     dtype: float
 '''
@@ -125,10 +136,10 @@ metadata:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--prefix", required=True, help="Prefix to use (e.g., bi4-2)")
-    parser.add_argument("--full_dataset", required=True, help="Use full dataset")
+    parser.add_argument("--full_dataset", required=True, help="Use full dataset (True/False)")
+
     args = parser.parse_args()
-    if args.full_dataset == "True":
-        args.full_dataset = True
-    else: 
-        args.full_dataset = False
-    generate_config_yaml(args.prefix, args.full_dataset)
+    full_dataset_bool = args.full_dataset == "True"
+
+    coord_data = load_coord_from_csv("optimized.csv")
+    generate_config_yaml(args.prefix, full_dataset_bool, coord_data)
