@@ -119,8 +119,11 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     else:
         i_orcl_std = np.where((std >= threshold).any(axis=1))[0]
     # RMSD filter
-    i_orcl_rmsd = []
-
+    rmsd_threshold = 0.5
+    i_orcl_rmsd = [
+        i for i, input_item in enumerate(input_list)
+        if compute_rmsd(np.array(input_item[0]), optimal_coord) >= rmsd_threshold
+    ]
     i_orcl = sorted(set(i_orcl_std).union(set(i_orcl_rmsd)))
 
     input_to_orcl = [convert_to_1d_float_array(input_list[i]) for i in i_orcl]
