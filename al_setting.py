@@ -7,9 +7,9 @@ Created on Tue Jul  4 20:49:49 2023
 """
 
 AL_SETTING = {
-    "result_dir": './results/bi11-3_samples',    # directory to save all metadata and results
-    "orcl_buffer_path": './results/bi11-3_samples/orcl_buffer',    # path to save data ready to send to ML. Set to None to skip buffer backup.
-    "ml_buffer_path": './results/bi11-3_samples/ml_buffer',    # path to save data ready to send to Oracle. Set to None to skip buffer backup.
+    "result_dir": './results/bi4-2',    # directory to save all metadata and results
+    "orcl_buffer_path": './results/bi4-2/orcl_buffer',    # path to save data ready to send to ML. Set to None to skip buffer backup.
+    "ml_buffer_path": './results/bi4-2/ml_buffer',    # path to save data ready to send to Oracle. Set to None to skip buffer backup.
 
     # Number of process in total = 2 MPI communication processes (Manager and Exchange)
     #                              + pred_process + orcl_process + gene_process + ml_process

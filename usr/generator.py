@@ -48,6 +48,7 @@ class UserGene(object):
         self.rank = rank
         self.result_dir = result_dir
         ##### User Part ######
+        print(f"Initializing Generator {rank}")
         self.counter = 0
         self.limit = float('inf')
         self.history = [[],]

@@ -103,6 +103,7 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     energy_threshold = config['energy_threshold']
     boundary = config['bound']
     optimal_coord = config['coord']
+
     upper_bound = energy_threshold + boundary
     lower_bound = energy_threshold - boundary
     avg_energy_pred = np.mean(np.array(pred_list, dtype=float), axis=0)
@@ -120,6 +121,7 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
         i_orcl_std = np.where((std >= threshold).any(axis=1))[0]
     # RMSD filter
     rmsd_threshold = 0.5
+    optimal_coord = np.array(optimal_coord, dtype=float).reshape(input_list[0][0].shape)  # reshape to match the coordinates shape
     i_orcl_rmsd = [
         i for i, input_item in enumerate(input_list)
         if compute_rmsd(np.array(input_item[0]), optimal_coord) >= rmsd_threshold
@@ -188,7 +190,7 @@ def adjust_input_for_oracle(to_orcl_buffer, pred_list):
     sorted_indices = np.argsort(std)  # Get sorted index order
     print(f"Before sorting, to_orcl_buffer size = {len(to_orcl_buffer)}")
 
-    to_orcl_buffer = [to_orcl_buffer[i] for i in sorted_indices if std[i] > threshold]
+    # to_orcl_buffer = [to_orcl_buffer[i] for i in sorted_indices if std[i] > threshold]
     # to_orcl_buffer = [to_orcl_buffer[i] for i in sorted_indices]
     std_sorted = [std[i] for i in sorted_indices]
     print(f"After sorting, to_orcl_buffer size = {len(to_orcl_buffer)}")

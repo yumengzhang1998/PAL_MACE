@@ -1,6 +1,6 @@
 #! /bin/bash
 #SBATCH --job-name=bi7-3MACE
-#SBATCH --partition=accelerated
+#SBATCH --partition=normal 
 #SBATCH --time=20:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=60

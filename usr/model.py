@@ -221,6 +221,7 @@ class UserModel(object):
         self.mode = mode
         self.i_gpu = i_gpu
         self.boot_strap = True
+        print(f"Initializing Model {rank}")
 
         pred_procs = AL_SETTING["pred_process"]
         orcl_procs = AL_SETTING["orcl_process"]
