@@ -48,12 +48,13 @@ class UserGene(object):
         self.rank = rank
         self.result_dir = result_dir
         ##### User Part ######
+        print(f"Initializing Generator {rank}")
         self.counter = 0
         self.limit = float('inf')
         self.history = [[],]
         self.save_path = os.path.join(self.result_dir, f"generator_data_{rank}")
         self.temperature = 298.0 * unit.kelvin
-        self.collision_rate = 91.0 / unit.picosecond
+        self.collision_rate = 1.0 / unit.picosecond
         self.timestep = 2.0 * unit.femtoseconds
         config = ConfigLoader("config.yaml")
         self.full_dataset = config['full_dataset']
@@ -73,6 +74,7 @@ class UserGene(object):
         else:
             self.path = f'usr/initial_pyg/raw/{self.prefix}_parsed.csv'
         self.init_length = self.get_lenth()
+        print(f"Generator {rank} initialized with path: {self.path}, init_length: {self.init_length}")
         self.starting_point = 0
         self.external_force = openmm.CustomExternalForce('fx * x + fy * y + fz * z')
 
@@ -80,6 +82,7 @@ class UserGene(object):
         self.external_force.addPerParticleParameter('fy')
         self.external_force.addPerParticleParameter('fz')
         self.num_generate = 0
+        self.current_iteration = None
     
 
     def read_in_data(self, counter=0):
@@ -130,8 +133,9 @@ class UserGene(object):
         """
         # Loop over each atom and set the predicted force components
 
-        conversion_factor = 418.4  # kcal/mol/Å -> kJ/mol/nm
-        current_forces = -1 * predicted_forces * conversion_factor * unit.kilojoule_per_mole / unit.nanometer
+        EV_PER_ANGSTROM_TO_KJMOL_PER_NM = 96.485
+
+        current_forces = -1 * predicted_forces * EV_PER_ANGSTROM_TO_KJMOL_PER_NM * unit.kilojoule_per_mole / unit.nanometer
         # current_forces = predicted_forces * unit.kilojoule_per_mole / unit.nanometer
         for i in range(predicted_forces.shape[0]):
             fx, fy, fz = current_forces[i]
@@ -161,6 +165,8 @@ class UserGene(object):
             None,   # pred_energy
             geometry[-2], # patience
             vec3_to_numpy(velosity)]
+        if geometry[7][0] < 0 or geometry[7][1] < 0:
+            raise ValueError(f"[FATAL] Negative patience injected: {geometry[7]}")
 
         # print('traj', traj)
         # data = convert_to_1d_float_array(traj)
@@ -181,80 +187,82 @@ class UserGene(object):
         """
         stop = False
         data_to_pred = None
+        ordered = True
         
         # please notice that data_to_gene is intinilized to be None for the first iteration.
         ##### User Part #####
+
         if self.starting_point % 1000 == 0:
             print(f"MD has ran for {self.starting_point} steps")
-        if self.starting_point >= 100000:
-            data_to_gene = None
-            print('trajecory is reached 100000 steps, start to generate new trajectory')
-            self.starting_point = 0
-            self.history.append([])  # start a new history for the new trajectory
+        if data_to_gene is not None:
+            # iteration_marker = int(data_to_gene[0])
+            #print(f"[DEBUG] RANK {self.rank}: {self.num_generate} | len(flat_array): {len(data_to_gene)} | data_to_gene: {data_to_gene}")
+            geometry = reconstruct_from_metadata(data_to_gene, self.metadata, rank = f"generator {self.rank}")
+            if not isinstance(geometry[7], list) or len(geometry[7]) != 2:
+                print(f"[GENERATOR {self.rank}] Invalid patience structure: {geometry[7]}")
+                # geometry[7] = [0, 0]
+            elif geometry[7][0] < 0 or geometry[7][1] < 0:
+                print(f"[GENERATOR {self.rank}] Negative patience detected: {geometry[7]}")
+                # geometry[7][0] = max(0, geometry[7][0])
+                # geometry[7][1] = max(0, geometry[7][1])
+            if self.starting_point >= 100000 or geometry[-2][0] > self.patience_threshold or geometry[-2][1] > self.patience_threshold:
+                data_to_gene = None
+                print(f"""Rank {self.rank} patience or step exceeded,
+                      trajecory is reached {self.starting_point} steps, 
+                    energy patience is {geometry[-2][0]}, 
+                    rmsd patience is {geometry[-2][1]}, 
+                    start to generate new trajectory""")
+                self.starting_point = 0
+                self.history.append([])  # start a new history for the new trajectory
+        
         # initialize data: first iteration or when patience is exceeded
         if data_to_gene is None:
-            print(f'initializing data, force to number {self.counter} in the initial data')
-            if self.counter <= self.init_length - 1:
-                data_to_pl = self.read_in_data(counter = self.counter)
-                molecule, box_vectors = self.set_up(data_to_pl)
-                num_particles = molecule.system.getNumParticles()
-                init_force = self.custom_force_initilize(molecule)
-                self.iterative_force = self.update_forces(init_force, data_to_pl[3].numpy())
-                molecule.system.addForce(self.iterative_force)
-                molecule.system.setDefaultPeriodicBoxVectors(*box_vectors)
-                integrator = openmm.LangevinIntegrator(self.temperature, self.collision_rate, self.timestep)
-                print('set up simulation')
-                self.simulation = openmm.app.Simulation(molecule.get_Topology(), molecule.get_System(), integrator)
-                print('add initial positions')
-                self.simulation.context.setPositions(data_to_pl[0].numpy() * 0.1)
-                self.simulation.context.setVelocitiesToTemperature(self.temperature)
-                
-                data_to_pl = self.update(data_to_pl)
-                self.history.append([data_to_pl[0],])
-                self.counter += self.gene_procs
-                self.num_generate += 1
-                print('counter:', self.counter)
-            #read in data when initial data size exceeded and start to generate new data from beginning by random structure
+            if ordered == True:
+                print(f'initializing data, force to number {self.counter} in the initial data')
+                if self.counter <= self.init_length - 1:
+                    data_to_pl = self.read_in_data(counter = self.counter)
+                else:
+                    print(f'counter {self.counter} exceeds the initial data length {self.init_length}, start to randomly start')
+                    data_to_pl = self.read_in_data(counter = random.randint(0, self.init_length - 1))
             else:
-                # when all initila data have been used
-                # data_to_pl = self.read_in_data(self.counter % self.init_length)
-                # data_to_pl[-2] = 0
-                # data_to_pl[2] = None
-                # data_to_pl[0] = self.random_strcuture_in_space( data_to_pl[0])
-                stop = True
-                #data_to_pl = convert_to_1d_float_array([data_to_pl[0], data_to_pl[1], data_to_pl[2], data_to_pl[3], data_to_pl[4], data_to_pl[-2], data_to_pl[-1]])
-            # self.history.append([data_to_pl,])
-            # self.counter += 1
-            # data_to_pred = data_to_pl 
-            # del data_to_pl
+                print("initializing data, PICKED randomly from initial data")
+                data_to_pl = self.read_in_data(counter = random.randint(0, self.init_length - 1))
+            molecule, box_vectors = self.set_up(data_to_pl)
+            num_particles = molecule.system.getNumParticles()
+            init_force = self.custom_force_initilize(molecule)
+            self.iterative_force = self.update_forces(init_force, data_to_pl[3].numpy())
+            molecule.system.addForce(self.iterative_force)
+            # molecule.system.setDefaultPeriodicBoxVectors(*box_vectors)
+            integrator = openmm.LangevinIntegrator(self.temperature, self.collision_rate, self.timestep)
+            print('set up simulation')
+            self.simulation = openmm.app.Simulation(molecule.get_Topology(), molecule.get_System(), integrator)
+            print('add initial positions')
+            self.simulation.context.setPositions(data_to_pl[0].numpy() * 0.1)
+            self.simulation.context.setVelocitiesToTemperature(self.temperature)
+            
+            data_to_pl = self.update(data_to_pl)
+            self.history.append([data_to_pl[0],])
+            self.counter += self.gene_procs
+            self.num_generate += 1
+            print('counter:', self.counter)
+            #read in data when initial data size exceeded and start to generate new data from beginning by random structure
+
 
         else:
-            # take the last geomety from self.history : [{'data_list': Data(y=-9.739021563862, pos=[4, 3], z=[4], forces=[4, 3], charge=-2, atoms=[4])}]
-            geometry = copy.deepcopy(data_to_gene)  
-            geometry = reconstruct_from_metadata(geometry, self.metadata)
-            if data_to_gene[-2] > self.patience_threshold:
-                print(self.patience_threshold, 'patience is exceeded, new trajectory is generated')
-                # print('patience is exceeded, new trajectory is generated')
-                geometry[-1] = 0
-                geometry[0] = self.random_strcuture_in_space(geometry[0])
-                data_to_pl = copy.deepcopy(geometry)
-                # data_to_pl = convert_to_1d_float_array([geometry[0], geometry[1], geometry[2], geometry[3], geometry[4], geometry[-2], geometry[-1]])
-                del geometry
-                self.num_generate += 1
-                self.starting_point += 1
-            else:
-                force = self.update_forces(self.iterative_force, geometry[5])
-                force.updateParametersInContext(self.simulation.context)
-                data_to_pl = self.update(geometry)
-                self.num_generate += 1
-                self.starting_point += 1
-            
-            # geometry = self.history[-1][-1]  #I save all the data object completely in data_to_gene so data_to_gene is equivalent to self.history[-1][-1]
-            # generate new data
-            # data_to_pl = self.update(geometry)
 
-            self.history[-1].append(data_to_pl[0])
- 
+
+            # if self.current_iteration is not None and iteration_marker != self.current_iteration:
+            #     print(f"model update detected, current iteration: {self.current_iteration}, new iteration: {iteration_marker}")
+            # self.current_iteration = iteration_marker  # <- save for later use if needed
+
+            force = self.update_forces(self.iterative_force, geometry[5])
+            force.updateParametersInContext(self.simulation.context)
+            data_to_pl = self.update(geometry)
+            self.num_generate += 1
+            self.starting_point += 1
+            
+            self.history[-1].append([self.current_iteration, data_to_pl[0]])
+
             # self.counter += 1
             if self.counter > self.limit:
                 print('generation limit reached')
@@ -263,8 +271,9 @@ class UserGene(object):
             stop = True
         if self.num_generate % 10000 == 0:
             print(f'{self.num_generate} Points are generated')
-
-        data_to_pred  = convert_to_1d_float_array(data_to_pl)
+        # print(data_to_pl)
+        data_to_pred  = convert_to_1d_float_array(data_to_pl, metadata=self.metadata)
+        # print(f"[DEBUG] RANK {self.rank} after update and flattening | len(flat_array): {len(data_to_pred)} | data_to_pred: {data_to_pred}")
         # print('flattened data', data_to_pred)
 
 
@@ -278,6 +287,7 @@ class UserGene(object):
         Save the current state and progress.
         """
         ##### User Part #####
+        
         m = 'ab' if os.path.exists(self.save_path) else 'wb'
         with open(self.save_path, m) as fh:
             if len(self.history) > 1:

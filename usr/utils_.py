@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 import torch
 from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment
 from torch_geometric.data import Data, DataLoader
 import torch
 import torch.nn.functional as F
@@ -20,18 +22,33 @@ import matplotlib.pyplot as plt
 from openmm import unit, Vec3
 import random
 import numpy as np
-
+from scipy.spatial.distance import pdist
+from scipy.spatial.distance import squareform  # only if you want i,j
 from usr.initial_pyg.functions.config import ConfigLoader
 import time
 import openmm.app as mmapp
 import copy
 import openmm as mm
 
+
+
 random_seed = 42
 random.seed(random_seed)
 
 # Set a random seed for NumPy
 np.random.seed(random_seed)
+def _to_owned_vec148(x):
+    import numpy as np, torch
+    if isinstance(x, torch.Tensor):
+        x = x.detach().clone().cpu().to(torch.float64).contiguous().numpy()
+    else:
+        x = np.asarray(x, dtype=np.float64)
+
+    x = np.ascontiguousarray(x, dtype=np.float64).copy()  # 关键：copy() 断开底层别名
+    if x.ndim != 1 or x.size != 148:
+        raise ValueError(f"record must be (148,), got {x.shape}")
+    x.setflags(write=False)  # 防止后续任何地方原地写坏
+    return x
 
 # Set a random seed for PyTorch
 #torch.manual_seed(random_seed)
@@ -49,6 +66,37 @@ def compute_rmsd(P, Q):
     P_aligned = np.dot(P, U)
 
     return np.sqrt(np.mean(np.sum((P_aligned - Q) ** 2, axis=1)))
+
+def compute_perm_invariant_rmsd(P, Q):
+    P_centered = P - P.mean(axis=0)
+    Q_centered = Q - Q.mean(axis=0)
+
+    D = cdist(P_centered, Q_centered)
+    row_ind, col_ind = linear_sum_assignment(D)
+
+    P_matched = P_centered[row_ind]
+    Q_matched = Q_centered[col_ind]
+
+    # Kabsch: rotate Q_matched to align to P_matched
+    C = Q_matched.T @ P_matched
+    V, S, W = np.linalg.svd(C)
+    d = np.sign(np.linalg.det(V @ W))
+    U = V @ np.diag([1, 1, d]) @ W
+    Q_aligned = Q_matched @ U
+
+    rmsd = np.sqrt(np.mean(np.sum((Q_aligned - P_matched) ** 2, axis=1)))
+    return rmsd
+
+def convert_with_iteration_counter(input_list, iteration_counts,metadata=None):
+    data_to_gene = []
+    for i, k in enumerate(input_list):
+        flat = convert_to_1d_float_array(k, metadata)
+        flat_with_iter = np.insert(flat, 0, iteration_counts[i])  # prepend iteration count
+        data_to_gene.append(flat_with_iter)
+    return data_to_gene
+
+
+
 def prediction_check(list_data_to_pred, list_data_to_gene):
     """
     User defined predictions check function.
@@ -72,46 +120,64 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     """
     config = ConfigLoader("config.yaml")
     metadata = config['metadata']
+    num_gene = config['num_gen_process']
 
-    num_generators = len(list_data_to_pred)
     input_to_orcl = []
-    # print(len(list_data_to_pred[0])) 32
-    input_list = [reconstruct_from_metadata(item, metadata) for item in list_data_to_pred]
+    # print("DEBUG | prediction_check | list_data_to_pred length:", len(list_data_to_pred))
+    input_list = [reconstruct_from_metadata(item, metadata, rank=f"prediction check", return_dict=True) for item in list_data_to_pred]
+    for rec in input_list:
+        z = np.asarray(rec["atomic_numbers"])
+        coords = np.asarray(rec["coords"])
+        assert coords.shape == (z.size, 3), \
+            f"coords shape {coords.shape} != ({z.size}, 3) during prediction_check"
+    # print(f"DEBUG | prediction_check | input_list: {input_list[0]}")  # Debugging line to check the first item
+    # above this long is correct
 
-    # pred_list = [k.tolist() for k in pred_list]
-    list_data_to_gene = list_data_to_gene[0]
-
-    pred_list, force_list = unflatten_predictions(list_data_to_gene)
    
+    # energy, forces = parse_list_data_to_gene(list_data_to_gene)
+    # Remove the iteration marker before parsing
+    # list_data_to_gene_cleaned = [item[:, 1:] for item in list_data_to_gene]
+    # iteration_counts = [int(np.round(np.mean(item[:, 0]))) for item in list_data_to_gene_cleaned]  # optional if needed
+    # print(iteration_counts)
+
+    energy, forces = parse_list_data_to_gene(list_data_to_gene)
 
 
+    force_std_vec = forces.std(axis=1, ddof=1)
+    #max std for force
+    max_force_std = force_std_vec.max(axis=1)  # shape: (generators, atoms)
 
-    # Stack the arrays along a new dimension
-    stacked_arrays = np.stack(force_list)
-
-    # Compute the mean along the new dimension (axis=0)
-    forces = np.mean(stacked_arrays, axis=0)
-    forces = torch.tensor(forces)
-
+    # Now compute L2 norm of std vectors per atom:
+    # force_std_l2 = np.linalg.norm(force_std_vec, axis=2)  # shape: (generators, atoms)
+    # Mean vector per atom across predictors: shape (generators, atoms, 3)
+    force_mean_vec = forces.mean(axis=1)  # axis=1 → over predictors
+    # max_force_norm = np.linalg.norm(force_mean_vec, axis=2).max(axis=1)
+    # print("Max force norm per generator:", max_force_norm)
     ##### User Part #####
     # Find the indices of the top 25% of standard deviations
     # print('pred_list:', pred_list)
-    std = np.std(np.array(pred_list, dtype=float), axis=0, ddof=1)  # calculate std of PL predictions
+    std = energy.std(axis=1, ddof=1)  # shape: (num_generators,)
+    std  = max_force_std
+    energy_mean = energy.mean(axis=1)
     # print('std:', std)
+    # print(energy_mean, std, force_mean_vec)
     threshold = config['std_threshold']
     patience_threshold = config['patience_threshold']
     energy_threshold = config['energy_threshold']
     boundary = config['bound']
     optimal_coord = config['coord']
+
     upper_bound = energy_threshold + boundary
     lower_bound = energy_threshold - boundary
-    avg_energy_pred = np.mean(np.array(pred_list, dtype=float), axis=0)
-    if avg_energy_pred > upper_bound or avg_energy_pred < lower_bound:
-        print('energy out of bound', avg_energy_pred)
-        print(input_list[0][-1])
-        input_list[0][-2] += 1
-        # print('COORIDNATES:', input_list[0]['data_list'][0])
-        # print('pred ENERGY:', avg_energy_pred)
+
+    for i in range(len(input_list)):
+        if input_list[i]["patience"][0] < 0:
+            print('Energy patience went negative:', input_list[i])
+        if energy_mean[i] > upper_bound or energy_mean[i] < lower_bound:
+            print('energy out of bound', energy)
+            print('energy out of bound', energy_mean[i])
+            input_list[i]['patience'][0] += 1
+
 
     # std filter
     if std.ndim == 1:
@@ -119,32 +185,66 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     else:
         i_orcl_std = np.where((std >= threshold).any(axis=1))[0]
     # RMSD filter
-    # rmsd_threshold = 0.5
+    rmsd_threshold = float('inf')
+    optimal_coord = np.array(optimal_coord, dtype=float).reshape(input_list[0]["coords"].shape)  # reshape to match the coordinates shape
+    i_orcl_rmsd = []
     # i_orcl_rmsd = [
     #     i for i, input_item in enumerate(input_list)
     #     if compute_rmsd(np.array(input_item[0]), optimal_coord) >= rmsd_threshold
     # ]
-    # i_orcl = sorted(set(i_orcl_std).union(set(i_orcl_rmsd)))
+    rmsd = [compute_perm_invariant_rmsd(np.array(input_item["coords"]), optimal_coord) for input_item in input_list]
 
-    input_to_orcl = [convert_to_1d_float_array(input_list[i]) for i in i_orcl_std]
+    i_orcl_rmsd = np.where(np.array(rmsd) >= rmsd_threshold)[0]
+    # add patience
+    for i in i_orcl_rmsd:
+        input_list[i]['patience'][1] += 1  # increment patience for items with high RMSD
+    # if len(i_orcl_rmsd) != 0:
+    #     print(f'RMSD filter: {len(i_orcl_rmsd)} items with RMSD >= {rmsd_threshold} A')
+    #     print(f'RMSD values: {np.array(rmsd)[i_orcl_rmsd]}')
+    i_orcl = sorted(set(i_orcl_std).union(set(i_orcl_rmsd)))
+    # force_normalized = np.linalg.norm(forces, axis=1)  # calculate the norm of forces
 
-    pred_list = np.mean(np.array(pred_list, dtype=float), axis=0)  # take the mean of predictions to send to generator
+            
+
+
+    input_to_orcl = [ copy.deepcopy(input_list[i]) for i in i_orcl]
+    
+
+    # input_to_orcl = [convert_to_1d_float_array(item, metadata) for item in input_to_orcl]  # ensure type is float64
+    normalized = []
+    L = record_length_from_metadata(metadata)  # 可能为 None（遇到变长list）
+    for obj in input_to_orcl:  # 确保这是 dict 列表
+        arr = pack_from_metadata(obj, metadata)
+        # 如果 L 有具体数值，做一次等长校验
+        if L is not None and arr.size != L:
+            raise ValueError(f"packed size {arr.size} != expected {L}")
+        normalized.append(arr.copy())  # 立刻 copy，避免别名覆盖
+        
+
+    pred_list = energy_mean
     #pred_list[i_orcl] = 0  # for predictions with high std, send 0 instead to generator
-    input_list[0][-3] = torch.tensor(pred_list[0])
-    input_list[0][5] = forces
-    if input_list[0][-2] > patience_threshold:
-        data_to_gene = copy.deepcopy(input_list)
-        print('patience reached')
-    elif input_list[0][-2] is None:
-        print('no patience in check function')
-    else:
-        data_to_gene = [convert_to_1d_float_array(k) for k in input_list]
 
+    data_to_gene = []
+
+    for i, rec in enumerate(input_list):
+        rec["pred_energy"]  = float(energy_mean[i])
+        rec["pred_forces"]  = np.asarray(force_mean_vec[i], dtype=np.float64)
+
+    # Check patience status across all items
+    if any(item['patience'][-1] is not None and item['patience'][-1] > patience_threshold for item in input_list):
+        print('patience reached (at least one structure)')
+    elif any(item['patience'][-1] is None for item in input_list):
+        print('no patience info in check function')
+
+    # data_to_gene = convert_with_iteration_counter(input_list, iteration_counts)
+    data_to_gene = [convert_to_1d_float_array(item, metadata) for item in input_list]  # convert to 1D float arrays
     
     if data_to_gene is None:
         print('no data to gene')
-
-    return input_to_orcl, data_to_gene
+    elif len(data_to_gene) != len(input_list):
+        print(f'Warning: data_to_gene length {len(data_to_gene)} does not match input_list length {len(input_list)}')
+    # print('data_to_gene length after prediction_check:', {len(item) for item in data_to_gene})
+    return normalized, data_to_gene
 
 def adjust_input_for_oracle(to_orcl_buffer, pred_list):
     """
@@ -171,29 +271,31 @@ def adjust_input_for_oracle(to_orcl_buffer, pred_list):
     print('dynamic retraining data adjustment')
     config = ConfigLoader("config.yaml")
     threshold = config['std_threshold']
-    pred_list = [k[:, 0] for k in pred_list]
+    pred_list = [k[:, 1] for k in pred_list] #DEBUG: [[iteration, energy, forces], [iteration, energy, forces], ...]
     std = [np.std(k, axis=0, ddof=1) for k in pred_list]  # calculation std of predictions from retrained ML
     # remove data with prediction std not exceeding the threshold
-
 
     #std = np.std(np.array(pred_list, dtype=float), axis=0, ddof=1)  # calculation std of predictions from retrained ML
     # sort the to_orcl_buffer list based on the std
     if len(std) != len(to_orcl_buffer):
         raise ValueError(f"Mismatch: std length {len(std)} vs. to_orcl_buffer length {len(to_orcl_buffer)}")
+    if len(to_orcl_buffer) != len(pred_list):
+        print(f"[ERROR] Buffer size mismatch: {len(to_orcl_buffer)} vs {len(pred_list)}")
     # Combine std_list and list1 element-wise using zip
     # combined_lists = list(zip(std, to_orcl_buffer))
 
     # # Sort the combined_lists based on the standard deviation values
     # sorted_combined_lists = sorted(combined_lists, key=lambda x: x[0])
-    sorted_indices = np.argsort(std)  # Get sorted index order
-    print(f"Before sorting, to_orcl_buffer size = {len(to_orcl_buffer)}")
+    # sorted_indices = np.argsort(std)  # Get sorted index order
+    # print(f"Before sorting, to_orcl_buffer size = {len(to_orcl_buffer)}")
 
-    to_orcl_buffer = [to_orcl_buffer[i] for i in sorted_indices if std[i] > threshold]
+    # # to_orcl_buffer = [to_orcl_buffer[i] for i in sorted_indices if std[i] > threshold]
     # to_orcl_buffer = [to_orcl_buffer[i] for i in sorted_indices]
-    std_sorted = [std[i] for i in sorted_indices]
+
+    # std_sorted = [std[i] for i in sorted_indices]
     print(f"After sorting, to_orcl_buffer size = {len(to_orcl_buffer)}")
 
-    to_orcl_buffer = [np.asarray(item, dtype=np.float64) for item in to_orcl_buffer]
+    # to_orcl_buffer = [np.asarray(item, dtype=np.float64) for item in to_orcl_buffer]
     print(f"After ensurance of type, to_orcl_buffer size = {len(to_orcl_buffer)}")
     # check if every item in the list has the same shape
     first_shape = to_orcl_buffer[0].shape  # Get the shape of the first item
@@ -221,6 +323,37 @@ def adjust_input_for_oracle(to_orcl_buffer, pred_list):
 
 
 ####### dataset modules##########
+
+def parse_list_data_to_gene(list_data_to_gene):
+    """
+    Parses list_data_to_gene structured as:
+    list of arrays: each array is shape (num_predictors, 1 + 3*num_atoms)
+
+    Returns:
+        energy: (G, P)
+        forces: (G, P, N, 3)
+    """
+    data_array = np.array(list_data_to_gene)
+    if data_array.ndim != 3:
+        raise ValueError(f"Expected 3D array, got shape {data_array.shape}")
+
+    num_generators, num_predictors, total_dim = data_array.shape
+    lengths = [[len(v) for v in row] for row in data_array]
+    first_len = lengths[0][0]
+    for gi, row in enumerate(lengths):
+        for pi, L in enumerate(row):
+            if L != first_len:
+                raise ValueError(f"[parse_list_data_to_gene] Ragged predictor length at G{gi} P{pi}: {L} vs {first_len}")
+
+    num_atoms = (total_dim - 1) // 3
+    
+
+    energy = data_array[:, :, 0]                             # shape (G, P)
+    forces_flat = data_array[:, :, 1:]                       # shape (G, P, 3N)
+    forces = forces_flat.reshape((num_generators, num_predictors, num_atoms, 3))
+
+    return energy, forces
+
 
 
 
@@ -434,7 +567,7 @@ def get_init_data(path):
             torch.tensor(charge, dtype=torch.int64), 
             torch.zeros(coords[i].shape),
             None, 
-            0,
+            [0,0],  # patience
             torch.zeros(coords[i].shape)]
         data_list.append(data)
     # print('data_list:', data_list[0].forces)
@@ -468,7 +601,7 @@ def get_full_data_init(path):
             torch.tensor(charge[i], dtype=torch.int64), 
             torch.zeros(coords[i].shape),
             None, 
-            0,
+            [0,0],  # patience
             torch.zeros(coords[i].shape)]
         data_list.append(data)
     # print('data_list:', data_list[0].forces)
@@ -502,6 +635,7 @@ def process_row(row, header, num_atom, charge):
     
     coords = np.array(np.matrix(row[header.index("coordinates")].replace('\n', ';'))).reshape((num_atom, 3))
     energies_0 = literal_eval(row[header.index("total_energy")])
+    print(f"Energy: {energies_0}")
     forces_0 = np.array(np.matrix(row[header.index("forces")].replace('\n', ';'))).reshape((num_atom, 3))
 
     data = [
@@ -512,182 +646,312 @@ def process_row(row, header, num_atom, charge):
         torch.tensor(charge, dtype=torch.int64),
         torch.zeros(coords.shape),  # Placeholder for 'pred_force'
         None, # Placeholder for 'pred_energy'
-        0, 
+        [0,0],  # Placeholder for 'patience'
         torch.zeros(coords.shape)
     ]
     
     return data
 
-
 # def reconstruct_from_metadata(flat_array, metadata, none_placeholder=99999999.0, rank = None):
 #     reconstructed_data = []
 #     index = 0  # Start index for slicing flat_array
 
+
 #     for meta in metadata:
-#         if meta['type'] == 'array':
-#             # Reconstruct a NumPy array with the specified shape and dtype
+#         meta_type = meta['type']
+
+#         if meta_type == 'array':
 #             shape = tuple(meta['shape'])
 #             num_elements = np.prod(shape)
-#             # print(flat_array[index:index + num_elements])
 #             array_data = np.array(flat_array[index:index + num_elements], dtype=meta['dtype']).reshape(shape)
 #             reconstructed_data.append(array_data)
 #             index += num_elements
 
-#         elif meta['type'] == 'tensor':
-#             # Reconstruct a PyTorch tensor with specified shape and dtype
+#         elif meta_type == 'tensor':
 #             shape = tuple(meta['shape'])
-#             dtype = getattr(torch, meta['dtype'].split('.')[1])  # e.g., 'torch.float64' to torch.float64
+#             dtype = getattr(torch, meta['dtype'].split('.')[-1])  # e.g., 'torch.float64' → 'float64'
 #             num_elements = np.prod(shape) if shape else 1
-#             # print(flat_array[index:index + num_elements])
 #             tensor_data = torch.tensor(flat_array[index:index + num_elements], dtype=dtype).reshape(shape)
 #             reconstructed_data.append(tensor_data)
 #             index += num_elements
-#         elif meta['type'] == 'charge':
+
+#         elif meta_type == 'charge':
 #             reconstructed_data.append(torch.tensor(flat_array[index], dtype=torch.int64))
 #             index += 1
-#         elif meta['type'] == 'None':
-#             # print(reconstructed_data.append(flat_array[index]))
-#             # print(none_placeholder)
-#             # Convert the placeholder back to None
+
+#         elif meta_type == 'None':
 #             if flat_array[index] == none_placeholder or flat_array[index] == int(none_placeholder):
-#                 # print('here!!!!!!!!!!!')
 #                 reconstructed_data.append(None)
 #             else:
 #                 reconstructed_data.append(flat_array[index])
-#             index += 1  # Move index forward
-#         elif meta['type'] == 'scalar_nullable':
-#             # Check if the value is the placeholder; if so, replace it with None
+#             index += 1
+
+#         elif meta_type == 'scalar_nullable':
 #             if flat_array[index] == none_placeholder:
 #                 reconstructed_data.append(None)
 #             else:
-#                 # Convert based on dtype
 #                 if meta['dtype'] == 'int':
 #                     reconstructed_data.append(int(flat_array[index]))
 #                 elif meta['dtype'] == 'float':
 #                     reconstructed_data.append(float(flat_array[index]))
 #             index += 1
-#         elif meta['type'] == 'scalar':
-#             # print(flat_array[index])
-#             # Handle scalar conversion based on specified dtype
+
+#         elif meta_type == 'scalar':
 #             if meta['dtype'] == 'int':
 #                 reconstructed_data.append(int(flat_array[index]))
 #             elif meta['dtype'] == 'float':
 #                 reconstructed_data.append(float(flat_array[index]))
+#             else:
+#                 raise ValueError(f"Unsupported scalar dtype: {meta['dtype']}")
 #             index += 1
+
+#         elif meta_type == 'list':
+#             shape = meta.get('shape')
+#             if shape is None:
+#                 raise ValueError(f"metadata field '{meta.get('name','<list>')}' missing 'shape'; "
+#                                 "cannot reconstruct list deterministically.")
+#             list_len = np.prod(shape)
+#             dtype = meta.get('dtype', 'float')
+#             segment = flat_array[index : index + list_len]
+
+#             if dtype == 'int':
+#                 # Check if all entries are close to integers before casting
+#                 if not np.all(np.isclose(segment, np.round(segment), atol=1e-6)):
+#                     print(f"[WARNING] rank {rank} Non-integer-like values in list intended as int: {segment}, {flat_array}")
+#                     raise ValueError(f"List intended as int contains non-integer-like values, malform/mismatched data recieved. ")
+#                 int_list = np.round(segment).astype(int).tolist()
+#                 reconstructed_data.append(int_list)
+
+#             elif dtype == 'float':
+#                 float_list = segment.astype(float).tolist()
+#                 reconstructed_data.append(float_list)
+
+#             else:
+#                 raise ValueError(f"Unsupported list dtype: {dtype}")
+
+#             index += list_len
+
+#         else:
+#             raise ValueError(f"Unknown metadata type: {meta_type}")
 
 #     return reconstructed_data
 
 
+# def convert_to_1d_float_array(data, none_placeholder=99999999.0):
+#     flat_array = []
+#     coords = data[0]
+#     atomic_numbers = data[1]
+#     forces = data[3]
+#     velocities = data[8]
 
-def reconstruct_from_metadata(flat_array, metadata, none_placeholder=99999999.0, rank = None):
-    reconstructed_data = []
-    index = 0  # Start index for slicing flat_array
+#     if coords.shape != (11, 3):
+#         raise ValueError(f"❌ Coordinates wrong shape: {coords.shape}")
+#     if len(atomic_numbers) != 11:
+#         raise ValueError(f"❌ Atomic numbers wrong length: {len(atomic_numbers)}")
+#     if forces.shape != (11, 3):
+#         raise ValueError(f"❌ Forces wrong shape: {forces.shape}")
+#     if velocities.shape != (11, 3):
+#         raise ValueError(f"❌ Velocities wrong shape: {velocities.shape}")
+#     for item in data:
+#         if isinstance(item, np.ndarray):
+#             flat_array.extend(item.ravel().astype(np.float64))
 
+#         elif isinstance(item, torch.Tensor):
+#             flat_array.extend(item.cpu().numpy().ravel().astype(np.float64))
 
-    for meta in metadata:
-        meta_type = meta['type']
+#         elif isinstance(item, list):
+#             arr = np.array(item)
 
-        if meta_type == 'array':
-            shape = tuple(meta['shape'])
-            num_elements = np.prod(shape)
-            array_data = np.array(flat_array[index:index + num_elements], dtype=meta['dtype']).reshape(shape)
-            reconstructed_data.append(array_data)
-            index += num_elements
+#             if arr.dtype.kind in ['i', 'u']:  # integer types
+#                 # Convert safely to float64
+#                 float_arr = arr.astype(np.float64)
+#                 flat_array.extend(float_arr.ravel())
 
-        elif meta_type == 'tensor':
-            shape = tuple(meta['shape'])
-            dtype = getattr(torch, meta['dtype'].split('.')[-1])  # e.g., 'torch.float64' → 'float64'
-            num_elements = np.prod(shape) if shape else 1
-            tensor_data = torch.tensor(flat_array[index:index + num_elements], dtype=dtype).reshape(shape)
-            reconstructed_data.append(tensor_data)
-            index += num_elements
+#             elif arr.dtype.kind in ['f']:  # float types
+#                 flat_array.extend(arr.astype(np.float64).ravel())
 
-        elif meta_type == 'charge':
-            reconstructed_data.append(torch.tensor(flat_array[index], dtype=torch.int64))
-            index += 1
+#             else:
+#                 raise TypeError(f"Unsupported list dtype: {arr.dtype} in item: {item}")
 
-        elif meta_type == 'None':
-            if flat_array[index] == none_placeholder or flat_array[index] == int(none_placeholder):
-                reconstructed_data.append(None)
+#         elif isinstance(item, int) or isinstance(item, float):
+#             flat_array.append(float(item))
+
+#         elif item is None:
+#             flat_array.append(float(none_placeholder))
+
+#         else:
+#             raise TypeError(f"Unexpected type in data: {type(item)}")
+#     return np.array(flat_array, dtype=np.float64)
+
+# ---------- reconstruct (flat -> structured) ----------
+def reconstruct_from_metadata(flat, metadata, none_placeholder=99999999.0, return_dict=False, rank=None):
+    flat = np.array(flat, dtype=np.float64, copy=True).ravel()
+    out, i = {}, 0
+    INT_ATOL = 1e-6
+
+    # (optional) total-length guard
+    expected_len = 0
+    for m in metadata:
+        shp = tuple(m.get("shape", ()))
+        expected_len += int(np.prod(shp)) if shp else 1
+    if flat.size != expected_len:
+        raise ValueError(f"[reconstruct][rank {rank}] total length mismatch: got {flat.size}, expected {expected_len}")
+
+    def _take(n, field_name):
+        nonlocal i
+        if i + n > flat.size:
+            raise ValueError(f"[reconstruct][rank {rank}] ran out of data while reading '{field_name}'")
+        seg = flat[i:i+n]; i += n
+        return seg
+
+    for m in metadata:
+        name = m["name"]
+        t    = m["type"]
+        shp  = tuple(m.get("shape", ()))
+        n    = int(np.prod(shp)) if shp else 1
+
+        if t in ("array", "tensor"):
+            seg = _take(n, name)
+            if t == "tensor":
+                tdtype = getattr(torch, m["dtype"].split(".")[-1])
+                out[name] = torch.tensor(seg, dtype=tdtype).reshape(shp)
             else:
-                reconstructed_data.append(flat_array[index])
-            index += 1
+                out[name] = np.array(seg, dtype=m.get("dtype", "float64"), copy=False).reshape(shp)
 
-        elif meta_type == 'scalar_nullable':
-            if flat_array[index] == none_placeholder:
-                reconstructed_data.append(None)
+        elif t == "list":
+            seg = _take(n, name)
+            if m.get("dtype", "float") == "int":
+                # int-like check (helps catch misalignment e.g. for 'patience')
+                if not np.all(np.isclose(seg, np.round(seg), atol=INT_ATOL)):
+                    bad = seg[np.logical_not(np.isclose(seg, np.round(seg), atol=INT_ATOL))][:6]
+                    raise ValueError(f"[reconstruct][rank {rank}] field '{name}' expected integers, saw {bad}")
+                ints = np.rint(seg).astype(np.int64)
+
+                # *** KEY FIX: provide z as tensor, not a Python list ***
+                if name in ("atomic_numbers", "z"):
+                    out[name] = torch.tensor(ints, dtype=torch.int64)   # <- satisfies .numpy() downstream
+                else:
+                    out[name] = ints.tolist()
             else:
-                if meta['dtype'] == 'int':
-                    reconstructed_data.append(int(flat_array[index]))
-                elif meta['dtype'] == 'float':
-                    reconstructed_data.append(float(flat_array[index]))
-            index += 1
+                out[name] = seg.astype(np.float64, copy=False).tolist()
 
-        elif meta_type == 'scalar':
-            if meta['dtype'] == 'int':
-                reconstructed_data.append(int(flat_array[index]))
-            elif meta['dtype'] == 'float':
-                reconstructed_data.append(float(flat_array[index]))
-            else:
-                raise ValueError(f"Unsupported scalar dtype: {meta['dtype']}")
-            index += 1
+        elif t == "scalar_nullable":
+            v = _take(1, name)[0]
+            out[name] = None if v == none_placeholder else float(v)
 
-        elif meta_type == 'list':
-            shape = meta.get('shape')
-            if shape is None:
-                raise ValueError(f"metadata field '{meta.get('name','<list>')}' missing 'shape'; "
-                                "cannot reconstruct list deterministically.")
-            list_len = np.prod(shape)
-            dtype = meta.get('dtype', 'float')
-            segment = flat_array[index : index + list_len]
+        elif t == "scalar":
+            v = _take(1, name)[0]
+            out[name] = int(v) if m.get("dtype") == "int" else float(v)
 
-            if dtype == 'int':
-                # Check if all entries are close to integers before casting
-                if not np.all(np.isclose(segment, np.round(segment), atol=1e-6)):
-                    print(f"[WARNING] rank {rank} Non-integer-like values in list intended as int: {segment}, {flat_array}")
-                    raise ValueError(f"List intended as int contains non-integer-like values, malform/mismatched data recieved. ")
-                int_list = np.round(segment).astype(int).tolist()
-                reconstructed_data.append(int_list)
+        elif t == "charge":
+            v = _take(1, name)[0]
+            if not np.isclose(v, round(v), atol=INT_ATOL):
+                raise ValueError(f"[reconstruct][rank {rank}] field '{name}' must be integer-like, got {v}")
+            out[name] = torch.tensor(int(round(v)), dtype=torch.int64)
 
-            elif dtype == 'float':
-                float_list = segment.astype(float).tolist()
-                reconstructed_data.append(float_list)
-
-            else:
-                raise ValueError(f"Unsupported list dtype: {dtype}")
-
-            index += list_len
+        elif t == "None":
+            v = _take(1, name)[0]
+            out[name] = None if v == none_placeholder else v
 
         else:
-            raise ValueError(f"Unknown metadata type: {meta_type}")
+            raise ValueError(f"[reconstruct][rank {rank}] unknown type '{t}' for field '{name}'")
 
-    return reconstructed_data
+    if i != flat.size:
+        raise ValueError(f"[reconstruct][rank {rank}] leftover data: consumed {i} of {flat.size}")
 
+    return out if return_dict else [out[m["name"]] for m in metadata]
+# ---------- flatten (structured -> flat) ----------
+def convert_to_1d_float_array(data, metadata, none_placeholder=99999999.0):
+    """
+    `data` can be a dict keyed by YAML names OR a list matching metadata order.
+    """
+    get = (lambda m, idx=[0]: data[m["name"]]) if isinstance(data, dict) \
+          else (lambda m, idx=[-1]: data[(idx.__setitem__(0, idx[0]+1) or idx)[0]])
 
-def convert_to_1d_float_array(data):
-    flat_array = []
+    buf = []
+    for m in metadata:
+        name = m["name"]
+        t    = m["type"]
+        x    = get(m)
 
-    for item in data:
-        if isinstance(item, np.ndarray):
-            flat_array.extend(item.ravel())  # Efficient flattening
-        elif isinstance(item, torch.Tensor):
-            flat_array.extend(item.cpu().numpy().ravel())  # Convert tensor -> NumPy -> Flatten
-        elif isinstance(item, list):
-            flat_array.extend(np.array(item, dtype=np.float64).ravel())  # Convert list -> NumPy -> Flatten
-        elif isinstance(item, int) or isinstance(item, float):
-            flat_array.append(float(item))  # Convert int/float directly
-        elif item is None:
-            flat_array.append(float(99999999.0))  # Placeholder for None
+        if t in ("array", "tensor"):
+            buf.extend(np.asarray(x).ravel().astype(np.float64))
+
+        elif t == "list":
+            arr = np.asarray(x, dtype=np.int64 if m.get("dtype","float")=="int" else np.float64)
+            buf.extend(arr.ravel().astype(np.float64))
+
+        elif t == "scalar_nullable":
+            buf.append(none_placeholder if x is None else float(x))
+
+        elif t == "scalar":
+            buf.append(float(x) if m.get("dtype")!="int" else float(int(x)))
+
+        elif t == "charge":
+            buf.append(float(int(x)))  # single int
+
+        elif t == "None":
+            buf.append(none_placeholder if x is None else float(x))
+
         else:
-            raise TypeError(f"Unexpected type in data: {type(item)}")
+            raise ValueError(f"Unknown type '{t}' for field '{name}'")
+
+    return np.array(buf, dtype=np.float64, copy=True)
 
 
-    # Convert the flat_array to a NumPy array
-    #print(f"Final flattened array size: {len(flat_array)}")
-    # if len(flat_array) != 56:
-    #     print('wrong size after flatten')
+def _flatten_one(field, meta, NONE_PLACEHOLDER=99999999.0):
+    t = meta["type"]
+    dt = meta.get("dtype")
+    shp = tuple(meta.get("shape", ()))
+    if t in ("array", "tensor"):
+        arr = np.asarray(field, dtype=np.float64).reshape(-1)
+        return arr
+    elif t == "list":
+        arr = np.asarray(field, dtype=np.float64).reshape(-1)
+        return arr
+    elif t == "scalar_nullable":
+        v = NONE_PLACEHOLDER if (field is None) else float(field)
+        return np.array([v], dtype=np.float64)
+    elif t == "scalar":
+        if dt == "int":
+            return np.array([int(field)], dtype=np.float64)
+        else:
+            return np.array([float(field)], dtype=np.float64)
+    elif t == "charge":
+        return np.array([int(round(float(field)))], dtype=np.float64)
+    elif t == "None":
+        v = NONE_PLACEHOLDER if (field is None) else float(field)
+        return np.array([v], dtype=np.float64)
+    else:
+        raise ValueError(f"unknown type {t}")
 
-    return np.array(flat_array, dtype=np.float64)
+def pack_from_metadata(obj_dict, metadata):
+    """严格按 metadata 顺序把一条记录打平成 1D float64 numpy 数组。"""
+    pieces = []
+    for m in metadata:
+        name = m["name"]
+        if name not in obj_dict:
+            raise KeyError(f"missing field '{name}' while packing")
+        pieces.append(_flatten_one(obj_dict[name], m))
+    return np.concatenate(pieces, dtype=np.float64)
+
+def record_length_from_metadata(metadata):
+    """计算一条记录理论长度，用于 sanity check"""
+    total = 0
+    for m in metadata:
+        t = m["type"]
+        shp = tuple(m.get("shape", ()))
+        if t in ("array", "tensor", "list"):
+            n = int(np.prod(shp)) if shp else None  # list 没 shape 就不可预期
+            if n is None:
+                return None
+            total += n
+        else:
+            total += 1
+    return total
+
+
+
 def unflatten_predictions(flattened_preds):
     """
     Unflattens a numpy array of shape (n, 13) into lists of y_pred and force_pred in their original shapes.

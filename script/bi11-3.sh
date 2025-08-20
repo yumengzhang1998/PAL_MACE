@@ -1,5 +1,5 @@
 #! /bin/bash
-#SBATCH --job-name=bi11-3-6MACE
+#SBATCH --job-name=bi11-3MACE
 #SBATCH --partition=normal 
 #SBATCH --time=20:00:00
 #SBATCH --nodes=1

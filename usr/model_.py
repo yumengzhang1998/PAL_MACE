@@ -11,14 +11,14 @@ import psutil
 import numpy as np
 import torch, time, os, json
 from torch import nn
-from usr.utils import get_init_data, shuffle_dataset, save_data, get_full_data_init
+from PAL_MACE.usr.utils_ import get_init_data, shuffle_dataset, save_data, get_full_data_init
 from usr.initial_pyg.functions.config import ConfigLoader
 from usr.initial_pyg.evaluation import evaluate
 import sys
 import pandas as pd
 
 import matplotlib.pyplot as plt
-from usr.utils import convert_to_data_object, reconstruct_from_metadata
+from PAL_MACE.usr.utils_ import convert_to_data_object, reconstruct_from_metadata
 import glob
 import random
 import sys
@@ -143,54 +143,24 @@ def flatten_and_concatenate(pred_list):
     flattened_arrays = [pred.flatten() for pred in pred_list]
     return np.concatenate(flattened_arrays)
 
-# def combine_predictions_to_numpy(y_pred, force_pred):
-#     """
-#     Combines y_pred and force_pred into a list of 1D numpy arrays.
-#     Each array will have length 13, where the first element is y_pred 
-#     and the rest are the flattened force_pred values.
-    
-#     Args:
-#     - y_pred (torch.Tensor): Tensor of shape (n, 1) for predicted values.
-#     - force_pred (torch.Tensor): Tensor of shape (n, 4, 3) for force predictions.
-    
-#     Returns:
-#     - result_list (list of np.ndarray): A list where each element is a 1D numpy array 
-#                                         of length 13.
-#     """
-#     n = y_pred.shape[0]  # Number of predictions
-#     result_list = []
-#     if force_pred.ndim == 2 :
-#         force_pred = np.expand_dims(force_pred, axis=0)
-#     if y_pred.ndim == 1:
-#         y_pred = np.expand_dims(y_pred, axis=0)
-#     for i in range(n):
-#         # Flatten force_pred[i] (shape (1, 4, 3) -> (12,))
-#         force_pred_flat = force_pred[i].reshape(-1)
-        
-#         # Concatenate y_pred[i] (scalar) with flattened force_pred[i]
-#         combined = np.concatenate((y_pred[i].reshape(-1), force_pred_flat))
-        
-#         # Convert to numpy array and append to the list
-#         result_list.append(combined)
-    
-#     return result_list
+
 def combine_predictions_to_numpy(y_pred, force_pred):
     """
     Combines y_pred and force_pred into a list of 1D numpy arrays.
-    Each array will have length 13: 1 scalar energy + 12 flattened force values.
+    Each array will have length 3N+1: 1 scalar energy + N flattened force values.
 
     Args:
     - y_pred (torch.Tensor): Tensor of shape (n,) or (n, 1) for predicted energies.
-    - force_pred (torch.Tensor): Tensor of shape (n, 4, 3) for force predictions.
+    - force_pred (torch.Tensor): Tensor of shape (n, N, 3) for force predictions.
 
     Returns:
     - result_list (list of np.ndarray): Each element is a 1D numpy array of length 13.
     """
     result_list = []
     for i in range(y_pred.shape[0]):
-        energy = y_pred[i].reshape(1).detach().cpu().numpy()  # shape (1,)
-        forces = force_pred[i].reshape(-1).detach().cpu().numpy()  # shape (12,)
-        combined = np.concatenate((energy, forces))  # shape (13,)
+        energy = y_pred[i].reshape(1).detach().cpu().numpy() 
+        forces = force_pred[i].reshape(-1).detach().cpu().numpy()
+        combined = np.concatenate((energy, forces))
         result_list.append(combined)
 
     return result_list
@@ -221,6 +191,7 @@ class UserModel(object):
         self.mode = mode
         self.i_gpu = i_gpu
         self.boot_strap = True
+        print(f"Initializing Model {rank}")
 
         pred_procs = AL_SETTING["pred_process"]
         orcl_procs = AL_SETTING["orcl_process"]
@@ -287,6 +258,7 @@ class UserModel(object):
         print(f"✅ [Rank {self.rank}] ({mode}) → Loaded model {PATH}")
         self.model = torch.load(PATH, map_location=self.device)
         self.model = self.model.to(self.device)
+        self.counter = 0
         torch.set_default_dtype(torch.float64)
         recursive_to(self.model, device=self.device, dtype=torch.get_default_dtype())
         for param in self.model.parameters():
@@ -304,7 +276,7 @@ class UserModel(object):
         
         else:
             self.start_time = time.time()
-            self.counter = 0
+            
             
             print('training', self.rank)
             if self.config["full_dataset"]:
@@ -363,7 +335,13 @@ class UserModel(object):
 
         ##### User Part #####
         # print(list_data_to_pred)
-        data_list = [reconstruct_from_metadata(data, self.metadata) for data in list_data_to_pred]
+        iteration_marker = self.counter 
+        # print(f"Rank {self.rank}: Predicting with iteration marker {iteration_marker}")
+        if len(list_data_to_pred) > self.config['num_gen_process']:
+            import json
+            with open("to_orcl_buffer.json", "w") as f:
+                json.dump([arr.tolist() for arr in list_data_to_pred], f)
+        data_list = [reconstruct_from_metadata(data, self.metadata, rank  = f"predict {self.rank}") for data in list_data_to_pred]
         # print('data_list', data_list)
         data_list = convert_to_data_object(data_list)
         # dataset = retrain_dataset(data_list, transforms=self.transforms)
@@ -380,34 +358,23 @@ class UserModel(object):
 
 
         # data_to_gene = np.concatenate([flattened_y_pred, flattened_force_pred])
-
-        # #TODO: check if this is correct
-        # print("energy", a, a.shape)
-        # print("forces", b, b.shape)
-        #print('length of list_data_to_pred', len(list_data_to_pred))
-        # num_data = len(list_data_to_pred)
-        # # reshape force_pred to (num_data, 4, 3)
-        # force_pred = b.reshape(num_data, -1, 3)
         data_to_gene = combine_predictions_to_numpy(a, b)
+        # result_with_iter = []
+        # for i in range(len(data_to_gene)):
+        #     with_iter = np.concatenate(([iteration_marker], data_to_gene[i]))  # prepend iteration count
+        #     result_with_iter.append(with_iter)
+        
         
         return data_to_gene
     
-    # def update(self, weight_array):
-    #     """
-    #     Update model/scalar with new weights in weight_array.
-        
-    #     Args:
-    #         weight_array (numpy.ndarray): 1-D numpy array containing model/scalar weights. (from UserModel.get_weight())
-    #     """
-    #     ##### User Part #####
-    #     for k in self.para_keys:
-    #         self.model.state_dict()[k] = weight_array[:self.model.state_dict()[k].flatten().shape[0]].reshape(self.model.state_dict()[k].shape)
-    #     print(f"Rank {self.rank}: model updated")
+
     def update(self, weight_array):
         """
         Update model/scalar with new weights in weight_array.
         """
-        offset = 0
+        self.counter = int(weight_array[0])
+        # print(f"Rank {self.rank}: Updating model with counter {self.counter}")
+        offset = 1
         for k in self.para_keys:
             param = self.model.state_dict()[k]
             param_size = param.numel()
@@ -437,10 +404,11 @@ class UserModel(object):
         
         ##### User Part #####
         weight_size = 0
-        # the last 4 key-item pairs are scalars
+        counter = 1  # the first key-item pair is the counter
         for k in self.para_keys:
             weight_size += self.model.state_dict()[k].flatten().shape[0]
-        return weight_size
+        final_size = weight_size + counter
+        return final_size
 
     ###########################################
     #          Machine Learning Part          #
@@ -457,9 +425,13 @@ class UserModel(object):
         
         ##### User Part #####
         weight_array = []
+        counter_array = np.array([self.counter], dtype=float)
+        
+
         for k in self.para_keys:
             weight_array += self.model.state_dict()[k].detach().cpu().numpy().flatten().tolist()
-        return np.array(weight_array, dtype=float)
+        final_array = np.concatenate((counter_array, weight_array))
+        return np.array(final_array, dtype=float)
     
     def add_trainingset(self, datapoints):
         """
@@ -483,7 +455,7 @@ class UserModel(object):
             else:
                 #input 1 array: (pos, z, energy, forces,charge, pred_forces, pred_energy, patience, velocity)
                 #input 2 array: (y, forces)
-                original_data = reconstruct_from_metadata(data[0], self.metadata)
+                original_data = reconstruct_from_metadata(data[0], self.metadata, rank = f"add dataset {self.rank}")
                 original_data[2] = torch.tensor(data[1][0]).reshape(-1)
                 shape = original_data[3].shape
                 original_data[3] = -1 * torch.tensor(data[1][1:].reshape(shape))
@@ -504,7 +476,7 @@ class UserModel(object):
         if len(self.train) > 10000:
             print('10000 training points reached')
             self.stop = True
-        print(f"Rank {self.rank}: training set size increased")
+        print(f"Rank {self.rank}: training set size increased by {len(data_list)} data points. Current size: {len(self.train)}")
     
     def retrain(self, req_data):
         """
@@ -724,7 +696,7 @@ class UserModel(object):
             self.stop = True
 
 
-        print(f"Rank {self.rank}: retraining stop.")
+        print(f"Rank {self.rank}: retraining stop. This is the {self.counter}th retraining instance.")
         stop_run = self.check_stop()
 
         self.save_dataset(path = os.path.join(self.result_dir, f"added_data.csv"))
@@ -798,15 +770,18 @@ class UserModel(object):
 
     def check_stop(self):
         if time.time() - self.start_time >= 36000:
-            print('time limit reached')
+            print('time limit reached for rank ', self.rank)
             self.stop = True
+            return True
         if self.stop:
-            print('stop signal received')
+            print('stop signal received for rank ', self.rank)
             print("save now the final dataset.....")
             self.save_dataset(path = os.path.join(self.result_dir, f"added_data_finished.csv"))
             return True
-        print('continue running')
-        return False
+        else:
+            print(f"Rank {self.rank}: continue running, counter = {self.counter}")
+
+            return False
 
     def stop_run(self):
         """

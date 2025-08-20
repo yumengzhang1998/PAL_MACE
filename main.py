@@ -11,9 +11,65 @@ import importlib.util
 from mpi4py import MPI
 from al_setting import AL_SETTING
 import os, sys, gc, time, pickle, threading
+import shutil
 
 RANK_EXCHANGE = 0                                  # rank of exchange process
 RANK_MG = 1                                        # rank of manager process
+def _assert_no_aliases(buf):
+    ptrs = [a.__array_interface__['data'][0] for a in buf]
+    dup = len(ptrs) - len(set(ptrs))
+    if dup:
+        raise RuntimeError(f"Aliasing detected: {dup} duplicate buffers")
+def _record_invariants(a, *, idx=None, who=None, none_placeholder=99999999.0):
+    a = np.asarray(a, dtype=np.float64).ravel()
+    # find contiguous block of 83.0 -> atomic_numbers
+    pos83 = np.where(np.isclose(a, 83.0))[0]
+    if pos83.size == 0:
+        raise ValueError(f"[invar][{who}][idx {idx}] no 83.0 block (atomic_numbers) found")
+
+    # assume it’s a single contiguous block (your dumps show this)
+    z_start, z_end = pos83[0], pos83[-1] + 1
+    N = z_end - z_start
+
+    # coords must be 3*N and sit before atomic_numbers
+    if z_start != 3*N:
+        raise ValueError(
+            f"[invar][{who}][idx {idx}] coords length mismatch: z_start={z_start}, expected 3*N={3*N} (N={N})"
+        )
+
+    # charge sits after: coords(3N) + z(N) + energy(1) + forces(3N)
+    charge_pos = (3*N) + N + 1 + (3*N)
+    q = a[charge_pos]
+    if not np.isfinite(q) or abs(q - round(q)) > 1e-6:
+        # show local neighborhood for forensics
+        nb = a[max(0, charge_pos-3):charge_pos+4].tolist()
+        raise ValueError(
+            f"[invar][{who}][idx {idx}] charge not integer-like: {q} at {charge_pos}; neighbors={nb}"
+        )
+
+    # pred_energy sentinel should be finite or placeholder
+    # pred_forces come right before pred_energy: forces(3N) again
+    pred_energy_pos = charge_pos + (3*N) + 1  # +pred_forces(3N) + pred_energy(1)
+    pe = a[pred_energy_pos]
+    if (pe != none_placeholder) and (not np.isfinite(pe)):
+        raise ValueError(f"[invar][{who}][idx {idx}] pred_energy invalid: {pe} at {pred_energy_pos}")
+
+def _freeze_and_sig(buf_list):
+    sigs = []
+    for i, a in enumerate(buf_list):
+        a = np.asarray(a, dtype=np.float64)
+        # ensure we own our memory and it’s contiguous
+        if a.base is not None:
+            a = a.copy()
+        a = np.ascontiguousarray(a)
+        a.setflags(write=False)   # <-- any later in-place write will raise
+
+        # replace the original entry with the frozen array
+        buf_list[i] = a
+
+        # make a cheap signature so we can compare later
+        sigs.append( (a.size, float(a[:8].sum()), float(a[-8:].sum())) )
+    return sigs
 
 
 def query_fn(status):
@@ -75,6 +131,15 @@ if __name__ == "__main__":
     group_world = comm_world.Get_group()           # MPI group for all processes
     rank = comm_world.Get_rank()                   # rank (PID) of current process
     size = comm_world.Get_size()                   # number of process in total
+    if rank == 0:
+        job_id = os.environ.get("SLURM_JOB_ID", "default")
+        frozen_path = f"config_used_{job_id}.yaml"
+        shutil.copyfile("config.yaml", frozen_path)
+    else:
+        frozen_path = None
+
+    frozen_path = comm_world.bcast(frozen_path, root=0)
+    os.environ["CONFIG_USED_PATH"] = frozen_path
     if rank == RANK_MG:
         os.makedirs(result_dir, exist_ok=True)
         if not ml_buffer_path is None and not os.path.exists(ml_buffer_path):
@@ -205,6 +270,10 @@ if __name__ == "__main__":
     t_pred_ex = 0                                    # mpi tag for communication between Pred and EXCHANGE process
     t_gene_ex = 1                                  # mpi tag for communication between Gene and EXCHANGE process
     t_ex_mg = 2                                    # mpi tag for communication between EXCHANGE and MG process
+    #TODO:DEBUG
+    t_ex_mg_int = 2
+    t_ex_mg_float = 3
+
     t_ml_mg = 3                                    # mpi tag for communication between ML and MG process
     t_ml_pred = 4                                    # mpi tag for communication between ML and Pred process
     t_ml = 5                                       # mpi tag for communication among ML processes
@@ -497,7 +566,7 @@ if __name__ == "__main__":
             # start retraining while waiting for new training data
             if not stop_retrain:
                 stop_run_1 = ml_worker.retrain(new_data_req)
-            
+
             # wait for receiving new data points
             # retrainig should stop before or when receiving new data points
             new_data_req.wait()
@@ -527,8 +596,20 @@ if __name__ == "__main__":
                 to_orcl_buffer = np.empty((np.sum(data_size_recv),), dtype=float)
                 comm_mg_ml.Bcast([to_orcl_buffer, MPI.DOUBLE], root=0)
                 data_section = [sum(data_size_recv[:i]) for i in range(1, data_size_recv.shape[0])]
+                print(f"[DEBUG] Received buffer shape: {to_orcl_buffer.shape}")
+                print(f"[DEBUG] data_size_recv: {data_size_recv}")
+                print(f"[DEBUG] sum of data_size_recv: {np.sum(data_size_recv)}, buffer total: {to_orcl_buffer.shape[0]}")
+
+                if np.sum(data_size_recv) != to_orcl_buffer.shape[0]:
+                    raise ValueError("❌ Inconsistent split sizes: data does not match buffer length")
+                print(f"[DEBUG] First 50 elements of buffer:\n{to_orcl_buffer[:50]}")
+                assert np.sum(data_size_recv) == to_orcl_buffer.shape[0], "Mismatch in flat buffer size"
+
+
                 to_orcl_buffer = np.split(to_orcl_buffer, data_section, axis=0)
                 # make prediction with up-to-date models
+                for i, a in enumerate(to_orcl_buffer):
+                    _record_invariants(a, idx=i, who="before predict")
                 pred_res = ml_worker.predict(to_orcl_buffer)
                 # send prediction back to MG
                 data_size_send = np.empty((len(pred_res),), dtype=int)
@@ -772,10 +853,26 @@ if __name__ == "__main__":
             assert len(pred_output_gather) == n_gene, f"Error at EX: number of elements in pred_output_gather is {len(pred_output_gather)} and not equal to number of Generator processes."
             # Check PL predictions
             input_to_orcl, list_data_to_gene_checked = util_module.prediction_check(gene_output_gather, pred_output_gather)
-            
+            prev_len = len(input_to_orcl_buffer)
             for d in input_to_orcl:
                 assert(len(d.shape)) == 1, "Error at utils: every element of list_input_to_orcl returned by utils.prediction_check() should be an 1-D numpy array."
-            input_to_orcl_buffer += input_to_orcl
+            input_to_orcl_buffer.extend([np.ascontiguousarray(d.copy())
+                             for d in input_to_orcl])
+
+            _assert_no_aliases(input_to_orcl_buffer)
+            sigs_after_predcheck = []
+            for i in range(prev_len, len(input_to_orcl_buffer)):
+                a = input_to_orcl_buffer[i]
+                # if something somehow remained a view, copy again (belt & suspenders)
+                if getattr(a, "base", None) is not None:
+                    a = a.copy()
+                    input_to_orcl_buffer[i] = a
+                a.setflags(write=False)  # any later in-place write will explode here
+
+                # quick signatures (size, head sum, tail sum)
+                sigs_after_predcheck.append( (a.size, float(a[:8].sum()), float(a[-8:].sum())) )
+            for i, a in enumerate(input_to_orcl_buffer):
+                _record_invariants(a, idx=i, who="after prediction_check")
 
             # check if the number of data in data_to_gene matches the number of generator processes
             assert len(list_data_to_gene_checked) == n_gene, f"Error at utils: number of elements in list_data_to_gene_checked from utils.prediction_check() is {len(list_data_to_gene_checked)} and does not match the number of generator processes."
@@ -843,12 +940,13 @@ if __name__ == "__main__":
                 input_to_orcl_buffer = []
             
             # send size info and orcle buffer data to MG
+            #TODO: DEBUG: CHANGED t_ex_mg
             if (not size_to_mg is None) and (req_list[1] is None or req_list[1].Test()) and (to_mg_thread is None or not to_mg_thread.is_alive()):
-                to_mg_thread = threading.Thread(target=comm_ex_mg, args=(comm_world, RANK_MG, t_ex_mg, size_to_mg.copy(), "int", req_list), daemon=True)
+                to_mg_thread = threading.Thread(target=comm_ex_mg, args=(comm_world, RANK_MG, t_ex_mg_int, size_to_mg.copy(), "int", req_list), daemon=True)
                 to_mg_thread.start()
                 size_to_mg = None
             elif (not data_to_mg is None) and (req_list[0] is None or req_list[0].Test()) and (to_mg_thread is None or not to_mg_thread.is_alive()):
-                to_mg_thread = threading.Thread(target=comm_ex_mg, args=(comm_world, RANK_MG, t_ex_mg, data_to_mg.copy(), "float", req_list), daemon=True)
+                to_mg_thread = threading.Thread(target=comm_ex_mg, args=(comm_world, RANK_MG, t_ex_mg_float, data_to_mg.copy(), "float", req_list), daemon=True)
                 to_mg_thread.start()
                 data_to_mg = None
             ################# Done ##################
@@ -917,23 +1015,30 @@ if __name__ == "__main__":
             # Receive input for Oracle from EXCHANGE process #
             ##################################################
             size_status = MPI.Status()
-            if comm_world.Iprobe(source=RANK_EXCHANGE, tag=t_ex_mg, status=size_status):
+            #TODO:DEBUG:if comm_world.Iprobe(source=RANK_EXCHANGE, tag=t_ex_mg, status=size_status):
+            if comm_world.Iprobe(source=RANK_EXCHANGE, tag=t_ex_mg_int, status=size_status):
                 # intialize the receive buffer according to the number of arriving elements
                 n_data = size_status.Get_count(MPI.LONG)
                 ex_size = np.empty((n_data,), dtype=int)
                 # receive the size info from EX
-                req_mg = comm_world.Irecv([ex_size, MPI.LONG], source=RANK_EXCHANGE, tag=t_ex_mg)
+                #TODO: DEBUG:CHANGED t_ex_mg
+                req_mg = comm_world.Irecv([ex_size, MPI.LONG], source=RANK_EXCHANGE, tag=t_ex_mg_int)
                 req_mg.wait()
                 data_section = [np.sum(ex_size[:i]) for i in range(1, n_data)]
                 # receive the data from EX
                 ex_data = np.empty((np.sum(ex_size),), dtype=float)
-                req_mg = comm_world.Irecv([ex_data, MPI.DOUBLE], source=RANK_EXCHANGE, tag=t_ex_mg)
+                req_mg = comm_world.Irecv([ex_data, MPI.DOUBLE], source=RANK_EXCHANGE, tag=t_ex_mg_float)
                 req_mg.wait()
                 # organize received data
                 stop_run = True if ex_data[0] == 1.0 else False
                 save_progress = True if ex_data[1] == 1.0 else False
-                input_to_orcl = np.split(ex_data, data_section, axis=0)[1:]
-                to_orcl_buffer += input_to_orcl
+                parts = np.split(ex_data, data_section)[1:]
+                # input_to_orcl = np.split(ex_data, data_section, axis=0)[1:]
+                parts = [np.ascontiguousarray(p, dtype=np.float64).copy() for p in parts]
+                for p in parts:
+                    p.setflags(write=False)
+                # to_orcl_buffer += input_to_orcl
+                to_orcl_buffer.extend(parts) 
             ################# Done ##################
 
             # stop the iteration if stop_run signal received
@@ -996,15 +1101,27 @@ if __name__ == "__main__":
                     # distribute oracle labeled data to each model in ML kernel
                     comm_mg_ml.Bcast([data_to_ml, MPI.DOUBLE], root=0)
                     # organize the oracle buffer
-                    orcl_size = []
-                    orcl_data = []
-                    for d in to_orcl_buffer:
-                        orcl_size.append(d.shape[0])
-                        orcl_data = np.append(orcl_data, d, axis=0)
-                    orcl_size = np.array(orcl_size, dtype=int)
+                    # orcl_size = []
+                    # orcl_data = []
+                    # for d in to_orcl_buffer:
+                    #     orcl_size.append(d.shape[0])
+                    #     orcl_data = np.append(orcl_data, d, axis=0)
+                    # orcl_size = np.array(orcl_size, dtype=int)
                     # distribute to ML the size info and data of to_orcl_buffer
+                    # build sizes as int64 so they match MPI.LONG cleanly
+                    orcl_size = np.fromiter((int(d.size) for d in to_orcl_buffer), dtype=np.int64)
+
+                    # 强制逐样本 copy，避免沿用任何 view / 原地写共享的内存
+                    pieces = []
+                    for d in to_orcl_buffer:
+                        c = np.ascontiguousarray(d, dtype=np.float64).copy()
+                        c.setflags(write=False)
+                        pieces.append(c)
+
+                    orcl_data = np.ascontiguousarray(np.concatenate(pieces, axis=0), dtype=np.float64)
+                    orcl_data.setflags(write=False)
                     comm_mg_ml.Bcast([orcl_size, MPI.LONG], root=0)
-                    comm_mg_ml.Bcast([orcl_data, MPI.LONG], root=0)
+                    comm_mg_ml.Bcast([orcl_data, MPI.DOUBLE], root=0)
                     # gather prediction from ML
                     orcl_size = np.empty((len(to_orcl_buffer)*(n_ml+1),), dtype=int)
                     tmp = np.zeros((len(to_orcl_buffer),), dtype=int)    # placeholder for Gather
@@ -1020,7 +1137,14 @@ if __name__ == "__main__":
                     data_section = [np.sum(orcl_size[:i]) for i in range(1, orcl_size.shape[0])]
                     orcl_pred_data = np.split(orcl_pred_data, data_section, axis=1)
                     assert len(orcl_pred_data) == len(to_orcl_buffer), f"Error at MG: number of predictions ({len(orcl_pred_data)}) differs from number of inputs ({len(to_orcl_buffer)}) for oracle buffer."
+                    #TODO: 
+                    # ABOVE WAS TO DEBUG
+                    for i, a in enumerate(to_orcl_buffer):
+                        _record_invariants(a, idx=i, who="before adjust_input_to_orcl")
                     to_orcl_buffer = util_module.adjust_input_for_oracle(to_orcl_buffer, orcl_pred_data)
+                    for i, a in enumerate(to_orcl_buffer):
+                        _record_invariants(a, idx=i, who="MG pre-send")
+
                 # distribute only new training data to ML
                 else:
                     data_to_ml[1] = -1

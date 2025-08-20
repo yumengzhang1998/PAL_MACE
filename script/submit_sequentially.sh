@@ -2,13 +2,7 @@
 
 # List of your job scripts
 jobs=(
-    "bi4-2.sh"
-    "bi4-6.sh"
-    "bi7-3.sh"
-    "bi11-3.sh"
     "bi11-3_samples.sh"
-)
-jobs=(
     "bi4-2.sh"
     "bi4-6.sh"
     "bi7-3.sh"

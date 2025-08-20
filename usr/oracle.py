@@ -71,7 +71,7 @@ class UserOracle(object):
         # print('input_to_orcl', len(input_to_orcl))
         print(f'rank {self.rank} running')
         
-        input_to_orcl = reconstruct_from_metadata(input_to_orcl, self.meta_data)
+        input_to_orcl = reconstruct_from_metadata(input_to_orcl, self.meta_data, rank = f"oracle {self.rank}")
         # print('input_to_orcl', input_to_orcl)
         atoms = atomic_number_to_symbol(input_to_orcl[1].tolist())
         # atoms_list = re.sub(r'\b(\w+)\b', r"'\1'", atoms)
@@ -133,7 +133,7 @@ class UserOracle(object):
             fail[2] = None
             fail[3] = None
             # Save the 'fail' object to a file
-            results_dir = './results'
+            results_dir = self.result_dir
             file_path = os.path.join(results_dir, 'xtbfail')
             mode = 'ab' if os.path.exists(file_path) else 'wb'
 

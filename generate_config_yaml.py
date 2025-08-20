@@ -55,6 +55,8 @@ def generate_config_yaml(prefix, full_dataset, coord_dict):
 
     settings = prefix_settings[prefix]
     coord = coord_dict[prefix]
+    print(f"Using settings for prefix '{prefix}': {settings}")
+    print(f"Using coordinates for prefix '{prefix}': {coord}")
 
     content = f'''# MACE
 args_dict: {{
@@ -102,31 +104,16 @@ bound: {settings['bound']}
 num_atom: {settings['num_atom']}
 coord: {coord}
 
-# data metadata
 metadata:
-  - type: array # coordinates
-    shape: [{settings['num_atom']}, 3]
-    dtype: float
-  - type: tensor # atom_number
-    shape: [{settings['num_atom']}]
-    dtype: torch.int64
-  - type: scalar_nullable # true_energy
-    dtype: int
-  - type: array # true_forces
-    shape: [{settings['num_atom']}, 3]
-    dtype: float
-  - type: charge # charge
-    dtype: torch.long
-  - type: array # pred_forces
-    shape: [{settings['num_atom']}, 3]
-    dtype: float
-  - type: scalar_nullable # pred_energy
-    dtype: int
-  - type: scalar # patience
-    dtype: int
-  - type: array # velocities
-    shape: [{settings['num_atom']}, 3]
-    dtype: float
+  - {{ name: coords,          type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }}
+  - {{ name: atomic_numbers,  type: list,   shape: [{settings['num_atom']}],    dtype: int    }}  # or tensor with int dtype
+  - {{ name: energy,          type: scalar_nullable,        dtype: float  }}  # was None OK too
+  - {{ name: forces,          type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }}
+  - {{ name: charge,          type: charge }}                                 # 1 scalar int
+  - {{ name: pred_forces,     type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }} # ← this one commonly mis-set
+  - {{ name: pred_energy,     type: scalar_nullable,        dtype: float  }}
+  - {{ name: patience,        type: list,   shape: [2],     dtype: int    }}  # must be BEFORE velocities
+  - {{ name: velocities,      type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }}
 '''
 
     with open("config.yaml", "w") as f:

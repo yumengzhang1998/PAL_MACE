@@ -1,15 +1,27 @@
 import yaml
 from typing import Union, Any
 from copy import deepcopy
-
+import os
 
 class ConfigLoader:
     _cache = None  # static cache shared across instances
-    def __init__(self, file_path: str):
-        # #print("Loading config...")
-        # with open(file_path, 'r') as stream:
-        #     self._config = yaml.safe_load(stream)
-        # #print("Config loaded.")
+    # def __init__(self, file_path: str):
+    #     # #print("Loading config...")
+    #     # with open(file_path, 'r') as stream:
+    #     #     self._config = yaml.safe_load(stream)
+    #     # #print("Config loaded.")
+    #     if ConfigLoader._cache is None:
+    #         with open(file_path, "r") as f:
+    #             ConfigLoader._cache = yaml.safe_load(f)
+    #     self._config = ConfigLoader._cache
+    def __init__(self, file_path: str = None):
+        # Check for env variable override
+        env_path = os.environ.get("CONFIG_USED_PATH")
+        if env_path:
+            file_path = env_path
+        elif file_path is None:
+            file_path = "config.yaml"
+
         if ConfigLoader._cache is None:
             with open(file_path, "r") as f:
                 ConfigLoader._cache = yaml.safe_load(f)

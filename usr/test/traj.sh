@@ -1,6 +1,6 @@
 #! /bin/bash
 #SBATCH --job-name=bisyn_200pstraj
-#SBATCH --partition=accelerated
+#SBATCH --partition=normal
 #SBATCH --time=30:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1

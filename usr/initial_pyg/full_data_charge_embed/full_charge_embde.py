@@ -446,7 +446,7 @@ def run(args: argparse.Namespace, train, val, test = None) -> None:
         rank=rank,
     )
     pickle.dump(metrcis, open(f"{args.results_dir}/metrics.pkl", "wb"))
-    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    # print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     print( model.scale_shift.scale,  model.scale_shift.shift)
     logging.info("")
     logging.info("===========FINISHED TRAINING===========")
