@@ -92,7 +92,7 @@ patience_threshold: 10
 
 num_pred_process: 2
 num_orcl_process: 50
-num_gen_process: 4
+num_gen_process: 2
 retrain_size: 50
 
 full_dataset: {full_dataset}
@@ -106,13 +106,13 @@ coord: {coord}
 
 metadata:
   - {{ name: coords,          type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }}
-  - {{ name: atomic_numbers,  type: list,   shape: [{settings['num_atom']}],    dtype: int    }}  # or tensor with int dtype
+  - {{ name: atomic_numbers,  type: tensor,   shape: [{settings['num_atom']}],    dtype: torch.int64}}  # or tensor with int dtype
   - {{ name: energy,          type: scalar_nullable,        dtype: float  }}  # was None OK too
   - {{ name: forces,          type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }}
-  - {{ name: charge,          type: charge }}                                 # 1 scalar int
+  - {{ name: charge,          type: charge,                 dtype: torch.long}}                                 # 1 scalar int
   - {{ name: pred_forces,     type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }} # ← this one commonly mis-set
   - {{ name: pred_energy,     type: scalar_nullable,        dtype: float  }}
-  - {{ name: patience,        type: list,   shape: [2],     dtype: int    }}  # must be BEFORE velocities
+  - {{ name: patience,        type: list,   shape: [2]    , dtype: int }}  # must be BEFORE velocities
   - {{ name: velocities,      type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }}
 '''
 

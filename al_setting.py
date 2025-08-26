@@ -15,7 +15,7 @@ AL_SETTING = {
     #                              + pred_process + orcl_process + gene_process + ml_process
     "pred_process": 2,                     # number of prediction processes
     "orcl_process": 50,                     # number of oracle processes
-    "gene_process": 4,                    # number of generator processes
+    "gene_process": 2,                    # number of generator processes
     "ml_process": 2,                       # number of machine learning processes
     "designate_task_number": False,         # set to True if need to specify the number of tasks running on each node (e.g. number of model per computation node)
                                            # if False, tasks are arranged randomly

@@ -26,9 +26,6 @@ import time
 import openmm.app as mmapp
 import copy
 import openmm as mm
-from scipy.spatial.distance import cdist
-from scipy.optimize import linear_sum_assignment
-
 
 random_seed = 42
 random.seed(random_seed)
@@ -38,25 +35,20 @@ np.random.seed(random_seed)
 
 # Set a random seed for PyTorch
 #torch.manual_seed(random_seed)
-def compute_perm_invariant_rmsd(P, Q):
-    P_centered = P - P.mean(axis=0)
-    Q_centered = Q - Q.mean(axis=0)
+def compute_rmsd(P, Q):
+    """Align P to Q and compute RMSD (P and Q are Nx3 arrays)"""
+    # Subtract centroid
+    P -= P.mean(axis=0)
+    Q -= Q.mean(axis=0)
 
-    D = cdist(P_centered, Q_centered)
-    row_ind, col_ind = linear_sum_assignment(D)
-
-    P_matched = P_centered[row_ind]
-    Q_matched = Q_centered[col_ind]
-
-    # Kabsch: rotate Q_matched to align to P_matched
-    C = Q_matched.T @ P_matched
+    # Kabsch alignment
+    C = np.dot(P.T, Q)
     V, S, W = np.linalg.svd(C)
-    d = np.sign(np.linalg.det(V @ W))
-    U = V @ np.diag([1, 1, d]) @ W
-    Q_aligned = Q_matched @ U
+    d = np.sign(np.linalg.det(np.dot(V, W)))
+    U = np.dot(V, np.dot(np.diag([1, 1, d]), W))
+    P_aligned = np.dot(P, U)
 
-    rmsd = np.sqrt(np.mean(np.sum((Q_aligned - P_matched) ** 2, axis=1)))
-    return rmsd
+    return np.sqrt(np.mean(np.sum((P_aligned - Q) ** 2, axis=1)))
 def prediction_check(list_data_to_pred, list_data_to_gene):
     """
     User defined predictions check function.
@@ -78,8 +70,6 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
                                   Destination: list of data_to_gene to UserGene.generate_new_data(), length must match the number of generators and should be sorted by the rank of generator.
                                   [1-D numpy.ndarray, 1-D numpy.ndarray, ...]
     """
-
-    ##### User Part #####
     config = ConfigLoader("config.yaml")
     metadata = config['metadata']
 
@@ -88,21 +78,26 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     # print(len(list_data_to_pred[0])) 32
     input_list = [reconstruct_from_metadata(item, metadata) for item in list_data_to_pred]
 
+    # pred_list = [k.tolist() for k in pred_list]
+    list_data_to_gene = list_data_to_gene[0]
 
-    energy, forces = parse_list_data_to_gene(list_data_to_gene)
+    pred_list, force_list = unflatten_predictions(list_data_to_gene)
    
-    # energy & forces part
-    force_std_vec = forces.std(axis=1, ddof=1)
-    max_force_std = force_std_vec.max(axis=1)
-    force_mean_vec = forces.mean(axis=1)
-    std = energy.std(axis=1, ddof=1)  # shape: (num_generators,)
-    # std  = max_force_std
-    energy_mean = energy.mean(axis=1)
 
-    for i, rec in enumerate(input_list):
-        rec[-3]  = float(energy_mean[i]) # energy
-        rec[5]  = np.asarray(force_mean_vec[i], dtype=np.float64) # forces
 
+
+    # Stack the arrays along a new dimension
+    stacked_arrays = np.stack(force_list)
+
+    # Compute the mean along the new dimension (axis=0)
+    forces = np.mean(stacked_arrays, axis=0)
+    forces = torch.tensor(forces)
+
+    ##### User Part #####
+    # Find the indices of the top 25% of standard deviations
+    # print('pred_list:', pred_list)
+    std = np.std(np.array(pred_list, dtype=float), axis=0, ddof=1)  # calculate std of PL predictions
+    # print('std:', std)
     threshold = config['std_threshold']
     patience_threshold = config['patience_threshold']
     energy_threshold = config['energy_threshold']
@@ -110,46 +105,41 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     optimal_coord = config['coord']
     upper_bound = energy_threshold + boundary
     lower_bound = energy_threshold - boundary
-    for i in range(len(input_list)):
-        if energy_mean[i] > upper_bound or energy_mean[i] < lower_bound:
-            print('energy out of bound, predicted energies are:', energy)
-            print('energy out of bound, mean energy is:', energy_mean[i])
-            input_list[i][-2][0] += 1
+    avg_energy_pred = np.mean(np.array(pred_list, dtype=float), axis=0)
+    if avg_energy_pred > upper_bound or avg_energy_pred < lower_bound:
+        print('energy out of bound', avg_energy_pred)
+        print(input_list[0][-1])
+        input_list[0][-2] += 1
+        # print('COORIDNATES:', input_list[0]['data_list'][0])
+        # print('pred ENERGY:', avg_energy_pred)
 
-
-    # to_orcl filter part
-
-    ## STD filter
+    # std filter
     if std.ndim == 1:
         i_orcl_std = np.where(std >= threshold)[0]
     else:
         i_orcl_std = np.where((std >= threshold).any(axis=1))[0]
-
     # RMSD filter
-    rmsd_threshold = float('inf')
-    optimal_coord = np.array(optimal_coord, dtype=float).reshape(input_list[0][0].shape)  # reshape to match the coordinates shape
-    i_orcl_rmsd = []
-    rmsd = [compute_perm_invariant_rmsd(np.array(input_item[0]), optimal_coord) for input_item in input_list]
-    i_orcl_rmsd = np.where(np.array(rmsd) >= rmsd_threshold)[0]
-    # add patience
-    for i in i_orcl_rmsd:
-        input_list[i][-2][1] += 1  # increment patience for items with high RMSD
-    
-    i_orcl = sorted(set(i_orcl_std).union(set(i_orcl_rmsd)))
+    # rmsd_threshold = 0.5
+    # i_orcl_rmsd = [
+    #     i for i, input_item in enumerate(input_list)
+    #     if compute_rmsd(np.array(input_item[0]), optimal_coord) >= rmsd_threshold
+    # ]
+    # i_orcl = sorted(set(i_orcl_std).union(set(i_orcl_rmsd)))
 
-
-    if any(item[-2][-1] is not None and item[-2][-1] > patience_threshold for item in input_list):
-        print('structural patience reached (at least one structure)')
-    elif any(item[-2][-1] is None for item in input_list):
-        print('no patience info in check function')
-
-
-    # data_to_gene & input_to_orcl conversion
-    data_to_gene = copy.deepcopy(input_list)
-    data_to_gene = [convert_to_1d_float_array(k) for k in data_to_gene]
-
-    input_to_orcl = [copy.deepcopy(input_list[i]) for i in i_orcl]
     input_to_orcl = [convert_to_1d_float_array(input_list[i]) for i in i_orcl_std]
+
+    pred_list = np.mean(np.array(pred_list, dtype=float), axis=0)  # take the mean of predictions to send to generator
+    #pred_list[i_orcl] = 0  # for predictions with high std, send 0 instead to generator
+    input_list[0][-3] = torch.tensor(pred_list[0])
+    input_list[0][5] = forces
+    if input_list[0][-2] > patience_threshold:
+        data_to_gene = copy.deepcopy(input_list)
+        print('patience reached')
+    elif input_list[0][-2] is None:
+        print('no patience in check function')
+    else:
+        data_to_gene = [convert_to_1d_float_array(k) for k in input_list]
+
     
     if data_to_gene is None:
         print('no data to gene')
@@ -183,14 +173,23 @@ def adjust_input_for_oracle(to_orcl_buffer, pred_list):
     threshold = config['std_threshold']
     pred_list = [k[:, 0] for k in pred_list]
     std = [np.std(k, axis=0, ddof=1) for k in pred_list]  # calculation std of predictions from retrained ML
+    # remove data with prediction std not exceeding the threshold
+
+
+    #std = np.std(np.array(pred_list, dtype=float), axis=0, ddof=1)  # calculation std of predictions from retrained ML
+    # sort the to_orcl_buffer list based on the std
     if len(std) != len(to_orcl_buffer):
         raise ValueError(f"Mismatch: std length {len(std)} vs. to_orcl_buffer length {len(to_orcl_buffer)}")
+    # Combine std_list and list1 element-wise using zip
+    # combined_lists = list(zip(std, to_orcl_buffer))
 
+    # # Sort the combined_lists based on the standard deviation values
+    # sorted_combined_lists = sorted(combined_lists, key=lambda x: x[0])
     sorted_indices = np.argsort(std)  # Get sorted index order
     print(f"Before sorting, to_orcl_buffer size = {len(to_orcl_buffer)}")
 
     to_orcl_buffer = [to_orcl_buffer[i] for i in sorted_indices if std[i] > threshold]
-
+    # to_orcl_buffer = [to_orcl_buffer[i] for i in sorted_indices]
     std_sorted = [std[i] for i in sorted_indices]
     print(f"After sorting, to_orcl_buffer size = {len(to_orcl_buffer)}")
 
@@ -205,8 +204,16 @@ def adjust_input_for_oracle(to_orcl_buffer, pred_list):
         for i, item in enumerate(to_orcl_buffer):
             print(f"Item {i} shape: {item.shape}")
 
-    std = sorted(std)
 
+    # print('to_orcl_buffer:', to_orcl_buffer)
+
+    #i_orcl_sorted = np.argsort(np.mean(std, axis=1), axis=0)[::-1]
+    #to_orcl_buffer = np.array(to_orcl_buffer, dtype=float)[i_orcl_sorted]
+
+    std = sorted(std)
+    #to_orcl_buffer = list(to_orcl_buffer[np.nonzero((std > threshold).any(axis=1))[0]])  # remove data with prediction std not exceeding the threshold 
+    # print(to_orcl_buffer)
+    # pickle.dump(to_orcl_buffer, open('results/to_orcl_buffer.pkl', 'wb'))
     return to_orcl_buffer
 
 
@@ -427,7 +434,7 @@ def get_init_data(path):
             torch.tensor(charge, dtype=torch.int64), 
             torch.zeros(coords[i].shape),
             None, 
-            [0,0],
+            0,
             torch.zeros(coords[i].shape)]
         data_list.append(data)
     # print('data_list:', data_list[0].forces)
@@ -461,7 +468,7 @@ def get_full_data_init(path):
             torch.tensor(charge[i], dtype=torch.int64), 
             torch.zeros(coords[i].shape),
             None, 
-            [0,0],
+            0,
             torch.zeros(coords[i].shape)]
         data_list.append(data)
     # print('data_list:', data_list[0].forces)
@@ -505,11 +512,70 @@ def process_row(row, header, num_atom, charge):
         torch.tensor(charge, dtype=torch.int64),
         torch.zeros(coords.shape),  # Placeholder for 'pred_force'
         None, # Placeholder for 'pred_energy'
-        [0,0], 
+        0, 
         torch.zeros(coords.shape)
     ]
     
     return data
+
+
+# def reconstruct_from_metadata(flat_array, metadata, none_placeholder=99999999.0, rank = None):
+#     reconstructed_data = []
+#     index = 0  # Start index for slicing flat_array
+
+#     for meta in metadata:
+#         if meta['type'] == 'array':
+#             # Reconstruct a NumPy array with the specified shape and dtype
+#             shape = tuple(meta['shape'])
+#             num_elements = np.prod(shape)
+#             # print(flat_array[index:index + num_elements])
+#             array_data = np.array(flat_array[index:index + num_elements], dtype=meta['dtype']).reshape(shape)
+#             reconstructed_data.append(array_data)
+#             index += num_elements
+
+#         elif meta['type'] == 'tensor':
+#             # Reconstruct a PyTorch tensor with specified shape and dtype
+#             shape = tuple(meta['shape'])
+#             dtype = getattr(torch, meta['dtype'].split('.')[1])  # e.g., 'torch.float64' to torch.float64
+#             num_elements = np.prod(shape) if shape else 1
+#             # print(flat_array[index:index + num_elements])
+#             tensor_data = torch.tensor(flat_array[index:index + num_elements], dtype=dtype).reshape(shape)
+#             reconstructed_data.append(tensor_data)
+#             index += num_elements
+#         elif meta['type'] == 'charge':
+#             reconstructed_data.append(torch.tensor(flat_array[index], dtype=torch.int64))
+#             index += 1
+#         elif meta['type'] == 'None':
+#             # print(reconstructed_data.append(flat_array[index]))
+#             # print(none_placeholder)
+#             # Convert the placeholder back to None
+#             if flat_array[index] == none_placeholder or flat_array[index] == int(none_placeholder):
+#                 # print('here!!!!!!!!!!!')
+#                 reconstructed_data.append(None)
+#             else:
+#                 reconstructed_data.append(flat_array[index])
+#             index += 1  # Move index forward
+#         elif meta['type'] == 'scalar_nullable':
+#             # Check if the value is the placeholder; if so, replace it with None
+#             if flat_array[index] == none_placeholder:
+#                 reconstructed_data.append(None)
+#             else:
+#                 # Convert based on dtype
+#                 if meta['dtype'] == 'int':
+#                     reconstructed_data.append(int(flat_array[index]))
+#                 elif meta['dtype'] == 'float':
+#                     reconstructed_data.append(float(flat_array[index]))
+#             index += 1
+#         elif meta['type'] == 'scalar':
+#             # print(flat_array[index])
+#             # Handle scalar conversion based on specified dtype
+#             if meta['dtype'] == 'int':
+#                 reconstructed_data.append(int(flat_array[index]))
+#             elif meta['dtype'] == 'float':
+#                 reconstructed_data.append(float(flat_array[index]))
+#             index += 1
+
+#     return reconstructed_data
 
 
 
@@ -616,30 +682,68 @@ def convert_to_1d_float_array(data):
             raise TypeError(f"Unexpected type in data: {type(item)}")
 
 
+    # Convert the flat_array to a NumPy array
+    #print(f"Final flattened array size: {len(flat_array)}")
+    # if len(flat_array) != 56:
+    #     print('wrong size after flatten')
+
     return np.array(flat_array, dtype=np.float64)
-
-
-
-def parse_list_data_to_gene(list_data_to_gene):
+def unflatten_predictions(flattened_preds):
     """
-    Parses list_data_to_gene structured as:
-    list of arrays: each array is shape (num_predictors, 1 + 3*num_atoms)
-
-    Returns:
-        energy: (G, P)
-        forces: (G, P, N, 3)
-    """
-    data_array = np.array(list_data_to_gene)
-    if data_array.ndim != 3:
-        raise ValueError(f"Expected 3D array, got shape {data_array.shape}")
-
-    num_generators, num_predictors, total_dim = data_array.shape
-
-    num_atoms = (total_dim - 1) // 3
+    Unflattens a numpy array of shape (n, 13) into lists of y_pred and force_pred in their original shapes.
     
+    Args:
+        flattened_preds (np.ndarray): The flattened predictions of shape (n, 13).
+        
+    Returns:
+        list: List of y_pred values (each of shape (1, 1)).
+        list: List of force_pred values (each of shape (4, 3)).
+    """
+    n = flattened_preds.shape[0]  # Get the number of predictions (rows)
+    
+    y_pred_list = []
+    force_pred_list = []
+    
+    for i in range(n):
+        # Slice the flattened array
+        y_pred_flat = flattened_preds[i, 0]  # First element is y_pred
+        force_pred_flat = flattened_preds[i, 1:]  # The remaining 12 elements are force_pred
+        shape = force_pred_flat.shape[0]//3
+        
+        # Reshape back to original shapes
+        y_pred = np.array([[y_pred_flat]])  # Shape (1, 1)
+        force_pred = force_pred_flat.reshape(shape, 3)  # Shape (4, 3)
+        
+        # Append to lists
+        y_pred_list.append(y_pred)
+        force_pred_list.append(force_pred)
+    
+    return y_pred_list, force_pred_list
 
-    energy = data_array[:, :, 0]                             # shape (G, P)
-    forces_flat = data_array[:, :, 1:]                       # shape (G, P, 3N)
-    forces = forces_flat.reshape((num_generators, num_predictors, num_atoms, 3))
 
-    return energy, forces
+def kabsch_rmsd(P, Q):
+    """
+    Calculate the RMSD between two point sets P and Q using the Kabsch algorithm.
+    Both P and Q must be NumPy arrays of shape (N, 3).
+    """
+
+    # Center both sets to their centroids
+    P_centered = P - np.mean(P, axis=0)
+    Q_centered = Q - np.mean(Q, axis=0)
+
+    # Covariance matrix
+    C = np.dot(P_centered.T, Q_centered)
+
+    # Optimal rotation matrix using SVD
+    V, S, Wt = np.linalg.svd(C)
+    d = np.sign(np.linalg.det(np.dot(V, Wt)))
+    D = np.diag([1.0, 1.0, d])
+    U = np.dot(V, np.dot(D, Wt))
+
+    # Rotate P
+    P_rotated = np.dot(P_centered, U)
+
+    # Calculate RMSD
+    diff = P_rotated - Q_centered
+    rmsd = np.sqrt(np.mean(np.sum(diff**2, axis=1)))
+    return rmsd

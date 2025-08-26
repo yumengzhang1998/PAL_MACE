@@ -143,37 +143,6 @@ def flatten_and_concatenate(pred_list):
     flattened_arrays = [pred.flatten() for pred in pred_list]
     return np.concatenate(flattened_arrays)
 
-# def combine_predictions_to_numpy(y_pred, force_pred):
-#     """
-#     Combines y_pred and force_pred into a list of 1D numpy arrays.
-#     Each array will have length 13, where the first element is y_pred 
-#     and the rest are the flattened force_pred values.
-    
-#     Args:
-#     - y_pred (torch.Tensor): Tensor of shape (n, 1) for predicted values.
-#     - force_pred (torch.Tensor): Tensor of shape (n, 4, 3) for force predictions.
-    
-#     Returns:
-#     - result_list (list of np.ndarray): A list where each element is a 1D numpy array 
-#                                         of length 13.
-#     """
-#     n = y_pred.shape[0]  # Number of predictions
-#     result_list = []
-#     if force_pred.ndim == 2 :
-#         force_pred = np.expand_dims(force_pred, axis=0)
-#     if y_pred.ndim == 1:
-#         y_pred = np.expand_dims(y_pred, axis=0)
-#     for i in range(n):
-#         # Flatten force_pred[i] (shape (1, 4, 3) -> (12,))
-#         force_pred_flat = force_pred[i].reshape(-1)
-        
-#         # Concatenate y_pred[i] (scalar) with flattened force_pred[i]
-#         combined = np.concatenate((y_pred[i].reshape(-1), force_pred_flat))
-        
-#         # Convert to numpy array and append to the list
-#         result_list.append(combined)
-    
-#     return result_list
 def combine_predictions_to_numpy(y_pred, force_pred):
     """
     Combines y_pred and force_pred into a list of 1D numpy arrays.
@@ -362,47 +331,25 @@ class UserModel(object):
         data_to_gene = None
 
         ##### User Part #####
-        # print(list_data_to_pred)
-        data_list = [reconstruct_from_metadata(data, self.metadata) for data in list_data_to_pred]
+
+        if len(list_data_to_pred) > self.config['num_gen_process']:
+            import json
+            with open("to_orcl_buffer.json", "w") as f:
+                json.dump([arr.tolist() for arr in list_data_to_pred], f)
+        data_list = [reconstruct_from_metadata(data, self.metadata, rank  = f"predict {self.rank}") for data in list_data_to_pred]
         # print('data_list', data_list)
         data_list = convert_to_data_object(data_list)
-        # dataset = retrain_dataset(data_list, transforms=self.transforms)
-        # test_loader = DataLoader(dataset, batch_size = 64)
-        
+
 
         y_pred, force_pred, _, _= evaluate(self.model, data_list, batch_size = self.batch_size, device = self.device)
         a = torch.tensor(y_pred)
         b = torch.tensor(force_pred)
-        # print(a)
-        # print(b)
-        # flattened_y_pred = flatten_and_concatenate(y_pred)
-        # flattened_force_pred = flatten_and_concatenate(force_pred)
 
-
-        # data_to_gene = np.concatenate([flattened_y_pred, flattened_force_pred])
-
-        # #TODO: check if this is correct
-        # print("energy", a, a.shape)
-        # print("forces", b, b.shape)
-        #print('length of list_data_to_pred', len(list_data_to_pred))
-        # num_data = len(list_data_to_pred)
-        # # reshape force_pred to (num_data, 4, 3)
-        # force_pred = b.reshape(num_data, -1, 3)
         data_to_gene = combine_predictions_to_numpy(a, b)
         
         return data_to_gene
     
-    # def update(self, weight_array):
-    #     """
-    #     Update model/scalar with new weights in weight_array.
-        
-    #     Args:
-    #         weight_array (numpy.ndarray): 1-D numpy array containing model/scalar weights. (from UserModel.get_weight())
-    #     """
-    #     ##### User Part #####
-    #     for k in self.para_keys:
-    #         self.model.state_dict()[k] = weight_array[:self.model.state_dict()[k].flatten().shape[0]].reshape(self.model.state_dict()[k].shape)
-    #     print(f"Rank {self.rank}: model updated")
+
     def update(self, weight_array):
         """
         Update model/scalar with new weights in weight_array.
