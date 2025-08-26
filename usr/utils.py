@@ -38,6 +38,44 @@ np.random.seed(random_seed)
 
 # Set a random seed for PyTorch
 #torch.manual_seed(random_seed)
+def max_atom_distance(coords):
+    """Compute maximum pairwise distance in coords (N,3)."""
+    d = pdist(np.asarray(coords, dtype=float), metric="euclidean")
+    return float(np.max(d))
+
+def is_unreasonable_structure_list(input_list, ref_max_dist, tolerance=0.2):
+    """
+    Check a list of structures and return indices of unreasonable ones.
+
+    Args:
+        input_list (list): list of reconstructed data, each with coords in input_item[0].
+        ref_max_dist (float): reference maximum distance (Å).
+        tolerance (float): allowed fractional deviation.
+
+    Returns:
+        tuple: (indices, deviations, max_distances)
+            indices: np.ndarray of unreasonable indices
+            deviations: list of deviations for each structure
+            max_distances: list of max distances for each structure
+    """
+    max_distances = []
+    deviations = []
+    i_orcl_structural = []
+
+    for idx, input_item in enumerate(input_list):
+        coords = np.array(input_item[0], dtype=float)
+        dmax = max_atom_distance(coords)
+        if ref_max_dist > 0:
+            deviation = (dmax - ref_max_dist) / ref_max_dist
+        else:
+            deviation = np.inf
+        max_distances.append(dmax)
+        deviations.append(deviation)
+        if deviation > tolerance:
+            i_orcl_structural.append(idx)
+
+    return np.array(i_orcl_structural, dtype=int), deviations, max_distances
+
 def compute_perm_invariant_rmsd(P, Q):
     P_centered = P - P.mean(axis=0)
     Q_centered = Q - Q.mean(axis=0)
@@ -82,6 +120,7 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     ##### User Part #####
     config = ConfigLoader("config.yaml")
     metadata = config['metadata']
+    max_dist = config['max_dist']
 
     num_generators = len(list_data_to_pred)
     input_to_orcl = []
@@ -125,17 +164,23 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     else:
         i_orcl_std = np.where((std >= threshold).any(axis=1))[0]
 
+    ## structural filter
+    i_orcl_structural = []
     # RMSD filter
-    rmsd_threshold = float('inf')
-    optimal_coord = np.array(optimal_coord, dtype=float).reshape(input_list[0][0].shape)  # reshape to match the coordinates shape
-    i_orcl_rmsd = []
-    rmsd = [compute_perm_invariant_rmsd(np.array(input_item[0]), optimal_coord) for input_item in input_list]
-    i_orcl_rmsd = np.where(np.array(rmsd) >= rmsd_threshold)[0]
-    # add patience
-    for i in i_orcl_rmsd:
-        input_list[i][-2][1] += 1  # increment patience for items with high RMSD
-    
-    i_orcl = sorted(set(i_orcl_std).union(set(i_orcl_rmsd)))
+    # rmsd_threshold = float('inf')
+    # optimal_coord = np.array(optimal_coord, dtype=float).reshape(input_list[0][0].shape)  # reshape to match the coordinates shape
+    # rmsd = [compute_perm_invariant_rmsd(np.array(input_item[0]), optimal_coord) for input_item in input_list]
+    # i_orcl_structural = np.where(np.array(rmsd) >= rmsd_threshold)[0]
+
+    # MAX distance filter
+    i_orcl_structural, _, distance = is_unreasonable_structure_list(
+        input_list, max_dist, tolerance=0.2
+    )
+    ########################
+    for i in i_orcl_structural:
+        input_list[i][-2][1] += 1
+        print('structural deviation reached, max distance is:', distance[i])
+    i_orcl = sorted(set(i_orcl_std).union(set(i_orcl_structural)))
 
 
     if any(item[-2][-1] is not None and item[-2][-1] > patience_threshold for item in input_list):

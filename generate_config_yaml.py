@@ -19,31 +19,36 @@ prefix_settings = {
         "energy_threshold": -23365.0,
         "std_threshold": 0.007,
         "bound": 10,
-        "num_atom": 4
+        "num_atom": 4,
+        "max_dist": 4.161544
     },
     "bi4-6": {
         "energy_threshold":  -23374.0,
         "std_threshold": 0.020,
         "bound": 10,
-        "num_atom": 4
+        "num_atom": 4,
+        "max_dist": 7.074161
     },
     "bi7-3": {
         "energy_threshold":  -40889.9,
         "std_threshold": 0.001,
         "bound": 10,
-        "num_atom": 7
+        "num_atom": 7,
+        "max_dist": 4.748247
     },
     "bi11-3": {
         "energy_threshold": -64250.5,
         "std_threshold": 0.03,
         "bound": 10,
-        "num_atom": 11
+        "num_atom": 11,
+        "max_dist": 6.909196
     },
     "bi11-3_samples": {
         "energy_threshold": -64250.5,
         "std_threshold": 0.06,
         "bound": 10,
-        "num_atom": 11
+        "num_atom": 11,
+        "max_dist": 9.055371
     }
 }
 
@@ -103,6 +108,7 @@ std_threshold: {settings['std_threshold']}
 bound: {settings['bound']}
 num_atom: {settings['num_atom']}
 coord: {coord}
+max_dist: {settings['max_dist']}
 
 metadata:
   - {{ name: coords,          type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }}

@@ -12,6 +12,9 @@ from mpi4py import MPI
 from al_setting import AL_SETTING
 import os, sys, gc, time, pickle, threading
 import shutil
+# --- MPI dtype hygiene: make sizes int64 and data float64 everywhere ---
+DINT = np.int64
+DFLOAT = np.float64
 
 RANK_EXCHANGE = 0                                  # rank of exchange process
 RANK_MG = 1                                        # rank of manager process
@@ -21,7 +24,7 @@ def _assert_no_aliases(buf):
     if dup:
         raise RuntimeError(f"Aliasing detected: {dup} duplicate buffers")
 def _record_invariants(a, *, idx=None, who=None, none_placeholder=99999999.0):
-    a = np.asarray(a, dtype=np.float64).ravel()
+    a = np.asarray(a, dtype=DFLOAT).ravel()
     # find contiguous block of 83.0 -> atomic_numbers
     pos83 = np.where(np.isclose(a, 83.0))[0]
     if pos83.size == 0:
@@ -57,7 +60,7 @@ def _record_invariants(a, *, idx=None, who=None, none_placeholder=99999999.0):
 def _freeze_and_sig(buf_list):
     sigs = []
     for i, a in enumerate(buf_list):
-        a = np.asarray(a, dtype=np.float64)
+        a = np.asarray(a, dtype=DFLOAT)
         # ensure we own our memory and it’s contiguous
         if a.base is not None:
             a = a.copy()
@@ -324,19 +327,19 @@ if __name__ == "__main__":
             ##########################################
             # communicate the data size info
             if comm_data_size:
-                data_size_send = np.array([data_to_pred.shape[0] + 1,], dtype=int)
+                data_size_send = np.array([data_to_pred.shape[0] + 1,], dtype=DINT)
                 data_size_gather = None
                 # data size info gathered by the controller
                 comm_gene_ex.Gather([data_size_send, MPI.LONG], [data_size_gather, MPI.LONG], root=0)
             else:
                 # valid data size is fixed
-                tmp = np.array([data_to_pred.shape[0] + 1,], dtype=int)
+                tmp = np.array([data_to_pred.shape[0] + 1,], dtype=DINT)
                 assert tmp.shape == data_size_send.shape, "Error at Generator: size is not fixed for data_to_pred returned by UserGene.generate_new_data(). Check your implementation or set fixed_size_data to False in al_setting."
                 assert (tmp == data_size_send).all(), "Error at Generator: size is not fixed for data_to_pred returned by UserGene.generate_new_data(). Check your implementation or set fixed_size_data to False in al_setting."
 
             # send data to EXCHANGE controller kernel
             stop_signal = 1.0 if stop_run else 0.0
-            data_sent = np.append([stop_signal,], data_to_pred, axis=0)
+            data_sent = np.append([stop_signal], data_to_pred, axis=0).astype(DFLOAT, copy=False)
             data_received = None
             displs = None
             counts = None
@@ -348,7 +351,7 @@ if __name__ == "__main__":
             #################################################
             # communicate the data size info
             if comm_data_size:
-                data_size_recv = np.empty((1,), dtype=int)
+                data_size_recv = np.empty((1,), dtype=DINT)
                 data_size_gather = None
 
                 if fixed_size_data:
@@ -360,7 +363,7 @@ if __name__ == "__main__":
                 data_size_recv = int(data_size_recv[0])
 
             # receive data from EXCHANGE controller kernel
-            recvbuf = np.empty((data_size_recv,), dtype=float)
+            recvbuf = np.empty((data_size_recv,), dtype=DFLOAT)
             sendbuf = None
             counts = None
             displs = None
@@ -408,7 +411,7 @@ if __name__ == "__main__":
             if req_weight is None:
                 # start the communication process with ML to receive new model weights
                 weight_collect = None
-                weight_array = np.empty((pl_worker.get_weight_size()+1,), dtype=float)
+                weight_array = np.empty((pl_worker.get_weight_size()+1,), dtype=DFLOAT)
                 req_weight = comm_ml_pred.Iscatter([weight_collect, MPI.DOUBLE], [weight_array, MPI.DOUBLE], root=0)
             elif req_weight.Test():
                 # new weights received
@@ -424,7 +427,7 @@ if __name__ == "__main__":
             #    receive new inputs from Gene through EXCHANGE    #
             #######################################################
             if comm_data_size:
-                data_size_recv = np.empty((n_gene+1,), dtype=int)
+                data_size_recv = np.empty((n_gene+1,), dtype=DINT)
 
                 # data size info scattered by the controller
                 comm_pred_ex.Bcast([data_size_recv, MPI.LONG], root=0)
@@ -432,7 +435,7 @@ if __name__ == "__main__":
                 data_section = [sum(data_size_recv[:i]) for i in range(1, data_size_recv.shape[0])]
 
             # receive data from EXCHANGE controller kernel
-            recvbuf = np.empty((np.sum(data_size_recv),), dtype=float)
+            recvbuf = np.empty((np.sum(data_size_recv),), dtype=DFLOAT)
             comm_pred_ex.Bcast([recvbuf, MPI.DOUBLE], root=0)
             #sendbuf = None
             #counts = None
@@ -456,7 +459,7 @@ if __name__ == "__main__":
             #    send prediction back to Gene through EXCHANGE   #
             ######################################################
             # organize the data_to_gene to be collected by Exchange 
-            data_size_send = np.empty((len(data_to_gene),), dtype=int)
+            data_size_send = np.empty((len(data_to_gene),), dtype=DINT)
             data_send = []
             for i in range(0, len(data_to_gene)):
                 data_size_send[i] = len(data_to_gene[i])
@@ -516,11 +519,11 @@ if __name__ == "__main__":
         # wait for the new training data before starting retraining #
         #############################################################
         # receive data size info
-        data_size_recv = np.empty((retrain_size*2+1,), dtype=int)
+        data_size_recv = np.empty((retrain_size*2+1,), dtype=DINT)
         new_data_req = comm_mg_ml.Ibcast([data_size_recv, MPI.LONG], root=0)
         new_data_req.wait()
         # receive new data points
-        recv_data = np.empty((np.sum(data_size_recv),), dtype=float)
+        recv_data = np.empty((np.sum(data_size_recv),), dtype=DFLOAT)
         comm_mg_ml.Bcast([recv_data, MPI.DOUBLE], root=0)
         # organize received data
         stop_run = True if recv_data[0] == 1 else False
@@ -538,17 +541,17 @@ if __name__ == "__main__":
             ml_worker.add_trainingset(dataset_new)
             if adjust_orcale and oracl_data_arrive != -1:
                 # receive data size info
-                data_size_recv = np.empty((oracl_data_arrive,), dtype=int)
+                data_size_recv = np.empty((oracl_data_arrive,), dtype=DINT)
                 comm_mg_ml.Bcast([data_size_recv, MPI.LONG], root=0)
                 # receive oracle data
-                to_orcl_buffer = np.empty((np.sum(data_size_recv),), dtype=float)
+                to_orcl_buffer = np.empty((np.sum(data_size_recv),), dtype=DFLOAT)
                 comm_mg_ml.Bcast([to_orcl_buffer, MPI.DOUBLE], root=0)
                 data_section = [sum(data_size_recv[:i]) for i in range(1, data_size_recv.shape[0])]
                 to_orcl_buffer = np.split(to_orcl_buffer, data_section, axis=0)
                 # make prediction with up-to-date models
                 pred_res = ml_worker.predict(to_orcl_buffer)
                 # send prediction back to MG
-                data_size_send = np.empty((len(pred_res),), dtype=int)
+                data_size_send = np.empty((len(pred_res),), dtype=DINT)
                 data_send = []
                 for i in range(0, len(pred_res)):
                     data_size_send[i] = len(pred_res[i])
@@ -560,7 +563,7 @@ if __name__ == "__main__":
                 gc.collect()
         while not stop_run:
             # start non-blocking MPI receive process for new training data
-            data_size_recv = np.empty((retrain_size*2+1,), dtype=int)
+            data_size_recv = np.empty((retrain_size*2+1,), dtype=DINT)
             new_data_req = comm_mg_ml.Ibcast([data_size_recv, MPI.LONG], root=0)
             
             # start retraining while waiting for new training data
@@ -570,7 +573,7 @@ if __name__ == "__main__":
             # wait for receiving new data points
             # retrainig should stop before or when receiving new data points
             new_data_req.wait()
-            recv_data = np.empty((np.sum(data_size_recv),), dtype=float)
+            recv_data = np.empty((np.sum(data_size_recv),), dtype=DFLOAT)
             comm_mg_ml.Bcast([recv_data, MPI.DOUBLE], root=0)
 
             # organize received data
@@ -590,10 +593,10 @@ if __name__ == "__main__":
             
             if adjust_orcale and oracl_data_arrive != -1:
                 # receive data size info
-                data_size_recv = np.empty((oracl_data_arrive,), dtype=int)
+                data_size_recv = np.empty((oracl_data_arrive,), dtype=DINT)
                 comm_mg_ml.Bcast([data_size_recv, MPI.LONG], root=0)
                 # receive oracle data
-                to_orcl_buffer = np.empty((np.sum(data_size_recv),), dtype=float)
+                to_orcl_buffer = np.empty((np.sum(data_size_recv),), dtype=DFLOAT)
                 comm_mg_ml.Bcast([to_orcl_buffer, MPI.DOUBLE], root=0)
                 data_section = [sum(data_size_recv[:i]) for i in range(1, data_size_recv.shape[0])]
                 print(f"[DEBUG] Received buffer shape: {to_orcl_buffer.shape}")
@@ -612,7 +615,7 @@ if __name__ == "__main__":
                     _record_invariants(a, idx=i, who="before predict")
                 pred_res = ml_worker.predict(to_orcl_buffer)
                 # send prediction back to MG
-                data_size_send = np.empty((len(pred_res),), dtype=int)
+                data_size_send = np.empty((len(pred_res),), dtype=DINT)
                 data_send = []
                 for i in range(0, len(pred_res)):
                     data_size_send[i] = len(pred_res[i])
@@ -636,10 +639,10 @@ if __name__ == "__main__":
             
             # collect weight array at the first ML process
             if rank == rank_ml[0]:
-                weight_array_collect = np.empty((n_ml*(weight_array.shape[0]+1)), dtype=float)
+                weight_array_collect = np.empty((n_ml*(weight_array.shape[0]+1)), dtype=DFLOAT)
             else:
                 weight_array_collect = None
-            comm_ml.Gather([np.append(np.array([stop_run_1,]).astype(float),weight_array,axis=0), MPI.DOUBLE], [weight_array_collect, MPI.DOUBLE], root=0)
+            comm_ml.Gather([np.append(np.array([stop_run_1,]).astype(DFLOAT),weight_array,axis=0), MPI.DOUBLE], [weight_array_collect, MPI.DOUBLE], root=0)
             
             # distribute the weight array to each PL process
             if rank == rank_ml[0]:
@@ -648,9 +651,9 @@ if __name__ == "__main__":
                     req_weight.Wait()
                 stop_run_array = weight_array_collect.reshape(n_ml, weight_array.shape[0]+1)[:,0]
                 stop_run_1 = (stop_run_array != 0).any()
-                weight_array_collect.reshape(n_ml, weight_array.shape[0]+1)[:,0] = np.array([stop_run_1,]).astype(float)
-                weight_array_collect = np.concatenate((np.append(np.array([stop_run_1,]).astype(float), weight_array, axis=0), weight_array_collect), axis=0)
-                weight_array = np.empty((weight_array.shape[0]+1), dtype=float)
+                weight_array_collect.reshape(n_ml, weight_array.shape[0]+1)[:,0] = np.array([stop_run_1,]).astype(DFLOAT)
+                weight_array_collect = np.concatenate((np.append(np.array([stop_run_1,]).astype(DFLOAT), weight_array, axis=0), weight_array_collect), axis=0)
+                weight_array = np.empty((weight_array.shape[0]+1), dtype=DFLOAT)
                 req_weight = comm_ml_pred.Iscatter([weight_array_collect, MPI.DOUBLE], [weight_array, MPI.DOUBLE], root=0)
 
             # broadcast the stop run signal to all training processes
@@ -684,11 +687,11 @@ if __name__ == "__main__":
         tag_here = t_orcl_mg[rank_orcl.index(rank)]        # MPI tag for this Orcl process
         while not stop_run:
             # receive data size from MG
-            data_size_recv = np.empty((1,), dtype=int)
+            data_size_recv = np.empty((1,), dtype=DINT)
             comm_world.Recv([data_size_recv, MPI.LONG], source=RANK_MG, tag=tag_here)
 
             # receive input from MG
-            data_recv = np.empty((int(data_size_recv[0]),), dtype=float)
+            data_recv = np.empty((int(data_size_recv[0]),), dtype=DFLOAT)
             comm_world.Recv([data_recv, MPI.DOUBLE], source=RANK_MG, tag=tag_here)
             stop_run = True if data_recv[0] == 1 else False
             input_for_orcl = data_recv[1:]
@@ -715,7 +718,7 @@ if __name__ == "__main__":
             ############################################
             # orcl_calc_res is stored in the list (to_ml_buffer) at MG and is sent to ML for retraining
             # send data size info to MG
-            comm_world.Send([np.array([input_for_orcl.shape[0], orcl_calc_res.shape[0],], dtype=int), MPI.LONG], dest=RANK_MG, tag=tag_here)
+            comm_world.Send([np.array([input_for_orcl.shape[0], orcl_calc_res.shape[0],], dtype=DINT), MPI.LONG], dest=RANK_MG, tag=tag_here)
             # send data to MG
             comm_world.Send([np.append(input_for_orcl, orcl_calc_res, axis=0), MPI.DOUBLE], dest=RANK_MG, tag=tag_here)
             ####################END####################
@@ -780,13 +783,13 @@ if __name__ == "__main__":
             ###########################################
             # collect data size from each generator process
             if comm_data_size:
-                gene_output_size = np.empty((n_gene+1,), dtype=int)
-                data_size_send = np.array([1,], dtype=int)
+                gene_output_size = np.empty((n_gene+1,), dtype=DINT)
+                data_size_send = np.array([1,], dtype=DINT)
                 comm_gene_ex.Gather([data_size_send, MPI.LONG], [gene_output_size, MPI.LONG], root=0)
-                gene_output_displs = np.array([np.sum(gene_output_size[:i]) for i in range(0, gene_output_size.shape[0])], dtype=int)
+                gene_output_displs = np.array([np.sum(gene_output_size[:i]) for i in range(0, gene_output_size.shape[0])], dtype=DINT)
             # collect data generated by genenrator processes
-            gene_output_gather = np.empty((np.sum(gene_output_size),), dtype=float)
-            data_sent = np.array([-1.0,], dtype=float)
+            gene_output_gather = np.empty((np.sum(gene_output_size),), dtype=DFLOAT)
+            data_sent = np.array([-1.0,], dtype=DFLOAT)
             comm_gene_ex.Gatherv([data_sent, MPI.DOUBLE], [gene_output_gather, gene_output_size, gene_output_displs, MPI.DOUBLE], root=0)
             # shotdown the entire AL workflow if any generator process returns stop_run signal
             stop_run = (gene_output_gather[gene_output_displs[1:]] == 1).any()
@@ -815,8 +818,8 @@ if __name__ == "__main__":
             ################# Done ##################
             
             if stop_run:
-                size_to_gene = np.array([1,] + [3,] * n_gene, dtype=int)
-                data_to_gene = np.array([-1.0] + [1.0, 1.0, -1.0] * n_gene, dtype=float)
+                size_to_gene = np.array([1,] + [3,] * n_gene, dtype=DINT)
+                data_to_gene = np.array([-1.0] + [1.0, 1.0, -1.0] * n_gene, dtype=DFLOAT)
                 data_to_gene_displs = np.array([np.sum(size_to_gene[:i]) for i in range(0, size_to_gene.shape[0])], dtype=int)
                 print(f"Stop run signal received from generator process. Shutdown the workflow...")
                 break
@@ -825,8 +828,8 @@ if __name__ == "__main__":
             #################################
             if comm_data_size:
                 # gather data size info from each Prediction processes
-                tmp = np.zeros((n_gene,), dtype=int)    # place holder for Gather method
-                pred_to_gene_size = np.empty((n_gene*(n_pred+1),), dtype=int)    # receive buffer for size info
+                tmp = np.zeros((n_gene,), dtype=DINT)    # place holder for Gather method
+                pred_to_gene_size = np.empty((n_gene*(n_pred+1),), dtype=DINT)    # receive buffer for size info
                 comm_pred_ex.Gather([tmp, MPI.LONG], [pred_to_gene_size, MPI.LONG], root=0)
                 # organize and validate received size info
                 pred_to_gene_size = pred_to_gene_size[n_gene:].reshape(n_pred, n_gene)    # remove the tmp place holder and reshape the size info
@@ -834,8 +837,8 @@ if __name__ == "__main__":
                 pred_to_gene_size = pred_to_gene_size[0]
                 data_section = [np.sum(pred_to_gene_size[:i]) for i in range(1, pred_to_gene_size.shape[0])]
             # gather predictions from Prediction processes
-            tmp = np.zeros((np.sum(pred_to_gene_size)+1,), dtype=float)    # place holder for Gather method
-            pred_output_gather = np.empty(((np.sum(pred_to_gene_size)+1)*(n_pred+1),), dtype=float)    # receive buffer for predictions
+            tmp = np.zeros((np.sum(pred_to_gene_size)+1,), dtype=DFLOAT)    # place holder for Gather method
+            pred_output_gather = np.empty(((np.sum(pred_to_gene_size)+1)*(n_pred+1),), dtype=DFLOAT)    # receive buffer for predictions
             comm_pred_ex.Gather([tmp, MPI.DOUBLE], [pred_output_gather, MPI.DOUBLE], root=0)
             # organize received predictions
             pred_output_gather = pred_output_gather[np.sum(pred_to_gene_size)+1:].reshape(n_pred, np.sum(pred_to_gene_size)+1)    # remove the tmp place holder and reshape the predictions
@@ -870,7 +873,7 @@ if __name__ == "__main__":
                 a.setflags(write=False)  # any later in-place write will explode here
 
                 # quick signatures (size, head sum, tail sum)
-                sigs_after_predcheck.append( (a.size, float(a[:8].sum()), float(a[-8:].sum())) )
+                sigs_after_predcheck.append( (a.size, DFLOAT(a[:8].sum()), DFLOAT(a[-8:].sum())) )
             for i, a in enumerate(input_to_orcl_buffer):
                 _record_invariants(a, idx=i, who="after prediction_check")
 
@@ -894,8 +897,8 @@ if __name__ == "__main__":
             for d in list_data_to_gene_checked:
                 data_to_gene = np.concatenate((data_to_gene, [stop_signal, save_signal], d), axis=0)
                 size_to_gene.append(len(d)+2)
-            size_to_gene = np.array(size_to_gene, dtype=int)
-            data_to_gene_displs = np.array([np.sum(size_to_gene[:i]) for i in range(0, size_to_gene.shape[0])], dtype=int)
+            size_to_gene = np.array(size_to_gene, dtype=DINT)
+            data_to_gene_displs = np.array([np.sum(size_to_gene[:i]) for i in range(0, size_to_gene.shape[0])], dtype=DINT)
 
             if stop_run:
                 print(f"Stop run signal received from training process. Shutdown the workflow...")
@@ -906,7 +909,7 @@ if __name__ == "__main__":
             #################################
             # distribute size info to each generator process
             if comm_data_size:
-                recvsize_tmp = np.empty((1,), dtype=int)
+                recvsize_tmp = np.empty((1,), dtype=DINT)
                 comm_gene_ex.Scatter([size_to_gene, MPI.LONG], [recvsize_tmp, MPI.LONG], root=0)
 
                 if fixed_size_data:
@@ -919,7 +922,7 @@ if __name__ == "__main__":
                 assert (size_to_gene == size_to_gene_record).all(), "Error at utils: size is not fixed for list_data_to_gene_checked returned by utils.prediction_check(). Check your implementation or set fixed_size_data to False in al_setting."
 
             # distribute predictions to each generator process
-            recvbuf_tmp = np.empty((int(recvsize_tmp[0]),), dtype=float)
+            recvbuf_tmp = np.empty((int(recvsize_tmp[0]),), dtype=DFLOAT)
             comm_gene_ex.Scatterv([data_to_gene, size_to_gene, data_to_gene_displs, MPI.DOUBLE], [recvbuf_tmp, MPI.DOUBLE], root=0)
             ################# Done ##################
 
@@ -933,7 +936,7 @@ if __name__ == "__main__":
                 for d in input_to_orcl_buffer:
                     data_to_mg = np.append(data_to_mg, d, axis=0)
                     size_to_mg.append(len(d))
-                size_to_mg = np.array(size_to_mg, dtype=int)
+                size_to_mg = np.array(size_to_mg, dtype=DINT)
                 # free memory
                 del input_to_orcl_buffer
                 gc.collect()
@@ -954,10 +957,10 @@ if __name__ == "__main__":
         # send stop_run signal to all Generator processes
         # distribute size info to each generator process
         if comm_data_size:
-            recvsize_tmp = np.empty((1,), dtype=int)
+            recvsize_tmp = np.empty((1,), dtype=DINT)
             comm_gene_ex.Scatter([size_to_gene, MPI.LONG], [recvsize_tmp, MPI.LONG], root=0)
         # distribute predictions to each generator process
-        recvbuf_tmp = np.empty((int(recvsize_tmp[0]),), dtype=float)
+        recvbuf_tmp = np.empty((int(recvsize_tmp[0]),), dtype=DFLOAT)
         comm_gene_ex.Scatterv([data_to_gene, size_to_gene, data_to_gene_displs, MPI.DOUBLE], [recvbuf_tmp, MPI.DOUBLE], root=0)
 
         # send stop_run signal to MG, Oracle and Training processes
@@ -969,8 +972,8 @@ if __name__ == "__main__":
             req = comm_world.Isend([data_to_mg, MPI.DOUBLE], dest=RANK_MG, tag=t_ex_mg)
             data_to_mg = None
             req.wait()
-        size_to_mg = np.array([2, 1], dtype=int)
-        data_to_mg = np.array([1.0, 1.0, -1.0], dtype=float)
+        size_to_mg = np.array([2, 1], dtype=DINT)
+        data_to_mg = np.array([1.0, 1.0, -1.0], dtype=DFLOAT)
         req = comm_world.Isend([size_to_mg, MPI.LONG], dest=RANK_MG, tag=t_ex_mg)
         req.wait()
         req = comm_world.Isend([data_to_mg, MPI.DOUBLE], dest=RANK_MG, tag=t_ex_mg)
@@ -1019,14 +1022,14 @@ if __name__ == "__main__":
             if comm_world.Iprobe(source=RANK_EXCHANGE, tag=t_ex_mg_int, status=size_status):
                 # intialize the receive buffer according to the number of arriving elements
                 n_data = size_status.Get_count(MPI.LONG)
-                ex_size = np.empty((n_data,), dtype=int)
+                ex_size = np.empty((n_data,), dtype=DINT)
                 # receive the size info from EX
                 #TODO: DEBUG:CHANGED t_ex_mg
                 req_mg = comm_world.Irecv([ex_size, MPI.LONG], source=RANK_EXCHANGE, tag=t_ex_mg_int)
                 req_mg.wait()
                 data_section = [np.sum(ex_size[:i]) for i in range(1, n_data)]
                 # receive the data from EX
-                ex_data = np.empty((np.sum(ex_size),), dtype=float)
+                ex_data = np.empty((np.sum(ex_size),), dtype=DFLOAT)
                 req_mg = comm_world.Irecv([ex_data, MPI.DOUBLE], source=RANK_EXCHANGE, tag=t_ex_mg_float)
                 req_mg.wait()
                 # organize received data
@@ -1034,7 +1037,7 @@ if __name__ == "__main__":
                 save_progress = True if ex_data[1] == 1.0 else False
                 parts = np.split(ex_data, data_section)[1:]
                 # input_to_orcl = np.split(ex_data, data_section, axis=0)[1:]
-                parts = [np.ascontiguousarray(p, dtype=np.float64).copy() for p in parts]
+                parts = [np.ascontiguousarray(p, dtype=DFLOAT).copy() for p in parts]
                 for p in parts:
                     p.setflags(write=False)
                 # to_orcl_buffer += input_to_orcl
@@ -1054,9 +1057,9 @@ if __name__ == "__main__":
                     tag_here = t_orcl_mg[rank_orcl.index(i)]
                     if comm_world.Iprobe(source=i, tag=tag_here):
                         # receive size info
-                        orcl_size = np.empty((2,), dtype=int)
+                        orcl_size = np.empty((2,), dtype=DINT)
                         comm_world.Recv([orcl_size, MPI.LONG], source=i, tag=tag_here)
-                        orcl_data = np.empty((np.sum(orcl_size),), dtype=float)
+                        orcl_data = np.empty((np.sum(orcl_size),), dtype=DFLOAT)
                         comm_world.Recv([orcl_data, MPI.DOUBLE], source=i, tag=tag_here)
                         to_ml_buffer.append(np.split(orcl_data, [orcl_size[0],], axis=0))
                         orcl_to_free.append(i)
@@ -1073,9 +1076,9 @@ if __name__ == "__main__":
             for i in range(0, min(len(orcl_free), len(to_orcl_buffer))):
                 tag_here = t_orcl_mg[rank_orcl.index(orcl_free[i])]
                 # send size info to Oracle
-                comm_world.Send([np.array([to_orcl_buffer[i].shape[0]+1,], dtype=int), MPI.LONG], dest=orcl_free[i], tag=tag_here)
+                comm_world.Send([np.array([to_orcl_buffer[i].shape[0]+1,], dtype=DINT), MPI.LONG], dest=orcl_free[i], tag=tag_here)
                 # send oracle input
-                comm_world.Send([np.append([stop_signal,], to_orcl_buffer[i], axis=0), MPI.DOUBLE], dest=orcl_free[i], tag=tag_here)
+                comm_world.Send([np.append([stop_signal], to_orcl_buffer[i], axis=0).astype(DFLOAT, copy=False), MPI.DOUBLE], dest=orcl_free[i], tag=tag_here)
                 orcl_busy[orcl_free[i]] = time.time()
             s = min(len(orcl_free), len(to_orcl_buffer))
             orcl_free = orcl_free[s:]
@@ -1087,12 +1090,12 @@ if __name__ == "__main__":
             #################################################
             if len(to_ml_buffer) >= retrain_size:
                 # prepare the message to ML
-                data_to_ml = np.array([stop_signal, len(to_orcl_buffer)], dtype=float)
+                data_to_ml = np.array([stop_signal, len(to_orcl_buffer)], dtype=DFLOAT)
                 size_to_ml = [2,]
                 for i in range(0, retrain_size):
                     data_to_ml = np.concatenate((data_to_ml, to_ml_buffer[i][0], to_ml_buffer[i][1]), axis=0)
                     size_to_ml += [to_ml_buffer[i][0].shape[0], to_ml_buffer[i][1].shape[0]]
-                size_to_ml = np.array(size_to_ml, dtype=int)
+                size_to_ml = np.array(size_to_ml, dtype=DINT)
                 to_ml_buffer = to_ml_buffer[retrain_size:]
                 # distribute new training data and oracle buffer to ML
                 if not stop_run and adjust_orcale and len(to_orcl_buffer) > 1:
@@ -1109,28 +1112,28 @@ if __name__ == "__main__":
                     # orcl_size = np.array(orcl_size, dtype=int)
                     # distribute to ML the size info and data of to_orcl_buffer
                     # build sizes as int64 so they match MPI.LONG cleanly
-                    orcl_size = np.fromiter((int(d.size) for d in to_orcl_buffer), dtype=np.int64)
+                    orcl_size = np.fromiter((int(d.size) for d in to_orcl_buffer), dtype=DINT)
 
                     # 强制逐样本 copy，避免沿用任何 view / 原地写共享的内存
                     pieces = []
                     for d in to_orcl_buffer:
-                        c = np.ascontiguousarray(d, dtype=np.float64).copy()
+                        c = np.ascontiguousarray(d, dtype=DFLOAT).copy()
                         c.setflags(write=False)
                         pieces.append(c)
 
-                    orcl_data = np.ascontiguousarray(np.concatenate(pieces, axis=0), dtype=np.float64)
+                    orcl_data = np.ascontiguousarray(np.concatenate(pieces, axis=0), dtype=DFLOAT)
                     orcl_data.setflags(write=False)
                     comm_mg_ml.Bcast([orcl_size, MPI.LONG], root=0)
                     comm_mg_ml.Bcast([orcl_data, MPI.DOUBLE], root=0)
                     # gather prediction from ML
-                    orcl_size = np.empty((len(to_orcl_buffer)*(n_ml+1),), dtype=int)
-                    tmp = np.zeros((len(to_orcl_buffer),), dtype=int)    # placeholder for Gather
+                    orcl_size = np.empty((len(to_orcl_buffer)*(n_ml+1),), dtype=DINT)
+                    tmp = np.zeros((len(to_orcl_buffer),), dtype=DINT)    # placeholder for Gather
                     comm_mg_ml.Gather([tmp, MPI.LONG], [orcl_size, MPI.LONG], root=0)
                     orcl_size = orcl_size[len(to_orcl_buffer):].reshape(n_ml, len(to_orcl_buffer))    # remove placeholder
                     assert (orcl_size[0] == orcl_size[1:]).all(), f"Error at MG: receive different number of predictions from Training processes for oracle buffer."
                     orcl_size = orcl_size[0]
-                    tmp = np.zeros((np.sum(orcl_size),), dtype=float)    # placeholder for Gather
-                    orcl_pred_data = np.empty((np.sum(orcl_size)*(n_ml+1),), dtype=float)
+                    tmp = np.zeros((np.sum(orcl_size),), dtype=DFLOAT)    # placeholder for Gather
+                    orcl_pred_data = np.empty((np.sum(orcl_size)*(n_ml+1),), dtype=DFLOAT)
                     comm_mg_ml.Gather([tmp, MPI.DOUBLE], [orcl_pred_data, MPI.DOUBLE], root=0)
                     # organize gathered data
                     orcl_pred_data = orcl_pred_data[np.sum(orcl_size):].reshape(n_ml, np.sum(orcl_size))    # remove placeholder
@@ -1179,9 +1182,9 @@ if __name__ == "__main__":
                     tag_here = t_orcl_mg[rank_orcl.index(i)]
                     if comm_world.Iprobe(source=i, tag=tag_here):
                         # receive size info
-                        orcl_size = np.empty((2,), dtype=int)
+                        orcl_size = np.empty((2,), dtype=DINT)
                         comm_world.Recv([orcl_size, MPI.LONG], source=i, tag=tag_here)
-                        orcl_data = np.empty((np.sum(orcl_size),), dtype=float)
+                        orcl_data = np.empty((np.sum(orcl_size),), dtype=DFLOAT)
                         comm_world.Recv([orcl_data, MPI.DOUBLE], source=i, tag=tag_here)
                         to_ml_buffer.append(np.split(orcl_data, [orcl_size[0],], axis=0))
                         orcl_to_free.append(i)
@@ -1193,8 +1196,8 @@ if __name__ == "__main__":
         # send stop signal to all Oracle processes
         for i in range(0, len(orcl_free)):
             tag_here = t_orcl_mg[orcl_free[i] - rank_orcl[0]]
-            comm_world.Send([np.array([2,], dtype=int), MPI.LONG], dest=orcl_free[i], tag=tag_here)
-            comm_world.Send([np.array([1.0, -1.0], dtype=float), MPI.DOUBLE], dest=orcl_free[i], tag=tag_here)
+            comm_world.Send([np.array([2,], dtype=DINT), MPI.LONG], dest=orcl_free[i], tag=tag_here)
+            comm_world.Send([np.array([1.0, -1.0], dtype=DFLOAT), MPI.DOUBLE], dest=orcl_free[i], tag=tag_here)
             
         # save the current progress
         if not ml_buffer_path is None:
