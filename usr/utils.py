@@ -226,6 +226,12 @@ def adjust_input_for_oracle(to_orcl_buffer, pred_list):
     print('dynamic retraining data adjustment')
     config = ConfigLoader("config.yaml")
     threshold = config['std_threshold']
+    if not to_orcl_buffer:
+        print("[adjust_input_for_oracle] to_orcl_buffer is empty — nothing to adjust.")
+        return to_orcl_buffer
+    if not pred_list:
+        print("[adjust_input_for_oracle] pred_list is empty — returning buffer unchanged.")
+        return to_orcl_buffer
     pred_list = [k[:, 0] for k in pred_list]
     std = [np.std(k, axis=0, ddof=1) for k in pred_list]  # calculation std of predictions from retrained ML
     if len(std) != len(to_orcl_buffer):

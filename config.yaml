@@ -1,6 +1,6 @@
 # MACE
 args_dict: {
-    "name": "MACE_on_bi11-3",
+    "name": "MACE_on_bi4-2",
     "num_workers": 16,
     "train_file": "train.xyz",
     "valid_file": "test.xyz",
@@ -17,7 +17,7 @@ args_dict: {
     "correlation": 3,
     "batch_size": 32,
     "valid_batch_size": 32,
-    "max_num_epochs": 2,
+    "max_num_epochs": 200,
     "swa": False,
     "ema": True,
     "ema_decay": 0.99,
@@ -37,21 +37,21 @@ retrain_size: 50
 
 full_dataset: True
 
-prefix: bi11-3
-energy_threshold: -64250.5
-std_threshold: 0.03
+prefix: bi4-2
+energy_threshold: -23365.0
+std_threshold: 0.007
 bound: 10
-num_atom: 11
-coord: [[0.0, 0.0, 2.5480815], [0.0, -0.0, -2.5480815], [1.994513, 3.4545979, 0.0], [1.994513, -3.4545979, 0.0], [-3.9890261, 0.0, 0.0], [2.5931931, 0.8365781, 1.2446838], [-0.5720987, 2.6640601, -1.2446838], [-0.5720987, -2.6640601, 1.2446838], [2.5931931, -0.8365781, -1.2446838], [-2.0210944, 1.8274821, 1.2446838], [-2.0210944, -1.8274821, -1.2446838]]
-max_dist: 6.909196
+num_atom: 4
+coord: [[-5.708457, 5.415795, -0.046961], [-2.776947, 5.638126, -0.169972], [-5.47989, 2.48558, 0.099518], [-2.548224, 2.708247, -0.023387]]
+max_dist: 4.161544
 
 metadata:
-  - { name: coords,          type: array,  shape: [11, 3], dtype: float64 }
-  - { name: atomic_numbers,  type: tensor,   shape: [11],    dtype: torch.int64}  # or tensor with int dtype
+  - { name: coords,          type: array,  shape: [4, 3], dtype: float64 }
+  - { name: atomic_numbers,  type: tensor,   shape: [4],    dtype: torch.int64}  # or tensor with int dtype
   - { name: energy,          type: scalar_nullable,        dtype: float  }  # was None OK too
-  - { name: forces,          type: array,  shape: [11, 3], dtype: float64 }
+  - { name: forces,          type: array,  shape: [4, 3], dtype: float64 }
   - { name: charge,          type: charge,                 dtype: torch.long}                                 # 1 scalar int
-  - { name: pred_forces,     type: array,  shape: [11, 3], dtype: float64 } # ← this one commonly mis-set
+  - { name: pred_forces,     type: array,  shape: [4, 3], dtype: float64 } # ← this one commonly mis-set
   - { name: pred_energy,     type: scalar_nullable,        dtype: float  }
   - { name: patience,        type: list,   shape: [2]    , dtype: int }  # must be BEFORE velocities
-  - { name: velocities,      type: array,  shape: [11, 3], dtype: float64 }
+  - { name: velocities,      type: array,  shape: [4, 3], dtype: float64 }
