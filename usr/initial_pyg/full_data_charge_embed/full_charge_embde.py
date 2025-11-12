@@ -612,6 +612,12 @@ def stratified_bootstrap_from_attribute(data_list, attr='source', seed=42):
 
 import re
 def boot_train(prefix, num_samples):
+    '''
+    input: prefix of the dataset, num_samples: number of bootstrap samples
+    output: train num_samples models on bootstrap samples, save the model and training log in ./logs/prefix_sample_i/
+    the dataset was first splitted into testset and the rest are splitted into train and val set, the testset is saved in ./logs/prefix.csv
+    the train and val set are splitted by stratified sampling if 'source' attribute exists in the dataset
+    '''
 
     config = ConfigLoader("config.yaml")
     args_dict = config['args_dict']
@@ -620,7 +626,7 @@ def boot_train(prefix, num_samples):
     # args.forces_weight = 10000.0
     print(args.swa)
     # build results dir
-    results_dir = f"./logs/"
+    results_dir = f"./{prefix}_logs/"
     os.makedirs(results_dir, exist_ok=True)
     df = pd.read_csv(f'../raw/{prefix}_parsed.csv')
 
@@ -636,14 +642,14 @@ def boot_train(prefix, num_samples):
         has_source = False
     if has_source:
         labels = [data.source for data in data_list]
-        train_data, val_data = train_test_split(
+        train_data, test_data = train_test_split(
             data_list,
             test_size=0.1,
             stratify=labels,
             random_state=42
         )
     else:
-        train_data, val_data = train_test_split(
+        train_data, test_data = train_test_split(
             data_list,
             test_size=0.1,
             random_state=42
@@ -651,7 +657,14 @@ def boot_train(prefix, num_samples):
 
 
     num_bootstrap_samples = num_samples  # Number of bootstrap samples/models to train
-
+    if has_source:
+        labels = [data.source for data in train_data]
+        train_data, val = train_test_split(
+            train_data,
+            test_size=0.2,
+            stratify=labels,
+            random_state=42
+        )
     for i in range(num_bootstrap_samples):
         # Generate a bootstrap sample
         print(f"Training model {i}")
@@ -661,11 +674,11 @@ def boot_train(prefix, num_samples):
         # Stratified bootstrap if 'source' exists
         if has_source:
             print("Stratified bootstrap sampling based on 'source' attribute")
-            bootstrap_dataset = stratified_bootstrap_from_attribute(train_data, attr='source', seed=i)
+            train = stratified_bootstrap_from_attribute(train_data, attr='source', seed=i)
         else:
-            bootstrap_dataset = resample(train_data, replace=True, n_samples=len(train_data), random_state=i)
+            train = resample(train_data, replace=True, n_samples=len(train_data), random_state=i)
 
-        train, val = split_data(bootstrap_dataset, valid_fraction=0.2, seed=1234)
+        # train, val = split_data(bootstrap_dataset, valid_fraction=0.2, seed=1234)
         train_df = pd.DataFrame([{
             'atoms': data.atoms,
             'coordinates': data.pos.numpy().tolist(),
@@ -695,7 +708,7 @@ def boot_train(prefix, num_samples):
 
         args.checkpoints_dir = f"{current_sample_dir}/checkpoints" 
         args.results_dir = f"{current_sample_dir}/results"
-        args.log_dir = f"{current_sample_dir}/logs"
+        args.log_dir = f"{current_sample_dir}/{prefix}_logs"
         args.model_dir = f"{current_sample_dir}"
         args.name = prefix
         # Train the model on the bootstrap sample
@@ -710,8 +723,8 @@ def boot_train(prefix, num_samples):
         'forces': data.forces.numpy().tolist(),
         'source': data.source if has_source else None,
         'charge': data.charge.numpy() if hasattr(data, 'charge') else None
-    } for data in val_data])
-    df.to_csv(f'./logs/{prefix}.csv', index=False, header=['atoms', 'coordinates', 'total_energy', 'forces', 'source', 'charge'])
+    } for data in test_data])
+    df.to_csv(f'./{prefix}_logs/{prefix}.csv', index=False, header=['atoms', 'coordinates', 'total_energy', 'forces', 'source', 'charge'])
 
 
 

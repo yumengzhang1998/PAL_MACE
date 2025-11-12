@@ -119,7 +119,7 @@ class Generate_TrajsBatch(object):
         self.data_batch = data_batch
         self.model_number = model_number
         self.temperature = 298.0 * unit.kelvin
-        self.collision_rate = 91.0 / unit.picosecond
+        self.collision_rate = 1.0 / unit.picosecond
         self.timestep = 2.0 * unit.femtoseconds
         self.external_force = openmm.CustomExternalForce('fx * x + fy * y + fz * z')         
         self.external_force.addPerParticleParameter('fx')
@@ -169,7 +169,7 @@ class Generate_TrajsBatch(object):
                                 Each row contains [Fx, Fy, Fz] force components.
         """
         # Loop over each atom and set the predicted force components
-        conversion_factor = 418.4  # kcal/mol/Å -> kJ/mol/nm
+        conversion_factor = 96.485 * 10  # kcal/mol/Å -> kJ/mol/nm
         current_forces = -1 * predicted_forces * conversion_factor * unit.kilojoule_per_mole / unit.nanometer
         # current_forces = predicted_forces * unit.kilojoule_per_mole / unit.nanometer
         for i in range(predicted_forces.shape[0]):

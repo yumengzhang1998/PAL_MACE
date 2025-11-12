@@ -32,7 +32,8 @@ from typing import List, Optional
 import numpy as np
 from torch_geometric.data import Data
 
-
+from collections import defaultdict
+from sklearn.model_selection import StratifiedShuffleSplit
 import torch.distributed
 import torch.nn.functional
 from e3nn.util import jit
@@ -88,6 +89,53 @@ def reset_logging():
     
 
 
+def stratified_split_simple(dataset, valid_fraction=0.2, seed=1234):
+    """Stratify by obj.source. Falls back to non-stratified if too few per class."""
+    labels = [getattr(x, "source", None) for x in dataset]
+    labels_arr = np.array(labels)
+
+    # can we stratify?
+    values, counts = np.unique(labels_arr, return_counts=True)
+    can_strat = len(values) > 1 and counts.min() >= 2 and all(
+        (c * valid_fraction >= 1) and (c * (1 - valid_fraction) >= 1) for c in counts
+    )
+
+    if can_strat:
+        sss = StratifiedShuffleSplit(n_splits=1, test_size=valid_fraction, random_state=seed)
+        (train_idx, val_idx), = sss.split(np.zeros(len(dataset)), labels_arr)
+    else:
+        rng = np.random.RandomState(seed)
+        idx = np.arange(len(dataset))
+        rng.shuffle(idx)
+        split = int(round((1 - valid_fraction) * len(dataset)))
+        train_idx, val_idx = idx[:split], idx[split:]
+
+    train = [dataset[i] for i in train_idx]
+    val   = [dataset[i] for i in val_idx]
+    return train, val
+
+
+def stratified_bootstrap_simple(train_split, seed):
+    """Bootstrap WITHIN each source class to keep proportions, size = len(train_split)."""
+    # bucket by source
+    buckets = {}
+    for x in train_split:
+        buckets.setdefault(getattr(x, "source", None), []).append(x)
+
+    boot = []
+    rng = np.random.RandomState(seed)
+    # sample same count per class as original
+    for k, items in buckets.items():
+        if len(items) == 0:
+            continue
+        sampled = resample(items, replace=True, n_samples=len(items),
+                           random_state=rng.randint(0, 2**31 - 1))
+        boot.extend(sampled)
+
+    # global shuffle for the combined bootstrap
+    rnd = random.Random(seed)
+    rnd.shuffle(boot)
+    return boot
 
 
 
@@ -619,10 +667,22 @@ def boot_train(prefix, num_samples, config_path, res_dir="nocharge", latent = Fa
                        pre_filter=None)
 
     # Split raw into fixed validation set and trainable pool
-    validation_size = 50
+
     data_list = dataset.data_list.copy()
-    random.shuffle(data_list)
-    val_data, train_data = data_list[:validation_size], data_list[validation_size:]
+    csv_data = pd.read_csv(f'./raw/{prefix}_parsed.csv')
+    has_source = 'source' in csv_data.columns
+    
+    if has_source:
+        print('have source')
+        for data_obj, source_value in zip(data_list, csv_data['source']):
+            data_obj.source = source_value
+        train_data, val_data = stratified_split_simple(data_list, valid_fraction=0.1, seed=1234)
+    else:
+        print('no source')
+        random.shuffle(data_list)
+        split_idx = int(0.9 * len(data_list))
+        train_data, val_data = data_list[:split_idx], data_list[split_idx:]
+    
 
 
 
@@ -631,17 +691,20 @@ def boot_train(prefix, num_samples, config_path, res_dir="nocharge", latent = Fa
         'atoms': data.atoms,
         'coordinates': data.pos.numpy().tolist(),
         'total_energy': data.y.numpy().tolist(),
-        'forces': data.forces.numpy().tolist()
+        'forces': data.forces.numpy().tolist(),
+        'charge': data.charge if hasattr(data, 'charge') else None,
+        "source": data.source if hasattr(data, 'source') else None
     } for data in val_data])
-    val_df.to_csv(f'{results_dir}/{prefix}.csv', index=False, header=['atoms', 'coordinates', 'total_energy', 'forces'])
+    val_df.to_csv(f'{results_dir}/{prefix}.csv', index=False, header=['atoms', 'coordinates', 'total_energy', 'forces', 'charge', 'source'] if has_source else ['atoms', 'coordinates', 'total_energy', 'forces', 'charge'])
 
-    csv_data = pd.read_csv(f'./raw/{prefix}_parsed.csv')
-    has_source = 'source' in csv_data.columns
-    if has_source:
-        for data_obj, source_value in zip(data_list, csv_data['source']):
-            data_obj.source = source_value
+    
     del csv_data
-
+    if has_source:
+        train_split, val = stratified_split_simple(train_data, valid_fraction=0.2, seed=1234)
+    else:
+        random.shuffle(train_data)
+        split_idx = int(0.8 * len(train_data))
+        train_split, val = train_data[:split_idx], train_data[split_idx:]
     for i in range(num_samples):
         current_sample_dir = f"samples/{prefix}/sample_{i}/"
         result_of_sample_dir = f"{results_dir}/sample_{i}/"
@@ -657,17 +720,13 @@ def boot_train(prefix, num_samples, config_path, res_dir="nocharge", latent = Fa
         else:
             print(f"Creating bootstrap sample {i}")
             if has_source:
-                synthetic = [d for d in train_data if d.source == 'synthesis']
-                real = [d for d in train_data if d.source == 'real']
-                synthetic_boot = resample(synthetic, replace=True, n_samples=len(synthetic), random_state=i)
-                real_boot = resample(real, replace=True, n_samples=len(real), random_state=i)
-                bootstrap_dataset = synthetic_boot + real_boot
-                random.seed(i)
-                random.shuffle(bootstrap_dataset)
-            else:
-                bootstrap_dataset = resample(train_data, replace=True, n_samples=len(train_data), random_state=i)
+                
+                train = stratified_bootstrap_simple(train_split, seed=i)
 
-            train, val = split_data(bootstrap_dataset, valid_fraction=0.2, seed=1234)
+            else:
+                train = resample(train_split, replace=True, n_samples=len(train_split), random_state=i)
+            print(train)
+
             with open(sample_file, "wb") as f:
                 pickle.dump((train, val), f)
 
@@ -676,14 +735,18 @@ def boot_train(prefix, num_samples, config_path, res_dir="nocharge", latent = Fa
                 'atoms': d.atoms,
                 'coordinates': d.pos.numpy().tolist(),
                 'total_energy': d.y.numpy().tolist(),
-                'forces': d.forces.numpy().tolist()
+                'forces': d.forces.numpy().tolist(),
+                'charge': d.charge,
+                'source': d.source if hasattr(d, 'source') else None
             } for d in train]).to_csv(f"{current_sample_dir}/train.csv", index=False)
 
             pd.DataFrame([{
                 'atoms': d.atoms,
                 'coordinates': d.pos.numpy().tolist(),
                 'total_energy': d.y.numpy().tolist(),
-                'forces': d.forces.numpy().tolist()
+                'forces': d.forces.numpy().tolist(),
+                'charge': d.charge,
+                'source': d.source if hasattr(d, 'source') else None
             } for d in val]).to_csv(f"{current_sample_dir}/val.csv", index=False)
 
         train_energy = [d.y for d in train]

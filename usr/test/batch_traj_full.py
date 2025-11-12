@@ -24,13 +24,14 @@ from utils import Molecule, convert_to_data_object
 import torch
 import ast
 import periodictable
-
+import openmm as mm
 from usr.initial_pyg.functions.config import ConfigLoader
 from scipy.spatial.distance import pdist, squareform
 from tqdm import tqdm
 import argparse
 from initial_pyg.evaluation import evaluate
-
+print("Available platforms:", [mm.Platform.getPlatform(i).getName()
+                               for i in range(mm.Platform.getNumPlatforms())])
 def vec3_to_numpy(vec3_list):
     # Convert list of Vec3 to a NumPy array
     return np.array([[v.x, v.y, v.z] for v in vec3_list])
@@ -39,13 +40,13 @@ class Generate_TrajsBatch(object):
         # Initialize with a batch of data
         self.data_batch = data_batch
         self.temperature = 298.0 * unit.kelvin
-        self.collision_rate = 91.0 / unit.picosecond
+        self.collision_rate = 1.0 / unit.picosecond
         self.timestep = 2.0 * unit.femtoseconds
         self.external_force = openmm.CustomExternalForce('fx * x + fy * y + fz * z')         
         self.external_force.addPerParticleParameter('fx')
         self.external_force.addPerParticleParameter('fy')
         self.external_force.addPerParticleParameter('fz')
-        self.config = ConfigLoader("../../config.yaml")
+        # self.config = ConfigLoader("../../config.yaml")
         self.model_number = model_number
         self.prefix = prefix
         PATH = f'{result_path}/model_{model_number}.pt'
@@ -53,8 +54,14 @@ class Generate_TrajsBatch(object):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f"🔮 Loaded model {model_number} from {PATH} on device {self.device}")
         self.model.to(self.device)
+        self.r_max = 20
 
-
+    @staticmethod
+    def _max_pair_distance(coords_angstrom: np.ndarray) -> float:
+        """Return max interatomic distance (Å) for coords shape (N,3)."""
+        if coords_angstrom.shape[0] < 2:
+            return 0.0
+        return float(pdist(coords_angstrom).max())
 
     
     def set_up(self, data):
@@ -92,8 +99,8 @@ class Generate_TrajsBatch(object):
                                 Each row contains [Fx, Fy, Fz] force components.
         """
         # Loop over each atom and set the predicted force components
-        conversion_factor = 418.4  # kcal/mol/Å -> kJ/mol/nm
-        current_forces = -1 * predicted_forces * conversion_factor * unit.kilojoule_per_mole / unit.nanometer
+        conversion_factor = 96.485 * 10  # kcal/mol/Å -> kJ/mol/nm
+        current_forces = -1 * predicted_forces * conversion_factor # * unit.kilojoule_per_mole / unit.nanometer
         # current_forces = predicted_forces * unit.kilojoule_per_mole / unit.nanometer
         for i in range(predicted_forces.shape[0]):
             fx, fy, fz = current_forces[i]
@@ -110,8 +117,8 @@ class Generate_TrajsBatch(object):
         # print(current_positions)
         # coords_distorded = np.array(current_positions)
         coords_distorded = np.array([pos.value_in_unit(unit.angstrom) for pos in current_positions])
-        velosity = simulation.context.getState(getVelocities=True).getVelocities()
-        forces = simulation.context.getState(getForces=True).getForces()
+        # velosity = simulation.context.getState(getVelocities=True).getVelocities()
+        # forces = simulation.context.getState(getForces=True).getForces()
         true_force_empty = np.zeros(coords_distorded.shape)
         traj = [
             coords_distorded, # pos
@@ -122,7 +129,7 @@ class Generate_TrajsBatch(object):
             geometry[5], # pred_forces 
             geometry[-3],   # pred_energy
             geometry[-2], # patience
-            vec3_to_numpy(velosity)]
+            None ]# velocity
         return traj
 
     def set_up_simulations(self, data_batch):
@@ -133,10 +140,15 @@ class Generate_TrajsBatch(object):
                 init_force = self.custom_force_initilize(molecule)
                 molecule.system.addForce(init_force)
                 # PBC not needed, skip box vectors
-                platform = openmm.Platform.getPlatformByName('CPU')
+                # platform = openmm.Platform.getPlatformByName('CPU')
+                platform = openmm.Platform.getPlatformByName('CUDA')
+                properties = {
+                    "CudaDeviceIndex": "0",   # same masked GPU as PyTorch
+                    "Precision": "single",    # faster unless you truly need double
+                }
                 # integrator = openmm.VerletIntegrator(self.timestep)
                 integrator = openmm.LangevinIntegrator(self.temperature, self.collision_rate, self.timestep)
-                simulation = openmm.app.Simulation(molecule.get_Topology(), molecule.get_System(), integrator, platform)
+                simulation = openmm.app.Simulation(molecule.get_Topology(), molecule.get_System(), integrator, platform, properties)
                 simulation.context.setPositions(data[0] * 0.1)
                 simulation.context.setVelocitiesToTemperature(self.temperature)
 
@@ -189,20 +201,66 @@ class Generate_TrajsBatch(object):
 
         return trajs
 
+    # def generate_batch_trajs_setup_in_batch(self, steps, chunk_size=100, traj_dir='../../trajs/'):
+    #     traj_dir = os.path.join(traj_dir, self.prefix)
+    #     print('Start batch simulation')
+    #     os.makedirs(traj_dir, exist_ok=True)
+
+    #     all_trajs = []
+    #     simulators = []
+    #     data_slices = []
+
+    #     # Step 1: Batch-wise simulator setup
+    #     for batch_start in range(0, len(self.data_batch), chunk_size):
+    #         data_batch = self.data_batch[batch_start: batch_start + chunk_size]
+    #         print(f"🧪 Setting up batch {batch_start} to {batch_start + len(data_batch)}")
+
+    #         try:
+    #             sims = self.set_up_simulations(data_batch)
+    #             simulators.extend(sims)
+    #             data_slices.extend(data_batch)
+    #         except Exception as e:
+    #             print(f"❌ Failed during setup of batch {batch_start}: {e}")
+    #             continue
+
+    #     # Step 2: Initialize trajectory containers
+    #     trajs = [[data] for data in data_slices]
+
+    #     # Step 3: Run all simulations together
+    #     print(f"🚀 Starting full trajectory generation for {len(simulators)} systems")
+    #     for step in tqdm(range(steps), desc="Generating trajectories"):
+    #         current_step_data = [traj[step] for traj in trajs]
+    #         energies, forces_batch = self.get_predicted_energy_and_forces(current_step_data)
+
+    #         for i, (sim, force) in enumerate(simulators):
+    #             try:
+    #                 self.update_forces(force, forces_batch[i])
+    #                 current_step_data[i][-4] = forces_batch[i]
+    #                 current_step_data[i][-3] = energies[i]
+
+    #                 force.updateParametersInContext(sim.context)
+    #                 next_data = self.update(current_step_data[i], sim)
+    #                 trajs[i].append(next_data)
+    #             except Exception as e:
+    #                 print(f"⚠️ Failed at step {step} for traj {i}: {e}")
+    #         if step % 10000 == 0:
+    #             print(f"Step {step} completed.")
+    #             # save the current state of trajs to a file
+    #             with open(f'{traj_dir}/{self.model_number}_{step}steps_tmp_traj.pkl', 'wb') as f:
+    #                 pickle.dump(trajs, f)
+
+    #     return trajs
     def generate_batch_trajs_setup_in_batch(self, steps, chunk_size=100, traj_dir='../../trajs/'):
         traj_dir = os.path.join(traj_dir, self.prefix)
         print('Start batch simulation')
         os.makedirs(traj_dir, exist_ok=True)
 
-        all_trajs = []
+        # ----- setup -----
         simulators = []
         data_slices = []
-
-        # Step 1: Batch-wise simulator setup
         for batch_start in range(0, len(self.data_batch), chunk_size):
             data_batch = self.data_batch[batch_start: batch_start + chunk_size]
             print(f"🧪 Setting up batch {batch_start} to {batch_start + len(data_batch)}")
-
             try:
                 sims = self.set_up_simulations(data_batch)
                 simulators.extend(sims)
@@ -211,31 +269,69 @@ class Generate_TrajsBatch(object):
                 print(f"❌ Failed during setup of batch {batch_start}: {e}")
                 continue
 
-        # Step 2: Initialize trajectory containers
+        # one traj list per system; seed with its initial record
         trajs = [[data] for data in data_slices]
+        active = [True] * len(simulators)   # mark which trajs still run
+        n_active = sum(active)
 
-        # Step 3: Run all simulations together
         print(f"🚀 Starting full trajectory generation for {len(simulators)} systems")
         for step in tqdm(range(steps), desc="Generating trajectories"):
-            current_step_data = [traj[step] for traj in trajs]
+            if n_active == 0:
+                print("✅ All trajectories finished early (exploded or completed).")
+                break
+
+            # latest frame per traj (inactive ones keep their last frame)
+            current_step_data = [traj[-1] for traj in trajs]
+
+            # predict for the whole batch to keep indices aligned
             energies, forces_batch = self.get_predicted_energy_and_forces(current_step_data)
 
             for i, (sim, force) in enumerate(simulators):
-                try:
-                    self.update_forces(force, forces_batch[i])
-                    current_step_data[i][-4] = forces_batch[i]
-                    current_step_data[i][-3] = energies[i]
+                if not active[i]:
+                    continue  # this traj already terminated
 
+                try:
+                    # apply predicted forces and step
+                    self.update_forces(force, forces_batch[i])
+                    current_step_data[i][-4] = forces_batch[i]  # store pred forces
+                    current_step_data[i][-3] = energies[i]      # store pred energy
                     force.updateParametersInContext(sim.context)
+
+                    # update() returns coords in Å in next_data[0]  ← important
                     next_data = self.update(current_step_data[i], sim)
                     trajs[i].append(next_data)
+
+                    # ----- explosion check (Å ↔ Å) -----
+                    # self._max_pair_distance must return Å; if not, convert here.
+                    dmax_ang = self._max_pair_distance(next_data[0])
+                    if dmax_ang > self.r_max:
+                        active[i] = False
+                        n_active -= 1
+                        print(f"💥 Exploded: traj {i} at step {step} "
+                            f"(d_max={dmax_ang:.3f} Å > {self.r_max:.3f} Å). Ending this traj.")
+
+                        # save ONLY this trajectory, as requested
+                        tmp_path = f'{traj_dir}/{self.model_number}_{step}steps_tmp_traj.pkl'
+                        try:
+                            with open(tmp_path, 'wb') as f:
+                                pickle.dump(trajs[i], f)  # save this single traj
+                            print(f"📝 Saved exploded trajectory to: {tmp_path}")
+                        except Exception as e:
+                            print(f"⚠️ Failed to write explosion snapshot: {e}")
+
                 except Exception as e:
                     print(f"⚠️ Failed at step {step} for traj {i}: {e}")
-            if step % 1000 == 0:
+                    active[i] = False
+                    n_active -= 1
+
+            # periodic checkpointing of the whole batch (optional)
+            if step % 1000 == 0 and step > 0:
                 print(f"Step {step} completed.")
-                # save the current state of trajs to a file
-                with open(f'{traj_dir}/{self.model_number}_{step}steps_tmp_traj.pkl', 'wb') as f:
-                    pickle.dump(trajs, f)
+                try:
+                    with open(f'{traj_dir}/{self.model_number}_{step}steps_tmp_traj.pkl', 'wb') as f:
+                        pickle.dump(trajs, f)
+                except Exception as e:
+                    print(f"⚠️ Failed to write periodic snapshot at step {step}: {e}")
 
         return trajs
 
@@ -245,7 +341,7 @@ class Generate_TrajsBatch(object):
             data.z = torch.tensor(data.z)
         # dataset = retrain_dataset(data_list, transforms=self.transform)
         # dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
-        y_pred, force_pred, _, _ = evaluate(model=self.model, eval_dataset=data_list, batch_size=32, default_dtype= 'float64', device=self.device, compute_stress=False, return_contributions=False)
+        y_pred, force_pred, _, _ = evaluate(model=self.model, eval_dataset=data_list, batch_size=64, default_dtype= 'float64', device=self.device, compute_stress=False, return_contributions=False)
         num_data = len(data_list)
 
         force_pred = np.stack(force_pred).reshape(num_data, -1, 3)
@@ -262,6 +358,9 @@ def convert_to_numpy_array(value):
         return np.array(value)
     except (ValueError, SyntaxError):
         return value
+
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate batch trajectories.")
     parser.add_argument("--element", type=str, required=True, help="Element symbol (e.g., 'bi')")
@@ -270,6 +369,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_number", type=int, required=True, help="Model number (e.g., 25)")
     parser.add_argument("--steps", type=int, required=True, help="Number of steps to simulate")
     parser.add_argument("--synthesis", type=str, default='False', help="Synthesis or not (e.g., True or False)")
+    parser.add_argument("--compact_type", type=str, required=False,default='bi4', help="Compact type bi4 or bi2")
     args = parser.parse_args()
 
 
@@ -280,10 +380,14 @@ if __name__ == "__main__":
     model_number = args.model_number
     steps = args.steps
     synthesis = args.synthesis
+    compact_type = args.compact_type
     # Convert synthesis to boolean
     if synthesis.lower() == 'true':
         synthesis = True
-        prefix = f"{element}{num_atom}{charge}_samples"
+        if compact_type == 'bi2':
+            prefix = f"{element}{num_atom}{charge}_samples_bi2"
+        else:
+            prefix = f"{element}{num_atom}{charge}_samples"
     elif synthesis.lower() == 'false':
         synthesis = False
         prefix = f"{element}{num_atom}{charge}"
@@ -298,34 +402,59 @@ if __name__ == "__main__":
     # prefix = f"{element}{num_atom}{charge}_samples"
     print(prefix)
     result_path = f'../../results/{prefix}'
+    file_path = f"../../usr/initial_pyg/results/charge_embedding/{prefix}_logs"
     print(result_path)
-    validation_set = pd.read_csv(f'../initial_pyg/full_data_charge_embed/bi0_logs/bi0.csv')
-    len_org_val = len(validation_set)
-    print(len_org_val)
     # Load full added dataset
-    df = pd.read_csv(f'{result_path}/added_data.csv', delimiter=',', on_bad_lines='skip')
-
-    # Keep only validation-type entries
-    df = df[df['type'] == 'val'].reset_index(drop=True)
-
+    # df = pd.read_csv(f'{result_path}/added_data.csv', delimiter=',', on_bad_lines='skip')
+    # print(f"Total entries in dataset: {len(df)}")
+    # # Keep only validation-type entries
+    # df = df[df['type'] == 'val'].reset_index(drop=True)
+    # print(f"Validation entries in dataset: {len(df)}")
     # Remove the first len_org_val entries (they are the original validation)
-    df = df.iloc[len_org_val:].reset_index(drop=True)
+    #df = df.iloc[len_org_val:].reset_index(drop=True)
+    df = pd.read_csv(f'{file_path}/{prefix}.csv', delimiter=',', on_bad_lines='skip')
+    # if there a "source" column, select only rows where source != 'real'
+    if 'source' in df.columns:
+        df = df[df['source'] != 'real'].reset_index(drop=True)
+    
+
 
     print(f"Newly generated validation samples: {len(df)}")
-    df['node_feature'] = df['node_feature'].apply(lambda x: convert_to_numpy_array(x)) 
+    # df['node_feature'] = df['node_feature'].apply(lambda x: convert_to_numpy_array(x)) 
 
-    df['node_feature'] = [x.reshape(num_atom, 3) for x in df['node_feature']]
-    df['atoms'] = df['atoms'].apply(lambda x: convert_to_numpy_array(x))
+    # df['node_feature'] = [x.reshape(num_atom, 3) for x in df['node_feature']]
+    df['coordinates'] = df['coordinates'].apply(lambda x: convert_to_numpy_array(x)) 
+    df['coordinates'] = [x.reshape(num_atom, 3) for x in df['coordinates']]
+    
+    df['atoms'] = df["atoms"].apply(lambda x: ast.literal_eval(x) if isinstance(x, str) else x)
+    # convert atom type to elementt number, list of elements
+    df['atoms'] = df['atoms'].apply(lambda x: [periodictable.elements.symbol(i).number for i in x])
+    df['atoms'] = df['atoms'].apply(lambda x: np.array(x))
     atom_number = df['atoms'][0]
-    print(atom_number)
-    coordinates_batch = df['node_feature'].to_list()
+    batch_size = 20
+    # --- Stratified Sampling if "source" exists ---
+    if 'source' in df.columns:
+        groups = df.groupby('source', group_keys=False)
+        # Sample roughly equal share from each source
+        n_sources = len(groups)
+        per_source = max(1, batch_size // n_sources)
+        stratified_samples = groups.apply(lambda g: g.sample(n=min(per_source, len(g)), random_state=42))
+        # If not enough samples, fill up randomly
+        if len(stratified_samples) < batch_size:
+            raise ValueError("Not enough samples to fill the batch size with stratified sampling.")
+        else:
+            df_sampled = stratified_samples.sample(n=batch_size, random_state=42).reset_index(drop=True)
+    else:
+        # No stratification if no "source" column
+        df_sampled = df.sample(n=min(batch_size, len(df)), random_state=42).reset_index(drop=True)
+
+    coordinates_batch = df['coordinates'].to_list()
     data_batch = [
         [coords, atom_number, None, None, charge, None, None, 0, None]
         for coords in coordinates_batch
     ] 
     
 
-    data_batch = data_batch[:200]
     traj_gen = Generate_TrajsBatch(data_batch, result_path, model_number, prefix)
 
     try:

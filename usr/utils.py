@@ -75,6 +75,101 @@ def is_unreasonable_structure_list(input_list, ref_max_dist, tolerance=0.2):
             i_orcl_structural.append(idx)
 
     return np.array(i_orcl_structural, dtype=int), deviations, max_distances
+import numpy as np
+
+def select_uncertain_forces_GPA3(
+    forces: np.ndarray,
+    tau_rms: float,
+    tau_spike: float,
+    energies: np.ndarray | None = None,
+    tau_energy: float | None = None,
+    reduce_generators: str | None = None,
+):
+    """
+    forces:   ndarray [G, P, A, 3]  (generators, predictors(models), atoms, xyz)
+    energies: OPTIONAL ndarray [G, P] or [G, P, 1] (per-generator energy predictions)
+    tau_rms:      threshold for RMS across atoms & xyz (per generator)
+    tau_spike:    threshold for max per-atom vector-norm (per generator)
+    tau_energy:   OPTIONAL threshold for energy std (per generator)
+    reduce_generators:
+        None  -> return per-generator decisions (indices over G)
+        'max'|'mean'|'p95' -> reduce metrics across generators to one scalar and
+                              return a single boolean decision + metrics dict.
+
+    Returns
+    -------
+    If reduce_generators is None:
+        i_orcl_std : np.ndarray[int]  # generator indices marked UNCERTAIN
+        i_certain  : np.ndarray[int]  # generator indices marked certain
+        rms_g      : np.ndarray[float]  # [G]
+        max_atom_g : np.ndarray[float]  # [G]
+        energy_std_g : np.ndarray[float] | None  # [G] or None if energies not provided
+    Else:
+        uncertain_bool : bool
+        metrics        : dict with keys 'rms', 'max_atom', and (if provided) 'energy_std'
+    """
+    G, P, A, _ = forces.shape
+
+    # --- std across predictors(models) ---
+    if P <= 1:
+        std_gp = np.zeros((G, A, 3), dtype=forces.dtype)
+    else:
+        std_gp = forces.std(axis=1, ddof=1)  # [G, A, 3]
+
+    # --- force metrics per generator ---
+    # 1) RMS over atoms & coordinates (rotation-invariant)
+    rms_g = np.sqrt(np.mean(std_gp**2, axis=(1, 2)))  # [G]
+    # 2) Max per-atom vector-norm of std (rotation-invariant spike guard)
+    max_atom_g = np.max(np.linalg.norm(std_gp, axis=-1), axis=1)  # [G]
+
+    # --- energy std per generator (optional) ---
+    energy_std_g = None
+    if energies is not None:
+        E = np.asarray(energies)
+        if E.ndim == 3 and E.shape[-1] == 1:
+            E = E[..., 0]
+        if E.shape[:2] != (G, P):
+            raise ValueError(f"energies shape {E.shape} incompatible with forces {forces.shape}")
+        if P <= 1:
+            energy_std_g = np.zeros(G, dtype=float)
+        else:
+            # sample std across predictors
+            energy_std_g = E.std(axis=1, ddof=1).astype(float)
+
+    # -------- per-generator decision --------
+    if reduce_generators is None:
+        uncertain_mask = (rms_g >= tau_rms) | (max_atom_g >= tau_spike)
+        if (energy_std_g is not None) and (tau_energy is not None):
+            uncertain_mask |= (energy_std_g >= tau_energy)
+
+        i_orcl_std = np.where(uncertain_mask)[0]
+        i_certain  = np.where(~uncertain_mask)[0]
+        return i_orcl_std, i_certain, rms_g, max_atom_g, energy_std_g
+
+    # -------- reduce across generators to one decision --------
+    def _reduce(vec: np.ndarray, how: str) -> float:
+        if how == 'max':
+            return float(np.max(vec))
+        if how == 'mean':
+            return float(np.mean(vec))
+        if how == 'p95':
+            return float(np.percentile(vec, 95))
+        raise ValueError("reduce_generators must be None, 'max', 'mean', or 'p95'.")
+
+    rms_red = _reduce(rms_g, reduce_generators)
+    max_atom_red = _reduce(max_atom_g, reduce_generators)
+    energy_std_red = None
+    if energy_std_g is not None:
+        energy_std_red = _reduce(energy_std_g, reduce_generators)
+
+    uncertain = (rms_red >= tau_rms) or (max_atom_red >= tau_spike)
+    if (tau_energy is not None) and (energy_std_red is not None):
+        uncertain = uncertain or (energy_std_red >= tau_energy)
+
+    metrics = {"rms": rms_red, "max_atom": max_atom_red}
+    if energy_std_red is not None:
+        metrics["energy_std"] = energy_std_red
+    return uncertain, metrics
 
 def compute_perm_invariant_rmsd(P, Q):
     P_centered = P - P.mean(axis=0)
@@ -128,13 +223,13 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     input_list = [reconstruct_from_metadata(item, metadata) for item in list_data_to_pred]
 
 
-    energy, forces = parse_list_data_to_gene(list_data_to_gene)
-   
+    energy, forces, iter = parse_list_data_to_gene(list_data_to_gene, has_iter=True)
     # energy & forces part
-    force_std_vec = forces.std(axis=1, ddof=1)
-    max_force_std = force_std_vec.max(axis=1)
+    # force_std_vec = forces.std(axis=1, ddof=1)
+    # max_force_std = force_std_vec.max(axis=1)
     force_mean_vec = forces.mean(axis=1)
-    std = energy.std(axis=1, ddof=1)  # shape: (num_generators,)
+    energy_std = energy.std(axis=1, ddof=1)  # shape: (num_generators,)
+    # std = copy.deepcopy(max_force_std)
     # std  = max_force_std
     energy_mean = energy.mean(axis=1)
 
@@ -142,27 +237,47 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
         rec[-3]  = float(energy_mean[i]) # energy
         rec[5]  = np.asarray(force_mean_vec[i], dtype=np.float64) # forces
 
-    threshold = config['std_threshold']
+    energy_threshold = config['energy_std_threshold']
+    q75_rms = config['force_rms_std']
+    q75_max_atom = config['force_atom_max_std']
+    q75_energy = config['energy_std_threshold']
     patience_threshold = config['patience_threshold']
     energy_threshold = config['energy_threshold']
     boundary = config['bound']
-    optimal_coord = config['coord']
+    # hard_bound = config['hard_bound']
+    # soft_bound = config['soft_bound']
+    # optimal_coord = config['coord']
     upper_bound = energy_threshold + boundary
-    lower_bound = energy_threshold - boundary
+    # lower_bound = energy_threshold - boundary
     for i in range(len(input_list)):
-        if energy_mean[i] > upper_bound or energy_mean[i] < lower_bound:
+        if energy_mean[i] > upper_bound:
             print('energy out of bound, predicted energies are:', energy)
             print('energy out of bound, mean energy is:', energy_mean[i])
             input_list[i][-2][0] += 1
+        # e = float(energy_mean[i])  # model mean energy for frame i
+        # dev = abs(e - energy_threshold)
+        # dev = e - energy_threshold
 
+        # if dev <= soft_bound:
+        #     pass  # normal: uncertainty decides
+        # elif dev <= hard_bound:
+        #     suspect exploration zone: increment patience, only send if persistent
+        #     input_list[i][-2][0] += 1
+        # else:
+        #     ultra-OOD: drop / do not enqueue (optionally stop MD)
+        #     input_list[i][-2][0] += config['patience_threshold']  # max out patience to block
 
     # to_orcl filter part
 
     ## STD filter
-    if std.ndim == 1:
-        i_orcl_std = np.where(std >= threshold)[0]
-    else:
-        i_orcl_std = np.where((std >= threshold).any(axis=1))[0]
+    # if energy_std.ndim == 1:
+    #     i_orcl_std = np.where(energy_std >= energy_threshold)[0]
+    # else:
+    #     i_orcl_std = np.where((energy_std >= energy_threshold).any(axis=1))[0]
+    i_orcl_std, i_certain, rms_g, max_atom_g, e_std_g = select_uncertain_forces_GPA3(
+        forces, q75_rms, q75_max_atom, energies=energy, tau_energy=q75_energy, reduce_generators=None
+    )
+
 
     ## structural filter
     i_orcl_structural = []
@@ -174,13 +289,14 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
 
     # MAX distance filter
     i_orcl_structural, _, distance = is_unreasonable_structure_list(
-        input_list, max_dist, tolerance=0.2
+        input_list, max_dist, tolerance=0.1
     )
     ########################
     for i in i_orcl_structural:
         input_list[i][-2][1] += 1
         print('structural deviation reached, max distance is:', distance[i])
-    i_orcl = sorted(set(i_orcl_std).union(set(i_orcl_structural)))
+    # i_orcl = sorted(set(i_orcl_std).union(set(i_orcl_structural)))
+    i_orcl = sorted(set(i_orcl_std))
 
 
     if any(item[-2][-1] is not None and item[-2][-1] > patience_threshold for item in input_list):
@@ -192,9 +308,21 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     # data_to_gene & input_to_orcl conversion
     data_to_gene = copy.deepcopy(input_list)
     data_to_gene = [convert_to_1d_float_array(k) for k in data_to_gene]
-
-    input_to_orcl = [copy.deepcopy(input_list[i]) for i in i_orcl]
-    input_to_orcl = [convert_to_1d_float_array(input_list[i]) for i in i_orcl_std]
+    if iter is not None:
+        for i in range(len(data_to_gene)):
+            iter_list = iter[i] # (num, predictors)
+            # if numbers in iter_list are all the same, then only add one number
+            if np.all(iter_list == iter_list[0]):
+                mean_iter = int(np.mean(iter_list)) 
+                
+            else:
+            #    raise ValueError(f"All iteration numbers are the same ({iter_list}), please check the input.")
+                print(f"Warning: Iteration numbers are not the same ({iter_list}), using mean value.")
+                mean_iter = int(np.mean(iter_list))
+            data_to_gene[i] = np.concatenate(([mean_iter], data_to_gene[i]))
+    
+    input_to_orcl = [convert_to_1d_float_array(copy.deepcopy(input_list[i])) for i in i_orcl]
+    # input_to_orcl = [convert_to_1d_float_array(input_list[i]) for i in i_orcl_std]
     
     if data_to_gene is None:
         print('no data to gene')
@@ -220,45 +348,58 @@ def adjust_input_for_oracle(to_orcl_buffer, pred_list):
     """
     
     ##### User Part #####
-
-    # print('to_orcl_buffer:', to_orcl_buffer) list of arrays representing the 1d arrya of data
-    # print('pred_list:', pred_list) list of arrays representing the 1d array of predictions energy and flattened forces
     print('dynamic retraining data adjustment')
+    ranked = True  # set to True to rank by uncertainty, False to shuffle
+
+    # thresholds from config.yaml
     config = ConfigLoader("config.yaml")
-    threshold = config['std_threshold']
-    if not to_orcl_buffer:
-        print("[adjust_input_for_oracle] to_orcl_buffer is empty — nothing to adjust.")
+    energy_threshold = float(config['energy_std_threshold'])
+    force_threshold  = float(config['force_rms_std'])
+
+    if not to_orcl_buffer or not pred_list:
+        print("Empty oracle buffer or prediction list; no adjustment made.")
         return to_orcl_buffer
-    if not pred_list:
-        print("[adjust_input_for_oracle] pred_list is empty — returning buffer unchanged.")
-        return to_orcl_buffer
-    pred_list = [k[:, 0] for k in pred_list]
-    std = [np.std(k, axis=0, ddof=1) for k in pred_list]  # calculation std of predictions from retrained ML
-    if len(std) != len(to_orcl_buffer):
-        raise ValueError(f"Mismatch: std length {len(std)} vs. to_orcl_buffer length {len(to_orcl_buffer)}")
 
-    sorted_indices = np.argsort(std)  # Get sorted index order
-    print(f"Before sorting, to_orcl_buffer size = {len(to_orcl_buffer)}")
+    energy_std = []
+    force_rms_std = []
 
-    to_orcl_buffer = [to_orcl_buffer[i] for i in sorted_indices if std[i] > threshold]
+    # Compute ensemble stds
+    for k in pred_list:
+        k = np.asarray(k)
+        if k.ndim == 1:
+            raise ValueError("pred_list must contain predictions from multiple models for each structure.")
+        ddof = 1 if k.shape[0] > 1 else 0
+        e_std = np.std(k[:, 0], ddof=ddof)
+        f_std_vec = np.std(k[:, 1:], axis=0, ddof=ddof)
+        f_std = float(np.sqrt(np.mean(f_std_vec**2)))
+        energy_std.append(float(e_std))
+        force_rms_std.append(float(f_std))
 
-    std_sorted = [std[i] for i in sorted_indices]
-    print(f"After sorting, to_orcl_buffer size = {len(to_orcl_buffer)}")
+    # Filter by thresholds
+    selected = [
+        (i, e, f, to_orcl_buffer[i])
+        for i, (e, f) in enumerate(zip(energy_std, force_rms_std))
+        if (e > energy_threshold) or (f > force_threshold)
+    ]
 
-    to_orcl_buffer = [np.asarray(item, dtype=np.float64) for item in to_orcl_buffer]
-    print(f"After ensurance of type, to_orcl_buffer size = {len(to_orcl_buffer)}")
-    # check if every item in the list has the same shape
-    first_shape = to_orcl_buffer[0].shape  # Get the shape of the first item
-    if all(item.shape == first_shape for item in to_orcl_buffer):
-        print(" All items in to_orcl_buffer have the same shape:", first_shape)
+    # Rank or shuffle
+    if ranked:
+        selected.sort(key=lambda x: (x[2], x[1]), reverse=True)
+        mode_msg = "ranked (desc by force_std, energy_std)"
     else:
-        print(" Inconsistent shapes in to_orcl_buffer!")
-        for i, item in enumerate(to_orcl_buffer):
-            print(f"Item {i} shape: {item.shape}")
+        rng = np.random.default_rng(1234)
+        rng.shuffle(selected)
+        mode_msg = "shuffled"
 
-    std = sorted(std)
+    adjusted = [np.asarray(s[3], dtype=np.float64) for s in selected]
 
-    return to_orcl_buffer
+    print(f"After filtering: {len(adjusted)} kept out of {len(to_orcl_buffer)} → {mode_msg}")
+    if adjusted and ranked:
+        print("Top few (force_std, energy_std):",
+              [(round(s[2], 4), round(s[1], 4)) for s in selected[:5]])
+
+    return adjusted
+
 
 
 
@@ -447,46 +588,49 @@ class retrain_dataset(Dataset):
 from ast import literal_eval   
 from ase.data import atomic_numbers
 import re
-def get_init_data(path):
-    match = re.search(r"bi(\d+)(-?\d+)(?:_(?:samples|parsed))*\.csv", path)
+# def get_init_data(path):
+#     match = re.search(r"bi(\d+)(-?\d+)(?:_(?:samples|parsed))*\.csv", path)
 
-    if match:
-        num_atom = int(match.group(1))
-        charge = int(match.group(2))
-        print(f"num_atom: {num_atom}, charge: {charge}")
+#     if match:
+#         num_atom = int(match.group(1))
+#         charge = int(match.group(2))
+#         print(f"num_atom: {num_atom}, charge: {charge}")
+#     else:
+#         print("Pattern not found")
+#     data = pd.read_csv(path)
+#     elements = data["atoms"].values
+#     elements = [literal_eval(e) for e in elements]
+#     elements_number = [[atomic_numbers[ei] for ei in e] for e in elements]
+#     coords = data["coordinates"].values
+#     coords = [np.array(np.matrix(c.replace('\n', ';'))).reshape((num_atom, 3)) for c in coords]
+#     energies_0 = data['total_energy'].values
+#     energies_0 = [literal_eval(e) for e in energies_0]
+#     # convert = lambda a: np.array(np.matrix(a.replace('\n', ';'))) if type(a) == str else a
+#     forces_0 = data['forces'].values
+#     forces_0 = [np.array(np.matrix(c.replace('\n', ';'))).reshape((num_atom, 3)) for c in forces_0]
+#     data_list = []  
+#     for i in range(len(coords)):
+
+#         data = [
+#             torch.tensor(coords[i]), 
+#             torch.tensor(elements_number[i]), 
+#             torch.tensor(energies_0[i]), 
+#             torch.tensor(forces_0[i]), 
+#             torch.tensor(charge, dtype=torch.int64), 
+#             torch.zeros(coords[i].shape),
+#             None, 
+#             [0,0],
+#             torch.zeros(coords[i].shape)]
+#         data_list.append(data)
+#     # print('data_list:', data_list[0].forces)
+#     return data_list
+
+def get_full_data_init(path, source = None):
+    if source is not None:
+        data = pd.read_csv(path)
+        data = data[data['source'] == source]
     else:
-        print("Pattern not found")
-    data = pd.read_csv(path)
-    elements = data["atoms"].values
-    elements = [literal_eval(e) for e in elements]
-    elements_number = [[atomic_numbers[ei] for ei in e] for e in elements]
-    coords = data["coordinates"].values
-    coords = [np.array(np.matrix(c.replace('\n', ';'))).reshape((num_atom, 3)) for c in coords]
-    energies_0 = data['total_energy'].values
-    energies_0 = [literal_eval(e) for e in energies_0]
-    # convert = lambda a: np.array(np.matrix(a.replace('\n', ';'))) if type(a) == str else a
-    forces_0 = data['forces'].values
-    forces_0 = [np.array(np.matrix(c.replace('\n', ';'))).reshape((num_atom, 3)) for c in forces_0]
-    data_list = []  
-    for i in range(len(coords)):
-
-        data = [
-            torch.tensor(coords[i]), 
-            torch.tensor(elements_number[i]), 
-            torch.tensor(energies_0[i]), 
-            torch.tensor(forces_0[i]), 
-            torch.tensor(charge, dtype=torch.int64), 
-            torch.zeros(coords[i].shape),
-            None, 
-            [0,0],
-            torch.zeros(coords[i].shape)]
-        data_list.append(data)
-    # print('data_list:', data_list[0].forces)
-    return data_list
-
-def get_full_data_init(path):
-
-    data = pd.read_csv(path)
+        data = pd.read_csv(path)
     elements = data["atoms"].values
     elements = [literal_eval(e) for e in elements]
     # TODO: add num_atoms based on initial pyg way
@@ -523,27 +667,30 @@ def get_full_data_init(path):
 
 import csv
 def get_specific_data(file_path, line_number):
-    match = re.search(r"bi(\d+)(-?\d+)(?:_(?:samples|parsed))*\.csv", file_path)
-
-    if match:
-        num_atom = int(match.group(1))
-        charge = int(match.group(2))
-        print(f"num_atom: {num_atom}, charge: {charge}")
-    else:
-        print("Pattern not found")
     with open(file_path, 'r') as file:
         reader = csv.reader(file)
-        header = next(reader)  # Skip the header
-        for i, row in enumerate(reader):
-            if i == line_number:
-                data = process_row(row, header, num_atom, charge)
-                return data
-    raise IndexError("Line number out of range")
+        header = next(reader)
+        rows = list(reader)
 
-def process_row(row, header, num_atom, charge):
+        # Filter out rows where source == "real" if "source" exists
+        if "source" in header:
+            source_idx = header.index("source")
+            rows = [r for r in rows if r[source_idx].strip().lower() != "real"]
+
+        # Check range after filtering
+        if line_number >= len(rows):
+            raise IndexError("Line number out of range after filtering.")
+
+        # Get the desired row
+        row = rows[line_number]
+        data = process_row(row, header)
+        return data
+
+def process_row(row, header):
     elements = literal_eval(row[header.index("atoms")])
     elements_number = [atomic_numbers[ei] for ei in elements]
-    
+    charge = int(str(row[header.index("charge")]).split('(')[1].split(',')[0]) if 'tensor' in str(row[header.index("charge")]) else int(row[header.index("charge")])
+    num_atom = len(elements)
     coords = np.array(np.matrix(row[header.index("coordinates")].replace('\n', ';'))).reshape((num_atom, 3))
     energies_0 = literal_eval(row[header.index("total_energy")])
     forces_0 = np.array(np.matrix(row[header.index("forces")].replace('\n', ';'))).reshape((num_atom, 3))
@@ -671,26 +818,43 @@ def convert_to_1d_float_array(data):
 
 
 
-def parse_list_data_to_gene(list_data_to_gene):
+import numpy as np
+
+def parse_list_data_to_gene(list_data_to_gene, has_iter=False):
     """
-    Parses list_data_to_gene structured as:
-    list of arrays: each array is shape (num_predictors, 1 + 3*num_atoms)
+    Parse list_data_to_gene structured as a list of arrays,
+    each array with shape (num_predictors, 2 + 3*num_atoms) if has_iter=True
+    (leading 'iteration' + 'energy' + flattened forces),
+    or (num_predictors, 1 + 3*num_atoms) if has_iter=False.
 
     Returns:
-        energy: (G, P)
-        forces: (G, P, N, 3)
+        energy:   (G, P) float array
+        forces:   (G, P, N, 3) float array
+        iters:    (G, P) int array if has_iter=True, else None
     """
     data_array = np.array(list_data_to_gene)
     if data_array.ndim != 3:
         raise ValueError(f"Expected 3D array, got shape {data_array.shape}")
 
-    num_generators, num_predictors, total_dim = data_array.shape
+    G, P, D = data_array.shape
 
-    num_atoms = (total_dim - 1) // 3
-    
+    if has_iter:
+        if (D - 2) % 3 != 0:
+            raise ValueError(f"Last dim {D} not compatible with 'iter + energy + 3N'.")
+        N = (D - 2) // 3
 
-    energy = data_array[:, :, 0]                             # shape (G, P)
-    forces_flat = data_array[:, :, 1:]                       # shape (G, P, 3N)
-    forces = forces_flat.reshape((num_generators, num_predictors, num_atoms, 3))
+        # Ensure correct dtypes even if original array is object
+        iters = data_array[:, :, 0].astype(int)
+        energy = data_array[:, :, 1].astype(float)
+        forces_flat = data_array[:, :, 2:].astype(float)
+    else:
+        if (D - 1) % 3 != 0:
+            raise ValueError(f"Last dim {D} not compatible with 'energy + 3N'.")
+        N = (D - 1) // 3
 
-    return energy, forces
+        iters = None
+        energy = data_array[:, :, 0].astype(float)
+        forces_flat = data_array[:, :, 1:].astype(float)
+
+    forces = forces_flat.reshape(G, P, N, 3)
+    return energy, forces, iters

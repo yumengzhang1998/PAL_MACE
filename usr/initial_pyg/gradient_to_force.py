@@ -14,14 +14,18 @@ def parse_and_negate_force(force_str):
 def parse(path, prefix):
     df = pd.read_csv(f"{path}/{prefix}.csv")
     # Apply to the 'forces' column
+    df.dropna(inplace=True)
     df['forces'] = df['forces'].apply(parse_and_negate_force)
     # Convert back to string if saving
     df['forces'] = df['forces'].apply(lambda x: x.tolist())
+    
     df.to_csv(f"{path}/{prefix}_parsed.csv", index=False)
 
 
 if __name__ == "__main__":
     prefix = ['bi4-2', 'bi4-6', 'bi7-3', 'bi11-3', 'bi11-3_samples']
-    prefix = ['bi0','bi11-3', 'bi11-3_samples']
+    prefix = ['bi2-2','bi11-3_samples_bi2']
+    prefix = ['bi0']
+    prefix = ['Bi11-3_samples_bi2']
     for p in prefix:
         parse(path = "raw/", prefix = p)

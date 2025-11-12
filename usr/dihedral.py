@@ -45,12 +45,17 @@ if __name__ == "__main__":
     parser.add_argument("--num_atom", type=int, required=True, help="Number of atoms (e.g., 4)")
     parser.add_argument("--model_number", type=int, required=True, help="Model number (e.g., 25)")
     parser.add_argument("--synthesis", type=str, required=True, help="if the data is from synthesis")
+    parser.add_argument("--compact_type", type=str, required=False,default="bi4", help="if the data is from synthesis bi4 or bi2")
+    parser.add_argument("--json_dir", type=str, default="results", help="Directory containing JSON files")
     args = parser.parse_args()
     if args.synthesis == "True":
-        prefix = f"{args.element}{args.num_atom}{args.charge}_samples"
+        if args.compact_type == "bi2":
+            prefix = f"{args.element}{args.num_atom}{args.charge}_samples_bi2"
+        else:
+            prefix = f"{args.element}{args.num_atom}{args.charge}_samples"
     else:
         prefix = f"{args.element}{args.num_atom}{args.charge}"
     number = args.model_number
-    json_file_path = f"../results/{prefix}/"
+    json_file_path = f"../{args.json_dir}/{prefix}/"
     retraining_trend(number, json_file_path)
 

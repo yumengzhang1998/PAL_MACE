@@ -166,7 +166,7 @@ class Generate_TrajsBatch(object):
                                 Each row contains [Fx, Fy, Fz] force components.
         """
         # Loop over each atom and set the predicted force components
-        conversion_factor = 418.4  # kcal/mol/Å -> kJ/mol/nm
+        conversion_factor = 96.485 * 10 # kcal/mol/Å -> kJ/mol/nm
         current_forces = -1 * predicted_forces * conversion_factor * unit.kilojoule_per_mole / unit.nanometer
         # current_forces = predicted_forces * unit.kilojoule_per_mole / unit.nanometer
         for i in range(predicted_forces.shape[0]):

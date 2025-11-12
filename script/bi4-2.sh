@@ -14,6 +14,6 @@
 #SBATCH --mail-user=noname19980927@gmail.com  # Email address to send notifications
 
 cd ..
-python generate_config_yaml.py --prefix bi4-2 --full_dataset True
+python generate_config_yaml.py --prefix bi4-2 --full_dataset False
 python generate_al_setting.py
 mpirun -n 60 python main.py

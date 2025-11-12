@@ -18,6 +18,7 @@ DFLOAT = np.float64
 
 RANK_EXCHANGE = 0                                  # rank of exchange process
 RANK_MG = 1                                        # rank of manager process
+errout = None 
 def _assert_no_aliases(buf):
     ptrs = [a.__array_interface__['data'][0] for a in buf]
     dup = len(ptrs) - len(set(ptrs))
@@ -36,6 +37,7 @@ def _record_invariants(a, *, idx=None, who=None, none_placeholder=99999999.0):
 
     # coords must be 3*N and sit before atomic_numbers
     if z_start != 3*N:
+        print(a)
         raise ValueError(
             f"[invar][{who}][idx {idx}] coords length mismatch: z_start={z_start}, expected 3*N={3*N} (N={N})"
         )
@@ -539,7 +541,8 @@ if __name__ == "__main__":
 
         if not stop_run:
             ml_worker.add_trainingset(dataset_new)
-            if adjust_orcale and oracl_data_arrive != -1:
+            if adjust_orcale and oracl_data_arrive != -1 and not stop_run and not stop_retrain:
+
                 # receive data size info
                 data_size_recv = np.empty((oracl_data_arrive,), dtype=DINT)
                 comm_mg_ml.Bcast([data_size_recv, MPI.LONG], root=0)
@@ -591,7 +594,8 @@ if __name__ == "__main__":
             for i in range(0, len(new_data), 2):
                 dataset_new.append([new_data[i], new_data[i+1]])
             
-            if adjust_orcale and oracl_data_arrive != -1:
+            if adjust_orcale and oracl_data_arrive != -1 and not stop_run and not stop_retrain:
+
                 # receive data size info
                 data_size_recv = np.empty((oracl_data_arrive,), dtype=DINT)
                 comm_mg_ml.Bcast([data_size_recv, MPI.LONG], root=0)
@@ -627,7 +631,8 @@ if __name__ == "__main__":
                 gc.collect()
 
             # add new data points to the training set
-            ml_worker.add_trainingset(dataset_new)
+            if not stop_run and not stop_retrain and dataset_new:
+                ml_worker.add_trainingset(dataset_new)
             
             # save the current progress/data/state of machine learning progress
             ml_worker.save_progress(stop_run=False)
@@ -771,8 +776,8 @@ if __name__ == "__main__":
             input_to_orcl_buffer = []                         # buffer for inputs to be send to Oracle through MG process
 
         stop_run = False
-        to_mg_thread = None
-        req_list = [None, None]
+        # to_mg_thread = None
+        # req_list = [None, None]
         time_start = time.time()
         comm_data_size = True
         size_to_mg = None
@@ -821,7 +826,14 @@ if __name__ == "__main__":
                 size_to_gene = np.array([1,] + [3,] * n_gene, dtype=DINT)
                 data_to_gene = np.array([-1.0] + [1.0, 1.0, -1.0] * n_gene, dtype=DFLOAT)
                 data_to_gene_displs = np.array([np.sum(size_to_gene[:i]) for i in range(0, size_to_gene.shape[0])], dtype=int)
-                print(f"Stop run signal received from generator process. Shutdown the workflow...")
+
+                # 1) Distribute a final [stop, save] to every Generator
+                recvsize_tmp = np.empty((1,), dtype=DINT)
+                comm_gene_ex.Scatter([size_to_gene, MPI.LONG], [recvsize_tmp, MPI.LONG], root=0)
+                comm_gene_ex.Scatterv([data_to_gene, size_to_gene, data_to_gene_displs, MPI.DOUBLE],
+                                    [np.empty((recvsize_tmp[0],), dtype=DFLOAT), MPI.DOUBLE], root=0)
+
+                print("Stop run signal received from generator process. Shutdown the workflow...")
                 break
             #################################
             # Collect predictions from Pred #
@@ -901,7 +913,13 @@ if __name__ == "__main__":
             data_to_gene_displs = np.array([np.sum(size_to_gene[:i]) for i in range(0, size_to_gene.shape[0])], dtype=DINT)
 
             if stop_run:
-                print(f"Stop run signal received from training process. Shutdown the workflow...")
+                # Push the final [stop, save] header (plus whatever payload you built) to Generators
+                recvsize_tmp = np.empty((1,), dtype=DINT)
+                comm_gene_ex.Scatter([size_to_gene, MPI.LONG], [recvsize_tmp, MPI.LONG], root=0)
+                comm_gene_ex.Scatterv([data_to_gene, size_to_gene, data_to_gene_displs, MPI.DOUBLE],
+                                    [np.empty((recvsize_tmp[0],), dtype=DFLOAT), MPI.DOUBLE], root=0)
+
+                print("Stop run signal received from training process. Shutdown the workflow...")
                 break
             
             #################################
@@ -944,14 +962,31 @@ if __name__ == "__main__":
             
             # send size info and orcle buffer data to MG
             #TODO: DEBUG: CHANGED t_ex_mg
-            if (not size_to_mg is None) and (req_list[1] is None or req_list[1].Test()) and (to_mg_thread is None or not to_mg_thread.is_alive()):
-                to_mg_thread = threading.Thread(target=comm_ex_mg, args=(comm_world, RANK_MG, t_ex_mg_int, size_to_mg.copy(), "int", req_list), daemon=True)
-                to_mg_thread.start()
+            # if (not size_to_mg is None) and (req_list[1] is None or req_list[1].Test()) and (to_mg_thread is None or not to_mg_thread.is_alive()):
+            #     to_mg_thread = threading.Thread(target=comm_ex_mg, args=(comm_world, RANK_MG, t_ex_mg_int, size_to_mg.copy(), "int", req_list), daemon=True)
+            #     to_mg_thread.start()
+            #     size_to_mg = None
+            # elif (not data_to_mg is None) and (req_list[0] is None or req_list[0].Test()) and (to_mg_thread is None or not to_mg_thread.is_alive()):
+            #     to_mg_thread = threading.Thread(target=comm_ex_mg, args=(comm_world, RANK_MG, t_ex_mg_float, data_to_mg.copy(), "float", req_list), daemon=True)
+            #     to_mg_thread.start()
+            #     data_to_mg = None
+            # EXCHANGE → MG: send size, then payload (blocking, back-to-back)
+            if size_to_mg is not None:
+                comm_world.Send(
+                    [np.asarray(size_to_mg, dtype=DINT), MPI.LONG],
+                    dest=RANK_MG,
+                    tag=t_ex_mg_int
+                )
+                if data_to_mg is not None and len(data_to_mg) > 0:
+                    comm_world.Send(
+                        [np.asarray(data_to_mg, dtype=DFLOAT), MPI.DOUBLE],
+                        dest=RANK_MG,
+                        tag=t_ex_mg_float
+                    )
+                # prevent re-sends on next loop
                 size_to_mg = None
-            elif (not data_to_mg is None) and (req_list[0] is None or req_list[0].Test()) and (to_mg_thread is None or not to_mg_thread.is_alive()):
-                to_mg_thread = threading.Thread(target=comm_ex_mg, args=(comm_world, RANK_MG, t_ex_mg_float, data_to_mg.copy(), "float", req_list), daemon=True)
-                to_mg_thread.start()
                 data_to_mg = None
+
             ################# Done ##################
 
         # send stop_run signal to all Generator processes
@@ -964,20 +999,25 @@ if __name__ == "__main__":
         comm_gene_ex.Scatterv([data_to_gene, size_to_gene, data_to_gene_displs, MPI.DOUBLE], [recvbuf_tmp, MPI.DOUBLE], root=0)
 
         # send stop_run signal to MG, Oracle and Training processes
-        if not data_to_mg is None:
-            if not req_list[1] is None:
-                req_list[1].wait()
-            if not req_list[0] is None:
-                req_list[0].wait()
-            req = comm_world.Isend([data_to_mg, MPI.DOUBLE], dest=RANK_MG, tag=t_ex_mg)
-            data_to_mg = None
-            req.wait()
-        size_to_mg = np.array([2, 1], dtype=DINT)
-        data_to_mg = np.array([1.0, 1.0, -1.0], dtype=DFLOAT)
-        req = comm_world.Isend([size_to_mg, MPI.LONG], dest=RANK_MG, tag=t_ex_mg)
-        req.wait()
-        req = comm_world.Isend([data_to_mg, MPI.DOUBLE], dest=RANK_MG, tag=t_ex_mg)
-        req.wait()
+        # if not data_to_mg is None:
+        #     if not req_list[1] is None:
+        #         req_list[1].wait()
+        #     if not req_list[0] is None:
+        #         req_list[0].wait()
+        #     req = comm_world.Isend([data_to_mg, MPI.DOUBLE], dest=RANK_MG, tag=t_ex_mg_float)
+        #     data_to_mg = None
+        #     req.wait()
+        # size_to_mg = np.array([2, 1], dtype=DINT)
+        # data_to_mg = np.array([1.0, 1.0, -1.0], dtype=DFLOAT)
+        # req = comm_world.Isend([size_to_mg, MPI.LONG], dest=RANK_MG, tag=t_ex_mg_int)
+        # req.wait()
+        # req = comm_world.Isend([data_to_mg, MPI.DOUBLE], dest=RANK_MG, tag=t_ex_mg_float)
+        # req.wait()
+        size_to_mg = np.array([2], dtype=DINT)                 # header only
+        data_to_mg = np.array([1.0, 1.0], dtype=DFLOAT)        # [stop, save]
+        comm_world.Send([size_to_mg, MPI.LONG],  dest=RANK_MG, tag=t_ex_mg_int)
+        comm_world.Send([data_to_mg, MPI.DOUBLE], dest=RANK_MG, tag=t_ex_mg_float)
+
         # save the input_to_orcl_buffer before exits
         if len(input_to_orcl_buffer) > 0:
             with open(orcl_buffer_path, "wb") as fh:
@@ -1041,11 +1081,22 @@ if __name__ == "__main__":
                 for p in parts:
                     p.setflags(write=False)
                 # to_orcl_buffer += input_to_orcl
+                if stop_run:
+                    # Tell ALL oracle ranks to stop right now (free or busy)
+                    for r in rank_orcl:
+                        idx = rank_orcl.index(r)
+                        tag_here = t_orcl_mg[idx]
+                        # header says: 2 control fields; payload has [1.0, -1.0] (stop)
+                        comm_world.Send([np.array([2], dtype=DINT), MPI.LONG], dest=r, tag=tag_here)
+                        comm_world.Send([np.array([1.0, -1.0], dtype=DFLOAT), MPI.DOUBLE], dest=r, tag=tag_here)
+                    # Exit the MG loop immediately to avoid scheduling any more work
+                    break
                 to_orcl_buffer.extend(parts) 
             ################# Done ##################
 
             # stop the iteration if stop_run signal received
             if stop_run:
+                to_orcl_buffer = []
                 print(f"Rank {rank}: Message: stop_run signal received from Exchange. Shutting down...")
                 break
             
@@ -1065,9 +1116,11 @@ if __name__ == "__main__":
                         orcl_to_free.append(i)
                         orcl_free.append(i)
                     else:
-                        orcl_busy[i] += 30
+                        # orcl_busy[i] += 30
+                        time.sleep(0.02)
             for i in orcl_to_free:
-                orcl_busy.pop(i)
+                orcl_busy.pop(i, None)
+                
             
             stop_signal = 1.0 if stop_run else 0.0
             ###########################################################
@@ -1084,7 +1137,18 @@ if __name__ == "__main__":
             orcl_free = orcl_free[s:]
             to_orcl_buffer = to_orcl_buffer[s:]
             ################# Done ##################
-            
+            if comm_world.Iprobe(source=RANK_EXCHANGE, tag=t_ex_mg_int):
+                size_status = MPI.Status()
+                comm_world.Probe(source=RANK_EXCHANGE, tag=t_ex_mg_int, status=size_status)
+                n_data = size_status.Get_count(MPI.LONG)
+                ex_size = np.empty((n_data,), dtype=DINT)
+                comm_world.Recv([ex_size, MPI.LONG],  source=RANK_EXCHANGE, tag=t_ex_mg_int)
+                ex_data = np.empty((np.sum(ex_size),), dtype=DFLOAT)
+                comm_world.Recv([ex_data, MPI.DOUBLE], source=RANK_EXCHANGE, tag=t_ex_mg_float)
+                stop_run = (ex_data[0] == 1.0)
+                save_progress = (ex_data[1] == 1.0)
+                if stop_run:
+                    break           
             #################################################
             # send Oracle labeled data to ML for retraining #
             #################################################
@@ -1144,7 +1208,11 @@ if __name__ == "__main__":
                     # ABOVE WAS TO DEBUG
                     for i, a in enumerate(to_orcl_buffer):
                         _record_invariants(a, idx=i, who="before adjust_input_to_orcl")
+                    if stop_run:
+                        break
                     to_orcl_buffer = util_module.adjust_input_for_oracle(to_orcl_buffer, orcl_pred_data)
+                    if stop_run:
+                        break
                     for i, a in enumerate(to_orcl_buffer):
                         _record_invariants(a, idx=i, who="MG pre-send")
 
@@ -1190,7 +1258,8 @@ if __name__ == "__main__":
                         orcl_to_free.append(i)
                         orcl_free.append(i)
                     else:
-                        orcl_busy[i] += 30
+                        # orcl_busy[i] += 30
+                        time.sleep(0.02)
             for i in orcl_to_free:
                 orcl_busy.pop(i)
         # send stop signal to all Oracle processes
@@ -1212,4 +1281,9 @@ if __name__ == "__main__":
     comm_world.Barrier()
     if rank == 0:
         print("All processes exits normally.")
-    errout.close()
+    # try:
+    #     errout.close()
+    # except NameError:
+    #     pass
+    if errout is not None:
+        errout.close()

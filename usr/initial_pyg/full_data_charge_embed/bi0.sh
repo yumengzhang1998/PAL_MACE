@@ -1,6 +1,6 @@
 #! /bin/bash
 #SBATCH --job-name=full_bi_init
-#SBATCH --partition=accelerated
+#SBATCH --partition=normal
 #SBATCH --time=03:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1

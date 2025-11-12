@@ -7,6 +7,14 @@ jobs=(
     "bi4-6.sh"
     "bi7-3.sh"
     "bi11-3.sh"
+    "bi11-3_samples_bi2.sh"
+    "bi2-2.sh"
+)
+jobs=(
+    "bi4-2.sh"
+    "bi7-3.sh"
+    "bi11-3.sh"
+    "bi2-2.sh"
 )
 # Loop over each job
 for job_script in "${jobs[@]}"; do

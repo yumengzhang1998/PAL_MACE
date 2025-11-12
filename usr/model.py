@@ -11,7 +11,7 @@ import psutil
 import numpy as np
 import torch, time, os, json
 from torch import nn
-from usr.utils import get_init_data, shuffle_dataset, save_data, get_full_data_init
+from usr.utils import  shuffle_dataset, save_data, get_full_data_init
 from usr.initial_pyg.functions.config import ConfigLoader
 from usr.initial_pyg.evaluation import evaluate
 import sys
@@ -142,6 +142,29 @@ def flatten_and_concatenate(pred_list):
     """
     flattened_arrays = [pred.flatten() for pred in pred_list]
     return np.concatenate(flattened_arrays)
+def combine_predictions_to_numpy_with_iter(y_pred, force_pred, iteration):
+    """
+    Combines y_pred and force_pred into a list of 1D numpy arrays.
+    Each array will have length 14: 
+    1 iteration index + 1 scalar energy + 12 flattened force values.
+
+    Args:
+    - y_pred (torch.Tensor): Tensor of shape (n,) or (n, 1) for predicted energies.
+    - force_pred (torch.Tensor): Tensor of shape (n, 4, 3) for force predictions.
+    - iteration (int): Iteration index to prepend.
+
+    Returns:
+    - result_list (list of np.ndarray): Each element is a 1D numpy array of length 14.
+    """
+    result_list = []
+    for i in range(y_pred.shape[0]):
+        iter_arr = np.array([iteration], dtype=int)           # shape (1,)
+        energy = y_pred[i].reshape(1).detach().cpu().numpy()  # shape (1,)
+        forces = force_pred[i].reshape(-1).detach().cpu().numpy()  # shape (12,)
+        combined = np.concatenate((iter_arr, energy, forces))  # shape (14,)
+        result_list.append(combined)
+
+    return result_list
 
 def combine_predictions_to_numpy(y_pred, force_pred):
     """
@@ -164,6 +187,18 @@ def combine_predictions_to_numpy(y_pred, force_pred):
 
     return result_list
 
+def poisson_bootstrap_indices(n, lam=1.0, ensure_inclusion=True, rng=None):
+    """
+    Return array of indices for a Poisson-weighted bootstrap.
+    Every sample appears Poisson(lam) times; +1 ensures inclusion.
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+    counts = rng.poisson(lam, size=n)
+    if ensure_inclusion:
+        counts = counts + 1
+    # e.g. counts=[2,1,3,...] -> indices=[0,0,1,2,2,2,...]
+    return np.repeat(np.arange(n, dtype=np.int64), counts)
 class UserModel(object):
     """
     User defined model for both Passive Learner and Machine learning.
@@ -190,6 +225,12 @@ class UserModel(object):
         self.mode = mode
         self.i_gpu = i_gpu
         self.boot_strap = True
+        self.add_all_cluster = False
+        self.fix_e0 = True
+        self.iter_log = True
+        self.num_retraining_instances = 0 # count how many times retraining happened for retraining
+        self.counter = 0 # count how many times retraining happened for predictor
+        loss = "huber_energy_forces"
 
         pred_procs = AL_SETTING["pred_process"]
         orcl_procs = AL_SETTING["orcl_process"]
@@ -224,15 +265,22 @@ class UserModel(object):
         self.transforms = None
         # self.number_of_generators = self.config["number_of_generators"]
         self.metadata = self.config["metadata"]
+        data_type = self.config["prefix"]
         if self.config["full_dataset"]:
             self.prefix = "bi0"
+            log_file = f"usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/logs/{self.prefix}_run-123.log" 
         else:
             self.prefix = self.config["prefix"]
+            log_file = f"usr/initial_pyg/results/charge_embedding/{self.prefix}_logs/sample_{number}/logs/{self.prefix}_run-123.log"
         args = build_default_arg_parser_dict(self.config['args_dict']) 
-        log_file = f"usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/logs/{self.prefix}_run-123.log" 
-        args.E0s = extract_e0_dict_from_log(log_file)
+        
+        if self.fix_e0:
+            args.E0s = extract_e0_dict_from_log(log_file)
+        else :
+            args.E0s = "average"
         self.args, input_log_messages = tools.check_args(args)
         self.args.heads = prepare_default_head(args)
+        # self.args.loss = loss
         self.batch_size = self.args.batch_size
         compute_virials = self.args.loss in ("stress", "virials", "huber", "universal")
         self.args.compute_energy = True
@@ -252,7 +300,10 @@ class UserModel(object):
         args.checkpoints_dir = f"{self.args.results_dir}/checkpoints" 
         args.log_dir = f"{self.args.results_dir}/logs"
         args.model_dir = f"{self.args.results_dir}"
-        PATH = f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
+        if self.config["full_dataset"]:
+            PATH = f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
+        else:
+            PATH = f'usr/initial_pyg/results/charge_embedding/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
         print(f"✅ [Rank {self.rank}] ({mode}) → Loaded model {PATH}")
         self.model = torch.load(PATH, map_location=self.device)
         self.model = self.model.to(self.device)
@@ -273,18 +324,28 @@ class UserModel(object):
         
         else:
             self.start_time = time.time()
-            self.counter = 0
             
             print('training', self.rank)
-            if self.config["full_dataset"]:
+            if self.config["full_dataset"] and self.add_all_cluster:
                 print('full dataset')
-                init_data = get_full_data_init(f'usr/initial_pyg/raw/{self.prefix}_parsed.csv')
+                init_data = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv')
                 self.val = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv')
+                print(f'loading initial dataset that contains all cluster data')
+                print('initial dataset size', len(init_data))
+                print('validation dataset size', len(self.val))
                 print("Finished loading initial dataset")
-            else:
-
-                init_data = get_init_data(f'usr/initial_pyg/raw/{self.prefix}_parsed.csv')
-                self.val = get_init_data(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv')
+            elif self.config["full_dataset"] and (not self.add_all_cluster):
+                print('full dataset but not all cluster')
+                print(f'loading initial dataset that only contains {data_type} data')
+                init_data = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv', source = data_type)
+                self.val = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv', source= data_type)
+                print('initial dataset size', len(init_data))
+                print('validation dataset size', len(self.val))
+                print("Finished loading initial dataset")
+            elif not self.config['full_dataset'] :
+                print('single cluster run')
+                init_data = get_full_data_init(f'usr/initial_pyg/samples/{self.prefix}/sample_{number}/train.csv')
+                self.val = get_full_data_init(f'usr/initial_pyg/samples/{self.prefix}/sample_{number}/val.csv')
             random.shuffle(init_data)
 
             self.train = init_data
@@ -294,17 +355,44 @@ class UserModel(object):
             
             self.history = {
                 "MSE_train": [],
-                "MSE_val": []
+                "MSE_val": [],
+                "start_MAE_train": [],
+                "start_MAE_val": [],
+                "init_val_mae": [],
+                "new_val_mae": [],
+                "new_val_force_mae": [],
+                "init_val_force_mae": []
                 }
+            # --- Dual-patience with relative thresholds (Option B) ---
+            self.pcfg = dict(
+                old_limit=10,            # patience for initial (protect forgetting)
+                new_limit=10,             # patience for added (drive AL progress)
+                rel_added_delta=0.5/100, # require ≥0.5% improvement on added (energy OR force)
+                init_tol=2.0/100,        # ≤2% worse on init = acceptable noise
+                init_hi=5.0/100          # >5% worse on init = "worse a lot"
+            )
+            self.pat_old = 0
+            self.pat_new = 0
+            self.best_mae = {
+                "init_e": float("inf"),
+                "init_f": float("inf"),
+                "added_e": float("inf"),
+                "added_f": float("inf"),
+            }
+
+            self.init_val_size = len(self.val)
+            self.init_train_size = len(self.train)
 
 
 
 
         self.para_keys = list(self.model.state_dict().keys())
-        self.num_retraining_instances = 0
+        
         self.retrain_patience = 10
         self.best_val_loss = float('inf')
         self.patience_counter = 0
+        self.extend_val = False
+        
 
 
         self.stop = False
@@ -332,20 +420,23 @@ class UserModel(object):
 
         ##### User Part #####
 
-        if len(list_data_to_pred) > self.config['num_gen_process']:
-            import json
-            with open("to_orcl_buffer.json", "w") as f:
-                json.dump([arr.tolist() for arr in list_data_to_pred], f)
+        
+            # import json
+            # with open("to_orcl_buffer.json", "w") as f:
+            #     json.dump([arr.tolist() for arr in list_data_to_pred], f)
         data_list = [reconstruct_from_metadata(data, self.metadata, rank  = f"predict {self.rank}") for data in list_data_to_pred]
         # print('data_list', data_list)
         data_list = convert_to_data_object(data_list)
 
-
         y_pred, force_pred, _, _= evaluate(self.model, data_list, batch_size = self.batch_size, device = self.device)
         a = torch.tensor(y_pred)
         b = torch.tensor(force_pred)
-
-        data_to_gene = combine_predictions_to_numpy(a, b)
+        if len(list_data_to_pred) > self.config['num_gen_process']:
+            data_to_gene = combine_predictions_to_numpy(a, b)
+        elif self.iter_log:
+            data_to_gene = combine_predictions_to_numpy_with_iter(a, b, self.counter)
+        else:
+            data_to_gene = combine_predictions_to_numpy(a, b)
         
         return data_to_gene
     
@@ -354,7 +445,11 @@ class UserModel(object):
         """
         Update model/scalar with new weights in weight_array.
         """
-        offset = 0
+        if self.iter_log:
+            self.counter = int(weight_array[0])
+            offset = 1
+        else:
+            offset = 0
         for k in self.para_keys:
             param = self.model.state_dict()[k]
             param_size = param.numel()
@@ -369,7 +464,7 @@ class UserModel(object):
             self.model.state_dict()[k].copy_(new_tensor)
             offset += param_size
 
-        print(f"Rank {self.rank}: model updated on device {self.device}")
+        print(f"Rank {self.rank}: model updated on device {self.device}, current iteration of retraining {self.counter}")
 
             
     def get_weight_size(self):
@@ -383,7 +478,10 @@ class UserModel(object):
         weight_size = None
         
         ##### User Part #####
-        weight_size = 0
+        if self.iter_log:
+            weight_size = 1
+        else:
+            weight_size = 0
         # the last 4 key-item pairs are scalars
         for k in self.para_keys:
             weight_size += self.model.state_dict()[k].flatten().shape[0]
@@ -406,7 +504,10 @@ class UserModel(object):
         weight_array = []
         for k in self.para_keys:
             weight_array += self.model.state_dict()[k].detach().cpu().numpy().flatten().tolist()
-        return np.array(weight_array, dtype=float)
+        weight_array = np.array(weight_array, dtype=float)
+        if self.iter_log:
+            weight_array = np.concatenate((np.array([self.num_retraining_instances]), weight_array))
+        return weight_array
     
     def add_trainingset(self, datapoints):
         """
@@ -442,12 +543,18 @@ class UserModel(object):
         #data_list = [reconstruct_from_metadata(data, self.metadata) for data in datapoints]
         print('number of failed data in this iteration:', fail)
         for data in data_list:
-            data[-3] = None
-                
-        train, val = shuffle_dataset(data_list)
+            data[-3] = None           
+        if self.boot_strap:
+            train, val = shuffle_dataset(data_list)
+            train = resample(train, replace=True, n_samples=len(train), random_state=123)
+            self.train.extend(train)
+            self.val.extend(val)
+        else:
+            train, val = shuffle_dataset(data_list)
+            self.train.extend(train)
+            self.val.extend(val)
 
-        self.train.extend(train)
-        self.val.extend(val)
+            
         if len(self.train) > 10000:
             print('10000 training points reached')
             self.stop = True
@@ -468,16 +575,11 @@ class UserModel(object):
             stop_run = True
         for v in self.history.values():
             v.append([])
-        self.counter += 1
+        
         # training datalaoader#
         # boot strap
-        if self.boot_strap:
-            print('bootstrapping')
-            train = resample(self.train, n_samples = len(self.train))
-            val = resample(self.val, n_samples = len(self.val))
-        else: 
-            train = self.train.copy()
-            val = self.val.copy()
+        train = self.train.copy()
+        val = self.val.copy()
         print('length of trainingset', len(train))
         print('length of the val set', len(val))
         # print('train                                              ', self.train[0].pos, self.train[0].z, self.train[0].charge, self.train[0].atoms, self.train[0].pred, self.train[0].y, self.train[0].forces)
@@ -649,35 +751,128 @@ class UserModel(object):
         # trainer.fit(self.model, data_module)
         # print(self.model._nn_scaler._p_fit_atom_selection.dtype)
         
-        train_mse = metrics["train"][-1]["mae_e"]
+        
+        train_start_mse = metrics["train"][0]["mae_e"]
+        val_start_mse = metrics["validation"][0]["mae_e"]
 
-        val_mse =  metrics["validation"][-1]["mae_e"]
-
-        self.history["MSE_val"][-1].append(val_mse)
-        self.history["MSE_train"][-1].append(train_mse)
-        print(self.history)
+    
         self.num_retraining_instances += 1
+        self.counter += 1
 
+        init_val_mae, init_val_force_mae, new_val_mae, new_val_force_mae,train_mae, train_force_mae, val_mae, val_force_mae =self.save_dataset(path = os.path.join(self.result_dir, f"{self.rank}_added_data.csv"))
+        self.history['init_val_mae'][-1].append(init_val_mae)
+        self.history['init_val_force_mae'][-1].append(init_val_force_mae)
+        self.history['new_val_mae'][-1].append(new_val_mae)
+        self.history['new_val_force_mae'][-1].append(new_val_force_mae)
 
+        self.history["MSE_val"][-1].append(val_mae)
+        self.history['start_MAE_val'][-1].append(val_start_mse)
+        self.history["MSE_train"][-1].append(train_mae)
+        self.history['start_MAE_train'][-1].append(train_start_mse)
+        self.save_progress()
+    
         with open(os.path.join(self.metrcis_dir, f"metrics_{self.num_retraining_instances}.json"), 'w') as fh:
             json.dump(metrics, fh)
-        if val_mse < self.best_val_loss:
-            self.best_val_loss = val_mse
-            self.patience_counter = 0
+        # ----- Dual-patience early stopping (relative thresholds) -----
+        init_e = float(init_val_mae)
+        init_f = float(init_val_force_mae)
+        add_e  = float(new_val_mae)        if new_val_mae is not None        else float("inf")
+        add_f  = float(new_val_force_mae)  if new_val_force_mae is not None  else float("inf")
+
+        # required relative improvement on added set (either energy OR force)
+        added_improve = (
+            self._rel_improved(add_e, self.best_mae["added_e"], self.pcfg["rel_added_delta"]) or
+            self._rel_improved(add_f, self.best_mae["added_f"], self.pcfg["rel_added_delta"])
+        )
+
+        # relative worsening on init vs best so far
+        rel_worse_init_e = self._rel_increase(init_e, self.best_mae["init_e"])
+        rel_worse_init_f = self._rel_increase(init_f, self.best_mae["init_f"])
+
+        init_worse_mild = (rel_worse_init_e >= self.pcfg["init_tol"]) or (rel_worse_init_f >= self.pcfg["init_tol"])
+        init_worse_high = (rel_worse_init_e >= self.pcfg["init_hi"])  or (rel_worse_init_f >= self.pcfg["init_hi"])
+
+        # did init improve at all this epoch (either energy or force)?
+        init_improve = (init_e < self.best_mae["init_e"]) or (init_f < self.best_mae["init_f"])
+
+        # ----- Rules -----
+        if (not init_worse_mild or init_improve) and added_improve:
+            # initial stable/improving AND added improving → reset both
+            self.pat_old = 0
+            self.pat_new = 0
+            status = "🎯 init stable/improving & added improving → reset both"
+        elif init_worse_high and added_improve:
+            # protect initial distribution more
+            self.pat_old += 1
+            self.pat_new = 0
+            status = "⚖️ init worsened a lot but added improved → pat_old+1, pat_new→0"
+        elif init_worse_mild and not added_improve:
+            # worse on init, no progress on added
+            self.pat_old += 1
+            self.pat_new += 1
+            status = "🛑 init worsened & added no improvement → pat_old+1, pat_new+1"
+        elif (not init_improve) and added_improve:
+            # added improves, init flat (within tol)
+            self.pat_new = 0
+            status = "✅ added improving, init flat → pat_new→0"
+        elif init_improve and not added_improve:
+            # init improving, added flat → nudge AL progress
+            self.pat_new += 1
+            status = "➡️ init improving, added flat → pat_new+1"
         else:
-            self.patience_counter += 1
-        if self.patience_counter >= self.retrain_patience and len(self.train) >= 4000:
-            print(f"Rank {self.rank}: retraining patience reached")
+            # both flat within noise
+            self.pat_old += 1
+            self.pat_new += 1
+            status = "⏸️ both flat → pat_old+1, pat_new+1"
+
+        print(f"[early-stop] {status} | pat_old={self.pat_old}/{self.pcfg['old_limit']} "
+            f"pat_new={self.pat_new}/{self.pcfg['new_limit']} | "
+            f"init(e,f)=({init_e:.4f},{init_f:.4f}) add(e,f)=({add_e:.4f},{add_f:.4f}) "
+            f"| rel_worse_init(e,f)=({rel_worse_init_e:.3%},{rel_worse_init_f:.3%})")
+
+        # Update bests AFTER deciding patience
+        self._update_bests(init_e, init_f, add_e, add_f)
+
+        # ----- Size gates (unchanged) -----
+        num_data_minimum = int(self.config['retrain_size']) * 15 + self.init_train_size
+        K = 0.1 # least 10% of initial training data
+        num_data_max = (self.init_train_size) / K
+
+        should_stop_dual = (self.pat_old >= self.pcfg["old_limit"]) or (self.pat_new >= self.pcfg["new_limit"])
+        if should_stop_dual and len(self.train) >= num_data_minimum:
+            print(f"Rank {self.rank}: dual-patience reached (pat_old={self.pat_old}, pat_new={self.pat_new})")
             self.stop = True
+
+        if len(self.train) >= num_data_max:
+            print(f"Rank {self.rank}: maximum training data size {num_data_max:.0f} reached")
+            self.stop = True
+
+
 
 
         print(f"Rank {self.rank}: retraining stop.")
         stop_run = self.check_stop()
-
-        self.save_dataset(path = os.path.join(self.result_dir, f"added_data.csv"))
-        self.save_progress()
             
         return stop_run
+    
+    def _rel_increase(self, cur, best):
+        """Relative increase vs best: (cur-best)/best, floor at 0. If best not set, return 0."""
+        if not np.isfinite(best) or best <= 0.0:
+            return 0.0
+        return max(0.0, (cur - best) / best)
+
+    def _rel_improved(self, cur, best, rel_delta):
+        """Return True if (best-cur)/best > rel_delta. If best not set, accept any decrease."""
+        if not np.isfinite(best) or best <= 0.0:
+            return cur < best
+        return ((best - cur) / best) > rel_delta
+
+    def _update_bests(self, init_e, init_f, add_e, add_f):
+        if np.isfinite(init_e) and init_e < self.best_mae["init_e"]:  self.best_mae["init_e"]  = init_e
+        if np.isfinite(init_f) and init_f < self.best_mae["init_f"]:  self.best_mae["init_f"]  = init_f
+        if np.isfinite(add_e)  and add_e  < self.best_mae["added_e"]: self.best_mae["added_e"] = add_e
+        if np.isfinite(add_f)  and add_f  < self.best_mae["added_f"]: self.best_mae["added_f"] = add_f
+
             
     def save_progress(self, stop_run = False):
         """
@@ -695,7 +890,7 @@ class UserModel(object):
             print(f"Rank {self.rank}: model saved")
             
         if self.stop == True:
-            self.save_dataset(path = os.path.join(self.result_dir, f"added_data.csv"))
+            self.save_dataset(path = os.path.join(self.result_dir, f"{self.rank}_added_data.csv"))
 
     def save_dataset(self, path):
         print("Saving dataset...")
@@ -703,7 +898,11 @@ class UserModel(object):
         # Prepare DataFrames for train and val sets
         train_df = save_data(self.train)
         val_df = save_data(self.val)
-
+        
+        train_energy = _to_numeric_energy(train_df['energy'])
+        val_energy = _to_numeric_energy(val_df['energy'])
+        train_force = _to_numeric_forces(train_df['force'])
+        val_force = _to_numeric_forces(val_df['force'])
         # Predict on train and val sets
         train_en_pred, train_force_pred, _, _ = evaluate(
             self.model,
@@ -725,6 +924,35 @@ class UserModel(object):
         train_force_pred = tensor_to_serializable_force(train_force_pred)
         val_force_pred = tensor_to_serializable_force(val_force_pred)
 
+        # full MAE
+        true_train_en = train_energy
+        true_train_force = np.vstack(train_force)
+        train_mae = np.mean(np.abs(true_train_en - train_en_pred))
+        train_force_mae = np.mean(np.abs(true_train_force - np.vstack(train_force_pred)))
+        print(f'training data MAE: {train_mae} eV')
+        val_mae = np.mean(np.abs(val_energy - val_en_pred))
+        true_val_force = np.vstack(val_force)
+        val_force_mae = np.mean(np.abs(true_val_force - np.vstack(val_force_pred)))
+        print(f'validation data MAE: {val_mae} eV')
+        # initial vaidation data MAE
+        init_true_val_en = val_energy.copy()[:self.init_val_size]
+        init_pred_val_en = val_en_pred.copy()[:self.init_val_size]
+        init_val_mae = np.mean(np.abs(init_true_val_en - init_pred_val_en))
+        force_size = self.init_val_size * self.config['num_atom']
+        init_true_val_force = true_val_force.copy()[:force_size]
+        init_pred_val_force = np.vstack(val_force_pred.copy()[:self.init_val_size])
+        init_val_force_mae = np.mean(np.abs(init_true_val_force - init_pred_val_force))
+        print(f'initial validation data MAE: {init_val_mae} eV')
+        # new validation data MAE
+        new_true_val_en = val_energy.copy()[self.init_val_size:]
+        new_pred_val_en = val_en_pred.copy()[self.init_val_size:]
+        new_true_val_force = true_val_force.copy()[force_size:]
+        new_pred_val_force = np.vstack(val_force_pred.copy()[self.init_val_size:])
+        if len(new_true_val_en) > 0:
+            new_val_mae = np.mean(np.abs(new_true_val_en - new_pred_val_en))
+            new_val_force_mae = np.mean(np.abs(new_true_val_force - new_pred_val_force))
+            print(f'new validation data MAE: {new_val_mae} eV')
+        
         # Add predictions to dataframes
         train_df["pred_energy"] = train_en_pred
         train_df["pred_forces"] = train_force_pred
@@ -736,21 +964,26 @@ class UserModel(object):
 
         # Plot results
         self.plot(train_df, val_df)
+        self.plot_force(train_df, val_df)
 
         # Concatenate and save
         full_df = pd.concat([train_df, val_df], ignore_index=True)
         full_df.to_csv(path, index=False)
 
         print("Dataset saved at:", path)
+        return init_val_mae, init_val_force_mae, new_val_mae if len(new_true_val_en) > 0 else None, new_val_force_mae if len(new_true_val_en) > 0 else None, train_mae, train_force_mae, val_mae, val_force_mae
+        
 
     def check_stop(self):
-        if time.time() - self.start_time >= 36000:
+        if time.time() - self.start_time >= 72000:
             print('time limit reached')
             self.stop = True
         if self.stop:
             print('stop signal received')
             print("save now the final dataset.....")
-            self.save_dataset(path = os.path.join(self.result_dir, f"added_data_finished.csv"))
+            self.save_dataset(path = os.path.join(self.result_dir, f"{self.rank}_added_data_finished.csv"))
+            # save history
+            self.save_progress(stop_run = True)
             return True
         print('continue running')
         return False
@@ -777,8 +1010,169 @@ class UserModel(object):
         axs[1].plot([val_df['energy'].min(), val_df['energy'].max()],
                     [val_df['energy'].min(), val_df['energy'].max()], 'r')
         axs[1].set_title("Validation: True vs Predicted Energy")
-        axs[1].set_xlabel("True Energy")
+        axs[1].set_xlabel("DFT Energy")
         axs[1].set_ylabel("Predicted Energy")
         
         plt.tight_layout()
         plt.savefig(f"{self.result_dir}/{self.rank}_energy_pred.png")
+
+    # def plot_force(self, train_df, val_df, reduce="norm"):
+    #     # 生成可画的标量对
+    #     tr_true, tr_pred = _pairs_from_series(train_df["force"], train_df["pred_forces"], reduce=reduce)
+    #     va_true, va_pred = _pairs_from_series(val_df["force"],  val_df["pred_forces"],  reduce=reduce)
+
+    #     fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+
+    #     # Train
+    #     axs[0].scatter(tr_true, tr_pred, alpha=0.5)
+    #     lo = min(tr_true.min(), tr_pred.min())
+    #     hi = max(tr_true.max(), tr_pred.max())
+    #     axs[0].plot([lo, hi], [lo, hi])  # 不指定颜色，避免样式冲突
+    #     axs[0].set_title("Training: True vs Predicted Force")
+    #     axs[0].set_xlabel("True Force" + (" (‖F‖)" if reduce=="norm" else " (components)"))
+    #     axs[0].set_ylabel("Predicted Force")
+
+    #     # Val
+    #     axs[1].scatter(va_true, va_pred, alpha=0.5)
+    #     lo = min(va_true.min(), va_pred.min())
+    #     hi = max(va_true.max(), va_pred.max())
+    #     axs[1].plot([lo, hi], [lo, hi])
+    #     axs[1].set_title("Validation: True vs Predicted Force")
+    #     axs[1].set_xlabel("True Force" + (" (‖F‖)" if reduce=="norm" else " (components)"))
+    #     axs[1].set_ylabel("Predicted Force")
+
+    #     plt.tight_layout()
+    #     plt.savefig(f"{self.result_dir}/{self.rank}_force_pred.png")
+    #     plt.close(fig) 
+
+    def plot_force(self, train_df, val_df):
+        tr_true, tr_pred = _flatten_pair(train_df, 'force', 'pred_forces')
+        va_true, va_pred = _flatten_pair(val_df,   'force', 'pred_forces')
+
+        fig, axs = plt.subplots(1, 2, figsize=(12, 5))
+
+        # --- Train ---
+        axs[0].scatter(tr_true, tr_pred, alpha=0.5, s=6)
+        if tr_true.size and tr_pred.size:
+            lo = float(min(tr_true.min(), tr_pred.min()))
+            hi = float(max(tr_true.max(), tr_pred.max()))
+            axs[0].plot([lo, hi], [lo, hi])
+        axs[0].set_title("Training: True vs Predicted Force (all components)")
+        axs[0].set_xlabel("True Force (components)")
+        axs[0].set_ylabel("Predicted Force (components)")
+
+        # --- Val ---
+        axs[1].scatter(va_true, va_pred, alpha=0.5, s=6)
+        if va_true.size and va_pred.size:
+            lo = float(min(va_true.min(), va_pred.min()))
+            hi = float(max(va_true.max(), va_pred.max()))
+            axs[1].plot([lo, hi], [lo, hi])
+        axs[1].set_title("Validation: True vs Predicted Force (all components)")
+        axs[1].set_xlabel("True Force (components)")
+        axs[1].set_ylabel("Predicted Force (components)")
+
+        plt.tight_layout()
+        plt.savefig(f"{self.result_dir}/{self.rank}_force_pred.png")
+        plt.close(fig)
+def _to_numeric_forces(col):
+    """
+    col: pandas Series where each row is either:
+         - np.ndarray shape (n_i, 3) of floats, or
+         - list of lists, or
+         - string representation of the above.
+    Returns: np.ndarray of shape (sum_i n_i, 3)
+    """
+    arrays = []
+    for x in col.values:
+        if isinstance(x, str):
+            x = ast.literal_eval(x)  # parse string -> python list
+        a = np.asarray(x, dtype=float)
+        # ensure shape (..., 3)
+        a = a.reshape(-1, 3)
+        arrays.append(a)
+    return np.vstack(arrays) if arrays else np.zeros((0, 3), dtype=float)
+
+def _to_numeric_energy(col):
+    """
+    col: pandas Series with float or stringified float.
+    Returns: 1D float np.ndarray
+    """
+    vals = []
+    for x in col.values:
+        if isinstance(x, str):
+            x = ast.literal_eval(x) if x.strip().startswith('[') else x
+        vals.append(float(x))
+    return np.asarray(vals, dtype=float)
+
+def _pairs_from_series(true_col, pred_col, reduce="norm"):
+    """将(可能是标量或数组)的两列转换为成对的一维标量数组."""
+    t_list, p_list = [], []
+    for t, p in zip(true_col, pred_col):
+        t = np.asarray(t)
+        p = np.asarray(p)
+        # 标量
+        if t.ndim == 0 and p.ndim == 0:
+            t_list.append(float(t))
+            p_list.append(float(p))
+        else:
+            # 统一形状
+            t = t.reshape(-1)
+            p = p.reshape(-1)
+            if reduce == "norm":
+                # 如果每条是 3N 分量，可按(…,3)求范数；否则按整体范数
+                if t.size % 3 == 0 and p.size % 3 == 0:
+                    t = np.linalg.norm(t.reshape(-1, 3), axis=1)
+                    p = np.linalg.norm(p.reshape(-1, 3), axis=1)
+                else:
+                    t = np.linalg.norm(t)
+                    p = np.linalg.norm(p)
+                # 如果是整体范数，上面得到标量；若是每原子范数，上面得到多个标量
+                if np.ndim(t) == 0:
+                    t_list.append(float(t))
+                    p_list.append(float(p))
+                else:
+                    t_list.extend(t.tolist())
+                    p_list.extend(p.tolist())
+            elif reduce == "components":
+                # 直接把所有分量展开比较
+                t_list.extend(t.tolist())
+                p_list.extend(p.tolist())
+            else:
+                raise ValueError("Unknown reduce method")
+    return np.array(t_list, dtype=float), np.array(p_list, dtype=float)
+
+
+def _to_1d_array(v):
+    """Coerce a cell to a 1D float NumPy array.
+       Handles real arrays/lists and stringified lists like '[[...],[...]]'."""
+    if v is None:
+        return np.empty((0,), dtype=float)
+    if isinstance(v, str):
+        try:
+            v = ast.literal_eval(v)   # parse string -> Python list
+        except Exception:
+            # fallback: try to parse comma-separated scalars
+            try:
+                return np.fromstring(v, sep=',', dtype=float)
+            except Exception:
+                return np.empty((0,), dtype=float)
+    a = np.asarray(v)
+    if a.size == 0:
+        return np.empty((0,), dtype=float)
+    # If it looks like (..., 3) force-components; otherwise just ravel
+    return a.reshape(-1).astype(float, copy=False)
+
+def _flatten_pair(df, true_col, pred_col):
+    # Flatten each cell, concatenate all rows
+    x_chunks, y_chunks = [], []
+    for tx, py in zip(df[true_col].values, df[pred_col].values):
+        x_chunks.append(_to_1d_array(tx))
+        y_chunks.append(_to_1d_array(py))
+    x = np.concatenate(x_chunks) if x_chunks else np.array([], dtype=float)
+    y = np.concatenate(y_chunks) if y_chunks else np.array([], dtype=float)
+    # align and filter finite
+    n = min(x.size, y.size)
+    x = x[:n]
+    y = y[:n]
+    m = np.isfinite(x) & np.isfinite(y)
+    return x[m], y[m]

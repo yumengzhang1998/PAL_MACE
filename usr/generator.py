@@ -66,13 +66,15 @@ class UserGene(object):
         self.gene_procs = AL_SETTING["gene_process"]
         gene_start = 2 + pred_procs
         self.counter = rank - gene_start
+        self.sample_count  = 0
         if self.full_dataset:
+            raise NotImplementedError("full_dataset option is not implemented yet.")
             df = pd.read_csv('usr/initial_pyg/raw/bi0_parsed.csv')
             df = df[df['source'] == self.prefix]
             df.to_csv(f'{self.result_dir}/{self.prefix}.csv', index=False)
             self.path = f'{self.result_dir}/{self.prefix}.csv'
         else:
-            self.path = f'usr/initial_pyg/raw/{self.prefix}_parsed.csv'
+            self.path = f'usr/initial_pyg/samples/{self.prefix}/sample_{self.sample_count}/train.csv'
         self.init_length = self.get_lenth()
         print(f"Generator {rank} initialized with path: {self.path}, init_length: {self.init_length}")
         self.starting_point = 0
@@ -133,7 +135,7 @@ class UserGene(object):
         """
         # Loop over each atom and set the predicted force components
 
-        EV_PER_ANGSTROM_TO_KJMOL_PER_NM = 96.485
+        EV_PER_ANGSTROM_TO_KJMOL_PER_NM = 96.485 * 10
 
         current_forces = -1 * predicted_forces * EV_PER_ANGSTROM_TO_KJMOL_PER_NM * unit.kilojoule_per_mole / unit.nanometer
         # current_forces = predicted_forces * unit.kilojoule_per_mole / unit.nanometer
@@ -195,21 +197,39 @@ class UserGene(object):
         if self.starting_point % 1000 == 0:
             print(f"MD has ran for {self.starting_point} steps")
         if data_to_gene is not None:
-            # iteration_marker = int(data_to_gene[0])
+            iteration_marker = int(data_to_gene[0])
             #print(f"[DEBUG] RANK {self.rank}: {self.num_generate} | len(flat_array): {len(data_to_gene)} | data_to_gene: {data_to_gene}")
-            geometry = reconstruct_from_metadata(data_to_gene, self.metadata, rank = f"generator {self.rank}")
+            geometry = reconstruct_from_metadata(data_to_gene[1:], self.metadata, rank = f"generator {self.rank}")
 
             if self.starting_point >= 100000 or geometry[-2][0] > self.patience_threshold or geometry[-2][1] > self.patience_threshold:
                 data_to_gene = None
                 print(f"""Rank {self.rank} patience or step exceeded,
                       trajecory is reached {self.starting_point} steps, 
                     energy patience is {geometry[-2][0]}, 
-                    rmsd patience is {geometry[-2][1]}, 
+                    rmsd patience is {geometry[-2][1]},
+                    current model is at iteration {iteration_marker}, 
                     start to generate new trajectory""")
                 self.starting_point = 0
                 self.history.append([])  # start a new history for the new trajectory
-        
-        # initialize data: first iteration or when patience is exceeded
+            else:
+                if self.current_iteration is not None and iteration_marker != self.current_iteration:
+                    print(f"model update detected, current iteration: {self.current_iteration}, new iteration: {iteration_marker}")
+                self.current_iteration = iteration_marker  # <- save for later use if needed
+                force = self.update_forces(self.iterative_force, geometry[5])
+                force.updateParametersInContext(self.simulation.context)
+                data_to_pl = self.update(geometry)
+                self.num_generate += 1
+                self.starting_point += 1
+                
+                self.history[-1].append([self.current_iteration, data_to_pl[0]])
+
+                # self.counter += 1
+                if self.counter > self.limit:
+                    print('generation limit reached')
+                    stop = True
+            
+                    print(f"continuing from iteration {iteration_marker}, patience: {geometry[-2]}, starting point: {self.starting_point}")
+            # initialize data: first iteration or when patience is exceeded
         if data_to_gene is None:
             if ordered == True:
                 print(f'initializing data, force to number {self.counter} in the initial data')
@@ -235,32 +255,14 @@ class UserGene(object):
             self.simulation.context.setVelocitiesToTemperature(self.temperature)
             
             data_to_pl = self.update(data_to_pl)
-            self.history.append([data_to_pl[0],])
+            self.history.append([self.current_iteration, data_to_pl[0],])
             self.counter += self.gene_procs
             self.num_generate += 1
             print('counter:', self.counter)
             #read in data when initial data size exceeded and start to generate new data from beginning by random structure
 
 
-        else:
 
-
-            # if self.current_iteration is not None and iteration_marker != self.current_iteration:
-            #     print(f"model update detected, current iteration: {self.current_iteration}, new iteration: {iteration_marker}")
-            # self.current_iteration = iteration_marker  # <- save for later use if needed
-
-            force = self.update_forces(self.iterative_force, geometry[5])
-            force.updateParametersInContext(self.simulation.context)
-            data_to_pl = self.update(geometry)
-            self.num_generate += 1
-            self.starting_point += 1
-            
-            self.history[-1].append([self.current_iteration, data_to_pl[0]])
-
-            # self.counter += 1
-            if self.counter > self.limit:
-                print('generation limit reached')
-                stop = True
         if self.stop:
             stop = True
         if self.num_generate % 10000 == 0:
@@ -282,18 +284,35 @@ class UserGene(object):
         """
         ##### User Part #####
         
-        m = 'ab' if os.path.exists(self.save_path) else 'wb'
-        with open(self.save_path, m) as fh:
-            if len(self.history) > 1:
-                pickle.dump(self.history[:-1], fh)
-            else:
-                pickle.dump(self.history[0], fh)
-                # print('save progress:', self.history[0])
+        # m = 'ab' if os.path.exists(self.save_path) else 'wb'
+        # with open(self.save_path, m) as fh:
+        #     if len(self.history) > 1:
+        #         pickle.dump(self.history[:-1], fh)
+        #     else:
+        #         pickle.dump(self.history[0], fh)
+        #         # print('save progress:', self.history[0])
+        #     self.history = self.history[-1:]
+        # save th length of each trajectory in history
+        if stop_run:
+            print(f'saving progress and stopping run, {len(self.history)} trajectories in history')
+            m = 'ab' if os.path.exists(self.save_path) else 'wb'
+            with open(self.save_path, m) as fh:
+                if len(self.history) > 1:
+                    pickle.dump(self.history[-1], fh)
+                else:
+                    pickle.dump(self.history[0], fh)
+                    # print('save progress:', self.history[0])
+                
+        else:
             self.history = self.history[-1:]
+            print(f'saving progress, {len(self.history)} trajectories in history')
+        
+
+
     def stop_run(self):
         """
         Stop the active learning workflow.
         """
         self.stop = True
-        self.save_progress()
+        self.save_progress(self.stop)
         print('stop run')    

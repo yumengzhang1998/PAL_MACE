@@ -144,6 +144,64 @@ def overlay_ecdf(by_src, title, out_png, xlabel, out_dir):
 def _sanitize(name: str) -> str:
     import re
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", str(name))
+# ---- Save per-source JSON summaries (filtered & ALL) ----
+from pathlib import Path
+
+# ---- Helpers to aggregate by source and save JSON summaries ----
+def _summ_stats(vals: np.ndarray):
+    vals = np.asarray(vals, dtype=float)
+    if vals.size == 0:
+        return {
+            "n": 0, "mean": None, "median": None, "min": None, "max": None,
+            "q50": None, "q75": None, "q90": None, "q95": None, "q97_5": None, "q99": None
+        }
+    return {
+        "n": int(vals.size),
+        "mean": float(np.mean(vals)),
+        "median": float(np.median(vals)),
+        "min": float(np.min(vals)),
+        "max": float(np.max(vals)),
+        "q50": float(np.percentile(vals, 50)),
+        "q75": float(np.percentile(vals, 75)),
+        "q90": float(np.percentile(vals, 90)),
+        "q95": float(np.percentile(vals, 95)),
+        "q97_5": float(np.percentile(vals, 97.5)),
+        "q99": float(np.percentile(vals, 99)),
+    }
+
+def by_src_from_combined(combined_df: pd.DataFrame, value_col: str, min_oob: int, oob_col: str) -> dict:
+    """Return {source -> np.array(values)} applying min_oob filter on oob_col."""
+    df = combined_df.copy()
+    df["source"] = df["source"].fillna("unknown").astype(str).str.strip()
+    mask = (df[oob_col] >= int(min_oob))
+    vals = df.loc[mask, ["source", value_col]].dropna()
+    out = {}
+    for src, sub in vals.groupby("source"):
+        out[src] = sub[value_col].to_numpy()
+    return out
+
+def save_per_source_json(by_src: dict, out_dir: str, metric_name: str, min_oob_used: int, suffix: str = ""):
+    """
+    by_src: dict {source -> 1D array}
+    metric_name: column/metric label, e.g. 'energy_std_oob' or 'force_std_max_atomnorm_oob'
+    min_oob_used: the min_oob applied (0 means ALL points)
+    suffix: extra tag for filenames, e.g. '_ALL'
+    """
+    base_dir = Path(out_dir) / "by_source"
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    rows = []
+    for src, arr in by_src.items():
+        stats = _summ_stats(arr)
+        stats["min_oob_required"] = int(min_oob_used)
+        sdir = base_dir / _sanitize(src)
+        sdir.mkdir(parents=True, exist_ok=True)
+        with open(sdir / f"{metric_name}{suffix}_summary.json", "w") as f:
+            json.dump(stats, f, indent=2)
+        rows.append({"source": src, **stats})
+
+    pd.DataFrame(rows).to_csv(base_dir / f"{metric_name}{suffix}_cluster_summaries.csv", index=False)
+
 # -------------- Main --------------
 def main():
     ap = argparse.ArgumentParser(description="Compute OOB std distribution (energy + force RMS) for AL threshold.")
@@ -244,6 +302,9 @@ def main():
 
     # Force OOB std RMS
     force_std_rms_oob = np.full(n_cfg, np.nan, dtype=np.float64)
+    force_std_max_coord_oob = np.full(n_cfg, np.nan, dtype=np.float64)     # NEW: max over all coords
+    force_std_max_atomnorm_oob = np.full(n_cfg, np.nan, dtype=np.float64)  # NEW: max over atoms of vector-norm
+    force_std_p95_atomnorm_oob = np.full(n_cfg, np.nan, dtype=np.float64)  # NEW: 95th pct over atoms of vector-norm
     oob_counts_F = np.zeros(n_cfg, dtype=int)
     for i in range(n_cfg):
         idx = np.where(mask_oob[:, i])[0]
@@ -251,12 +312,23 @@ def main():
         oob_counts_F[i] = k
         if k == 0: 
             continue
-        if k == 1:
-            force_std_rms_oob[i] = 0.0
-        else:
-            Fi = np.stack([forces_preds_per_model[m][i] for m in idx], axis=0)  # [k, n_atoms_i, 3]
-            std_i = Fi.std(axis=0, ddof=1)                                     # [n_atoms_i, 3]
-            force_std_rms_oob[i] = float(np.sqrt(np.mean(std_i**2)))
+        Fi = np.stack([forces_preds_per_model[m][i] for m in idx], axis=0)
+
+        # std across models per atom/component -> [n_atoms_i, 3]
+        std_i = Fi.std(axis=0, ddof=1) if k > 1 else np.zeros_like(Fi[0])
+
+        # 1) RMS over atoms/components (what you had)
+        force_std_rms_oob[i] = float(np.sqrt(np.mean(std_i**2)))
+
+        # 2) MAX over all coordinates (component-wise)
+        force_std_max_coord_oob[i] = float(np.max(std_i))
+
+        # 3) MAX over atoms of the vector-norm of std (rotation-invariant)
+        atom_norm = np.linalg.norm(std_i, axis=-1)  # [n_atoms_i]
+        force_std_max_atomnorm_oob[i] = float(atom_norm.max())
+
+        # 4) 95th percentile over atoms of the vector-norm (robust)
+        force_std_p95_atomnorm_oob[i] = float(np.percentile(atom_norm, 95))
 
     # Save per-config outputs
     # (true energy optional)
@@ -279,6 +351,9 @@ def main():
         "config_id": eval_ids,
         "oob_model_count": oob_counts_F,
         "force_std_rms_oob": force_std_rms_oob,
+        "force_std_max_coord_oob": force_std_max_coord_oob,               # NEW
+        "force_std_max_atomnorm_oob": force_std_max_atomnorm_oob,         # NEW
+        "force_std_p95_atomnorm_oob": force_std_p95_atomnorm_oob,         # NEW
         "source": src_arr,                   # <-- add this line
     }).to_csv(Path(out_dir) / "oob_force_uncertainty.csv", index=False)
 
@@ -307,6 +382,10 @@ def main():
 
     summarize_plot(energy_std_oob, oob_counts_E, "energy_std")
     summarize_plot(force_std_rms_oob, oob_counts_F, "force_std_rms")
+    summarize_plot(force_std_max_coord_oob, oob_counts_F, "force_std_max_coord")               # NEW
+    summarize_plot(force_std_max_atomnorm_oob, oob_counts_F, "force_std_max_atomnorm")         # NEW
+    summarize_plot(force_std_p95_atomnorm_oob, oob_counts_F, "force_std_p95_atomnorm")         # NEW
+
 
     print(f"Outputs -> {out_dir}")
     print("Use quantiles in *_summary.json (e.g., q85–q95 of force_std_rms) as your certainty threshold.")
@@ -315,12 +394,41 @@ def main():
         "idx": np.arange(n_cfg, dtype=int),
         "config_id": eval_ids,
         "true_energy": true_E,
+        "source": src_arr,
         "oob_models_energy": oob_counts_E,
         "oob_models_force": oob_counts_F,
         "energy_std_oob": energy_std_oob,
         "force_std_rms_oob": force_std_rms_oob,
-        "source": src_arr,
+        "force_std_max_coord_oob": force_std_max_coord_oob,
+        "force_std_max_atomnorm_oob": force_std_max_atomnorm_oob,
+        "force_std_p95_atomnorm_oob": force_std_p95_atomnorm_oob,
     })
+    # ---- Build per-source dicts (filtered by min_oob) ----
+    energy_by_src         = by_src_from_combined(combined, "energy_std_oob",                args.min_oob, "oob_models_energy")
+    force_rms_by_src      = by_src_from_combined(combined, "force_std_rms_oob",            args.min_oob, "oob_models_force")
+    force_maxcoord_by_src = by_src_from_combined(combined, "force_std_max_coord_oob",      args.min_oob, "oob_models_force")
+    force_maxatom_by_src  = by_src_from_combined(combined, "force_std_max_atomnorm_oob",   args.min_oob, "oob_models_force")
+    force_p95atom_by_src  = by_src_from_combined(combined, "force_std_p95_atomnorm_oob",   args.min_oob, "oob_models_force")
+
+    # ---- Save per-source JSONs (filtered) ----
+    save_per_source_json(energy_by_src,         out_dir, "energy_std_oob",              args.min_oob)
+    save_per_source_json(force_rms_by_src,      out_dir, "force_std_rms_oob",           args.min_oob)
+    save_per_source_json(force_maxcoord_by_src, out_dir, "force_std_max_coord_oob",     args.min_oob)
+    save_per_source_json(force_maxatom_by_src,  out_dir, "force_std_max_atomnorm_oob",  args.min_oob)
+    save_per_source_json(force_p95atom_by_src,  out_dir, "force_std_p95_atomnorm_oob",  args.min_oob)
+
+    # ---- Also save ALL-points versions (ignores min_oob) ----
+    energy_by_src_ALL         = by_src_from_combined(combined, "energy_std_oob",                0, "oob_models_energy")
+    force_rms_by_src_ALL      = by_src_from_combined(combined, "force_std_rms_oob",            0, "oob_models_force")
+    force_maxcoord_by_src_ALL = by_src_from_combined(combined, "force_std_max_coord_oob",      0, "oob_models_force")
+    force_maxatom_by_src_ALL  = by_src_from_combined(combined, "force_std_max_atomnorm_oob",   0, "oob_models_force")
+    force_p95atom_by_src_ALL  = by_src_from_combined(combined, "force_std_p95_atomnorm_oob",   0, "oob_models_force")
+
+    save_per_source_json(energy_by_src_ALL,         out_dir, "energy_std_oob",              0, suffix="_ALL")
+    save_per_source_json(force_rms_by_src_ALL,      out_dir, "force_std_rms_oob",           0, suffix="_ALL")
+    save_per_source_json(force_maxcoord_by_src_ALL, out_dir, "force_std_max_coord_oob",     0, suffix="_ALL")
+    save_per_source_json(force_maxatom_by_src_ALL,  out_dir, "force_std_max_atomnorm_oob",  0, suffix="_ALL")
+    save_per_source_json(force_p95atom_by_src_ALL,  out_dir, "force_std_p95_atomnorm_oob",  0, suffix="_ALL")
     # --- Build overlay arrays straight from the combined table ---
     def overlay_arrays_from_combined(combined_df, min_oob, which: str):
         """
