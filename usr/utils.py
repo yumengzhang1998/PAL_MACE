@@ -220,6 +220,8 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     num_generators = len(list_data_to_pred)
     input_to_orcl = []
     # print(len(list_data_to_pred[0])) 32
+    sent = [item[0] for item in list_data_to_pred]  # sent count
+    list_data_to_pred = [item[1:] for item in list_data_to_pred]  # remove sent count
     input_list = [reconstruct_from_metadata(item, metadata) for item in list_data_to_pred]
 
 
@@ -297,6 +299,7 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
         print('structural deviation reached, max distance is:', distance[i])
     # i_orcl = sorted(set(i_orcl_std).union(set(i_orcl_structural)))
     i_orcl = sorted(set(i_orcl_std))
+    # print('Indices selected by STD filter:', i_orcl_std)
 
 
     if any(item[-2][-1] is not None and item[-2][-1] > patience_threshold for item in input_list):
@@ -304,10 +307,20 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     elif any(item[-2][-1] is None for item in input_list):
         print('no patience info in check function')
 
-
     # data_to_gene & input_to_orcl conversion
     data_to_gene = copy.deepcopy(input_list)
     data_to_gene = [convert_to_1d_float_array(k) for k in data_to_gene]
+    i_filtered  = []
+    for i in i_orcl:
+        if sent[i] == 0:
+            # print('Selected index with sent=0 :', i)
+            i_filtered.append(i)
+            sent[i] +=1
+    i_orcl = i_filtered
+    # print('Selected indices for oracle (after filtering sent=0):', i_orcl)
+    # print('Corresponding sent counts:', [sent[i] for i in i_orcl])
+
+
     if iter is not None:
         for i in range(len(data_to_gene)):
             iter_list = iter[i] # (num, predictors)
@@ -319,7 +332,9 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
             #    raise ValueError(f"All iteration numbers are the same ({iter_list}), please check the input.")
                 print(f"Warning: Iteration numbers are not the same ({iter_list}), using mean value.")
                 mean_iter = int(np.mean(iter_list))
+            data_to_gene[i] = np.concatenate(([sent[i]], data_to_gene[i]))
             data_to_gene[i] = np.concatenate(([mean_iter], data_to_gene[i]))
+
     
     input_to_orcl = [convert_to_1d_float_array(copy.deepcopy(input_list[i])) for i in i_orcl]
     # input_to_orcl = [convert_to_1d_float_array(input_list[i]) for i in i_orcl_std]
@@ -673,17 +688,27 @@ def get_specific_data(file_path, line_number):
         rows = list(reader)
 
         # Filter out rows where source == "real" if "source" exists
-        if "source" in header:
-            source_idx = header.index("source")
-            rows = [r for r in rows if r[source_idx].strip().lower() != "real"]
+        # if "source" in header:
+        #     source_idx = header.index("source")
+        #     rows = [r for r in rows if r[source_idx].strip().lower() != "real"]
 
         # Check range after filtering
-        if line_number >= len(rows):
-            raise IndexError("Line number out of range after filtering.")
+        if type(line_number) == int:
 
-        # Get the desired row
-        row = rows[line_number]
-        data = process_row(row, header)
+            if line_number >= len(rows):
+                raise IndexError("Line number out of range after filtering.")
+
+            # Get the desired row
+            row = rows[line_number]
+            data = process_row(row, header)
+        else:
+            data = []
+            for ln in line_number:
+                if ln >= len(rows):
+                    raise IndexError(f"Line number {ln} out of range after filtering.")
+                row = rows[ln]
+                processed_data = process_row(row, header)
+                data.append(processed_data)
         return data
 
 def process_row(row, header):
@@ -710,6 +735,22 @@ def process_row(row, header):
     return data
 
 
+def compute_flat_length(metadata):
+    total = 0
+    for m in metadata:
+        if m["type"] in ("array", "tensor"):
+            # multiply all dims in shape
+            size = 1
+            for s in m["shape"]:
+                size *= s
+            total += size
+        elif m["type"] in ("scalar", "scalar_nullable", "charge"):
+            total += 1
+        elif m["type"] == "list":
+            total += m["shape"][0]
+        else:
+            raise ValueError(f"Unknown type {m['type']}")
+    return total
 
 def reconstruct_from_metadata(flat_array, metadata, none_placeholder=99999999.0, rank = None):
     reconstructed_data = []

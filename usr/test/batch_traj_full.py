@@ -4,7 +4,6 @@ import pandas as pd
 # from xtb.utils import get_method
 import numpy as np
 # from xtb.utils import get_solvent
-import time
 import sys
 import pickle
 import openmm
@@ -15,23 +14,27 @@ sys.path.append("../../")
 sys.path.append("../initial_pyg")
 import os
 current_path = os.getcwd()
-import re
-from quantum_chem_python.api.settings import GeneralSettings, MultiProcessingSettings, XTBSettings, TurbomolSettings
-from quantum_chem_python.api.turbomol.turbomol_api import TurbomolApi
 from openmm import unit
-from quantum_chem_python.api.xtb.xtb_api import XTBApi
 from utils import Molecule, convert_to_data_object
 import torch
 import ast
 import periodictable
 import openmm as mm
-from usr.initial_pyg.functions.config import ConfigLoader
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import pdist
 from tqdm import tqdm
 import argparse
 from initial_pyg.evaluation import evaluate
 print("Available platforms:", [mm.Platform.getPlatform(i).getName()
                                for i in range(mm.Platform.getNumPlatforms())])
+from sklearn.model_selection import StratifiedShuffleSplit
+def stratified_sample_sklearn(df, batch_size, source_col="source"):
+    if source_col not in df.columns:
+        return df.sample(n=min(batch_size, len(df)), random_state=42).reset_index(drop=True)
+
+    sss = StratifiedShuffleSplit(n_splits=1, train_size=min(batch_size, len(df)-1), random_state=42)
+    idx, _ = next(sss.split(df, df[source_col]))
+    return df.iloc[idx].reset_index(drop=True)
+
 def vec3_to_numpy(vec3_list):
     # Convert list of Vec3 to a NumPy array
     return np.array([[v.x, v.y, v.z] for v in vec3_list])
@@ -159,97 +162,6 @@ class Generate_TrajsBatch(object):
         return simulators
 
 
-    def generate_batch_trajs(self, steps):
-        print('Start batch simulation')
-        start = time.time()
-        simulators = self.set_up_simulations()
-        print(f"Simulations set up in {time.time() - start:.2f} seconds")
-        trajs = []
-        for i in range(len(simulators)):
-            trajs.append([self.data_batch[i]])
-        print('Start generating batch trajectories')
-
-        # Simulation loop
-        for step in tqdm(range(steps), desc="Generating batch trajectories"):
-            # Collect current coordinates from all simulations
-            all_coords = []
-            # for sim, _, _, _ in simulators:
-            #     state = sim.context.getState(getPositions=True)
-            #     coords = np.array([[pos.x, pos.y, pos.z] for pos in state.getPositions()])
-            #     all_coords.append(coords)
-
-            # Predict forces and energies using the model
-            current_step_data = [traj[step] for traj in trajs]
-            energies, forces_batch = self.get_predicted_energy_and_forces(current_step_data)
-
-            # Update forces for each simulation
-            for i, (sim, force) in enumerate(simulators):
-                new_force = self.update_forces(force, forces_batch[i])
-                current_step_data[i][-4] = forces_batch[i]
-                current_step_data[i][-3] = energies[i]
-
-                force.updateParametersInContext(sim.context)    
-                next_step_data = self.update(current_step_data[i], sim)
-
-                # Collect trajectory data
-                trajs[i].append(next_step_data)
-            if step % 1000 == 0:
-                print(f"Step {step} completed.")
-                # save the current state of trajs to a file
-                with open(f'{self.dir_path}/{self.model_number}_{step}steps_traj.pkl', 'wb') as f:
-                    pickle.dump(trajs, f)
-
-        return trajs
-
-    # def generate_batch_trajs_setup_in_batch(self, steps, chunk_size=100, traj_dir='../../trajs/'):
-    #     traj_dir = os.path.join(traj_dir, self.prefix)
-    #     print('Start batch simulation')
-    #     os.makedirs(traj_dir, exist_ok=True)
-
-    #     all_trajs = []
-    #     simulators = []
-    #     data_slices = []
-
-    #     # Step 1: Batch-wise simulator setup
-    #     for batch_start in range(0, len(self.data_batch), chunk_size):
-    #         data_batch = self.data_batch[batch_start: batch_start + chunk_size]
-    #         print(f"🧪 Setting up batch {batch_start} to {batch_start + len(data_batch)}")
-
-    #         try:
-    #             sims = self.set_up_simulations(data_batch)
-    #             simulators.extend(sims)
-    #             data_slices.extend(data_batch)
-    #         except Exception as e:
-    #             print(f"❌ Failed during setup of batch {batch_start}: {e}")
-    #             continue
-
-    #     # Step 2: Initialize trajectory containers
-    #     trajs = [[data] for data in data_slices]
-
-    #     # Step 3: Run all simulations together
-    #     print(f"🚀 Starting full trajectory generation for {len(simulators)} systems")
-    #     for step in tqdm(range(steps), desc="Generating trajectories"):
-    #         current_step_data = [traj[step] for traj in trajs]
-    #         energies, forces_batch = self.get_predicted_energy_and_forces(current_step_data)
-
-    #         for i, (sim, force) in enumerate(simulators):
-    #             try:
-    #                 self.update_forces(force, forces_batch[i])
-    #                 current_step_data[i][-4] = forces_batch[i]
-    #                 current_step_data[i][-3] = energies[i]
-
-    #                 force.updateParametersInContext(sim.context)
-    #                 next_data = self.update(current_step_data[i], sim)
-    #                 trajs[i].append(next_data)
-    #             except Exception as e:
-    #                 print(f"⚠️ Failed at step {step} for traj {i}: {e}")
-    #         if step % 10000 == 0:
-    #             print(f"Step {step} completed.")
-    #             # save the current state of trajs to a file
-    #             with open(f'{traj_dir}/{self.model_number}_{step}steps_tmp_traj.pkl', 'wb') as f:
-    #                 pickle.dump(trajs, f)
-
-    #     return trajs
     def generate_batch_trajs_setup_in_batch(self, steps, chunk_size=100, traj_dir='../../trajs/'):
         traj_dir = os.path.join(traj_dir, self.prefix)
         print('Start batch simulation')
@@ -414,8 +326,8 @@ if __name__ == "__main__":
     #df = df.iloc[len_org_val:].reset_index(drop=True)
     df = pd.read_csv(f'{file_path}/{prefix}.csv', delimiter=',', on_bad_lines='skip')
     # if there a "source" column, select only rows where source != 'real'
-    if 'source' in df.columns:
-        df = df[df['source'] != 'real'].reset_index(drop=True)
+    # if 'source' in df.columns:
+    #     df = df[df['source'] != 'real'].reset_index(drop=True)
     
 
 
@@ -433,26 +345,43 @@ if __name__ == "__main__":
     atom_number = df['atoms'][0]
     batch_size = 20
     # --- Stratified Sampling if "source" exists ---
-    if 'source' in df.columns:
-        groups = df.groupby('source', group_keys=False)
-        # Sample roughly equal share from each source
-        n_sources = len(groups)
-        per_source = max(1, batch_size // n_sources)
-        stratified_samples = groups.apply(lambda g: g.sample(n=min(per_source, len(g)), random_state=42))
-        # If not enough samples, fill up randomly
-        if len(stratified_samples) < batch_size:
-            raise ValueError("Not enough samples to fill the batch size with stratified sampling.")
-        else:
-            df_sampled = stratified_samples.sample(n=batch_size, random_state=42).reset_index(drop=True)
-    else:
-        # No stratification if no "source" column
-        df_sampled = df.sample(n=min(batch_size, len(df)), random_state=42).reset_index(drop=True)
+    if (
+        "source" in df.columns
+        and df["source"].notna().any()
+        and (df["source"].astype(str).str.strip() != "").any()
+    ):
+        # Optionally remove "real" rows if you don’t want them
+        print("Performing stratified sampling based on 'source' column.")
+        # df = df[df["source"].astype(str).str.strip().str.lower() != "real"].reset_index(drop=True)
 
-    coordinates_batch = df['coordinates'].to_list()
+
+        # Use sklearn StratifiedShuffleSplit to sample proportionally
+        sss = StratifiedShuffleSplit(
+            n_splits=1,
+            train_size=min(batch_size, len(df) - 1),
+            random_state=42
+        )
+
+        try:
+            idx, _ = next(sss.split(df, df["source"]))
+            df_sampled = df.iloc[idx].reset_index(drop=True)
+            label_batch = df_sampled['source'].to_list()
+        except ValueError as e:
+            print(f"⚠️ Stratified sampling failed ({e}), falling back to random sampling.")
+            raise ValueError("Stratified sampling failed.")
+
+    else:
+        # No valid "source" column → random sampling
+        df_sampled = df.sample(n=min(batch_size, len(df)), random_state=42).reset_index(drop=True)
+        label_batch = [None] * len(df_sampled)
+
+    coordinates_batch = df_sampled['coordinates'].to_list()
+
     data_batch = [
-        [coords, atom_number, None, None, charge, None, None, 0, None]
-        for coords in coordinates_batch
+        [coordinates_batch[i], atom_number, None, None, charge, None, None, label_batch[i] , None ]
+        for i in range(len(coordinates_batch))
     ] 
+
     
 
     traj_gen = Generate_TrajsBatch(data_batch, result_path, model_number, prefix)

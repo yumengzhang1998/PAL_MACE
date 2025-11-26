@@ -204,7 +204,7 @@ def load_prefix_settings(prefix):
 
     return settings
 
-def generate_config_yaml(prefix, full_dataset, coord_dict):
+def generate_config_yaml(prefix, full_dataset, coord_dict, num_traj_per_gene):
     if prefix not in coord_dict:
         raise ValueError(f"Coordinates not found in CSV for prefix '{prefix}'.")
     if not full_dataset in [True, False]:
@@ -250,6 +250,9 @@ args_dict: {{
 # time
 time_stamp: {add_time_stamp(prefix)}
 
+# MD settings
+num_traj_per_gene: {num_traj_per_gene}
+
 # active learning
 patience_threshold: 10
 
@@ -292,9 +295,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--prefix", required=True, help="Prefix to use (e.g., bi4-2)")
     parser.add_argument("--full_dataset", required=True, help="Use full dataset (True/False)")
+    parser.add_argument("--num_traj_per_gene", type=int, default=1, help="Number of trajectories per generation (default: 1)")
 
     args = parser.parse_args()
     full_dataset_bool = args.full_dataset == "True"
 
     coord_data = load_coord_from_csv("optimized.csv")
-    generate_config_yaml(args.prefix, full_dataset_bool, coord_data)
+    generate_config_yaml(args.prefix, full_dataset_bool, coord_data, args.num_traj_per_gene)

@@ -96,16 +96,9 @@ class UserGene(object):
         atom_numbers = data[1]
         atom_types = [periodictable.elements[i].symbol for i in atom_numbers.tolist()]
         coordinates = data[0]
-        reduced_density = 0.05
 
-        sigma = 3.4 * unit.angstroms
-        nparticles = len(atom_numbers)
-        number_density = reduced_density / sigma**3
-        volume = nparticles * (number_density ** -1)
-        box_edge = volume ** (1. / 3.)
-        box_vectors = np.diag([box_edge/unit.angstrom for i in range(3)]) * unit.angstroms
         molecule = Molecule(atom_types=atom_types, coordinates=coordinates)
-        return molecule, box_vectors
+        return molecule
 
 
     def random_strcuture_in_space(self, original_coord):
@@ -198,10 +191,12 @@ class UserGene(object):
             print(f"MD has ran for {self.starting_point} steps")
         if data_to_gene is not None:
             iteration_marker = int(data_to_gene[0])
+            sent = 0 if int(data_to_gene[1]) > 10 else int(data_to_gene[1])
+            # print(f"Rank {self.rank} received data from passive learner, iteration_marker: {iteration_marker}, sent to oracle? {sent}")
             #print(f"[DEBUG] RANK {self.rank}: {self.num_generate} | len(flat_array): {len(data_to_gene)} | data_to_gene: {data_to_gene}")
-            geometry = reconstruct_from_metadata(data_to_gene[1:], self.metadata, rank = f"generator {self.rank}")
+            geometry = reconstruct_from_metadata(data_to_gene[2:], self.metadata, rank = f"generator {self.rank}")
 
-            if self.starting_point >= 100000 or geometry[-2][0] > self.patience_threshold or geometry[-2][1] > self.patience_threshold:
+            if self.starting_point >= 10000 or geometry[-2][0] > self.patience_threshold or geometry[-2][1] > self.patience_threshold:
                 data_to_gene = None
                 print(f"""Rank {self.rank} patience or step exceeded,
                       trajecory is reached {self.starting_point} steps, 
@@ -218,10 +213,12 @@ class UserGene(object):
                 force = self.update_forces(self.iterative_force, geometry[5])
                 force.updateParametersInContext(self.simulation.context)
                 data_to_pl = self.update(geometry)
+                sent  = sent +1 if sent != 0 else 0
                 self.num_generate += 1
                 self.starting_point += 1
-                
+                data_to_pl.insert(0, [sent])
                 self.history[-1].append([self.current_iteration, data_to_pl[0]])
+                
 
                 # self.counter += 1
                 if self.counter > self.limit:
@@ -231,6 +228,7 @@ class UserGene(object):
                     print(f"continuing from iteration {iteration_marker}, patience: {geometry[-2]}, starting point: {self.starting_point}")
             # initialize data: first iteration or when patience is exceeded
         if data_to_gene is None:
+            sent = 0
             if ordered == True:
                 print(f'initializing data, force to number {self.counter} in the initial data')
                 if self.counter <= self.init_length - 1:
@@ -241,12 +239,11 @@ class UserGene(object):
             else:
                 print("initializing data, PICKED randomly from initial data")
                 data_to_pl = self.read_in_data(counter = random.randint(0, self.init_length - 1))
-            molecule, box_vectors = self.set_up(data_to_pl)
+            molecule = self.set_up(data_to_pl)
             num_particles = molecule.system.getNumParticles()
             init_force = self.custom_force_initilize(molecule)
             self.iterative_force = self.update_forces(init_force, data_to_pl[3].numpy())
             molecule.system.addForce(self.iterative_force)
-            # molecule.system.setDefaultPeriodicBoxVectors(*box_vectors)
             integrator = openmm.LangevinIntegrator(self.temperature, self.collision_rate, self.timestep)
             print('set up simulation')
             self.simulation = openmm.app.Simulation(molecule.get_Topology(), molecule.get_System(), integrator)
@@ -259,6 +256,8 @@ class UserGene(object):
             self.counter += self.gene_procs
             self.num_generate += 1
             print('counter:', self.counter)
+            data_to_pl.insert(0, [sent])
+            
             #read in data when initial data size exceeded and start to generate new data from beginning by random structure
 
 

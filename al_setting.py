@@ -15,7 +15,7 @@ AL_SETTING = {
     #                              + pred_process + orcl_process + gene_process + ml_process
     "pred_process": 2,                     # number of prediction processes
     "orcl_process": 50,                     # number of oracle processes
-    "gene_process": 2,                    # number of generator processes
+    "gene_process": 3,                    # number of generator processes
     "ml_process": 2,                       # number of machine learning processes
     "designate_task_number": False,         # set to True if need to specify the number of tasks running on each node (e.g. number of model per computation node)
                                            # if False, tasks are arranged randomly
@@ -34,9 +34,9 @@ AL_SETTING = {
     "gpu_pred": [],                        # gpu index list for prediction processes
     "gpu_ml": [],                          # gpu index list for machine learning
     "usr_pkg": {                           # dictionary of paths to user implemented modules (generator, model, oracle and utils)
-        "generator": "./usr/generator.py",
-        "model": "./usr/model.py",
+        "generator": "./usr/generator_multi_traj.py",
+        "model": "./usr/model_multi_traj.py",
         "oracle": "./usr/oracle.py",
-        "utils": "./usr/utils.py",
+        "utils": "./usr/utils_multi_traj.py",
     },
     }

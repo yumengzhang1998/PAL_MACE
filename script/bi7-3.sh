@@ -1,7 +1,7 @@
 #! /bin/bash
 #SBATCH --job-name=bi7-3MACE
 #SBATCH --partition=normal 
-#SBATCH --time=8:00:00
+#SBATCH --time=08:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=60
 #SBATCH --cpus-per-task=1

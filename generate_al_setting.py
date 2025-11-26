@@ -53,10 +53,10 @@ AL_SETTING = {{
     "gpu_pred": [],                        # gpu index list for prediction processes
     "gpu_ml": [],                          # gpu index list for machine learning
     "usr_pkg": {{                           # dictionary of paths to user implemented modules (generator, model, oracle and utils)
-        "generator": "./usr/generator.py",
-        "model": "./usr/model.py",
+        "generator": "./usr/generator_multi_traj.py",
+        "model": "./usr/model_multi_traj.py",
         "oracle": "./usr/oracle.py",
-        "utils": "./usr/utils.py",
+        "utils": "./usr/utils_multi_traj.py",
     }},
     }}
 '''

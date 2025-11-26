@@ -11,7 +11,7 @@ import psutil
 import numpy as np
 import torch, time, os, json
 from torch import nn
-from usr.utils import  shuffle_dataset, save_data, get_full_data_init
+from usr.utils import  shuffle_dataset, save_data, get_full_data_init, compute_flat_length
 from usr.initial_pyg.functions.config import ConfigLoader
 from usr.initial_pyg.evaluation import evaluate
 import sys
@@ -265,6 +265,7 @@ class UserModel(object):
         self.transforms = None
         # self.number_of_generators = self.config["number_of_generators"]
         self.metadata = self.config["metadata"]
+        self.cluster_data_length = compute_flat_length(self.metadata)
         data_type = self.config["prefix"]
         if self.config["full_dataset"]:
             self.prefix = "bi0"
@@ -365,8 +366,8 @@ class UserModel(object):
                 }
             # --- Dual-patience with relative thresholds (Option B) ---
             self.pcfg = dict(
-                old_limit=10,            # patience for initial (protect forgetting)
-                new_limit=10,             # patience for added (drive AL progress)
+                old_limit=10000,            # patience for initial (protect forgetting)
+                new_limit=20,             # patience for added (drive AL progress)
                 rel_added_delta=0.5/100, # require ≥0.5% improvement on added (energy OR force)
                 init_tol=2.0/100,        # ≤2% worse on init = acceptable noise
                 init_hi=5.0/100          # >5% worse on init = "worse a lot"
@@ -424,6 +425,8 @@ class UserModel(object):
             # import json
             # with open("to_orcl_buffer.json", "w") as f:
             #     json.dump([arr.tolist() for arr in list_data_to_pred], f)
+        if len(list_data_to_pred) == self.config['num_gen_process']:
+            list_data_to_pred = [item[1:] for item in list_data_to_pred] # the first item in the generator input is sent variable
         data_list = [reconstruct_from_metadata(data, self.metadata, rank  = f"predict {self.rank}") for data in list_data_to_pred]
         # print('data_list', data_list)
         data_list = convert_to_data_object(data_list)

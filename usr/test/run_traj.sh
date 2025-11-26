@@ -2,7 +2,6 @@
 
 # List of your prefixes
 prefixes=("bi4-6" "bi4-2" "bi7-3" "bi11-3" "bi2-2")
-prefixes=("bi4-2" "bi7-3")
 # Loop and submit a separate SLURM job for each prefix
 for prefix in "${prefixes[@]}"; do
 

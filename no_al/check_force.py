@@ -3,10 +3,22 @@ import numpy as np
 from ast import literal_eval
 
 # === CONFIG ===
-csv_path = "collected_data/bi11-3_samples.csv"   # change this to your actual path
-force_threshold = 100.0                 # eV/Å, adjust as needed
+prefix = "bi4-2"
+csv_path = f"collected_data/{prefix}.csv"   # change this to your actual path
+force_threshold = 10.0                 # eV/Å, adjust as needed
 save_cleaned = True                     # whether to save cleaned version
 clean_path = csv_path.replace(".csv", "_clean.csv")
+energy_threshold = 10.0                # eV, adjust as needed
+
+optimime_df = pd.read_csv("../optimized.csv")
+optimimal_energies = optimime_df.set_index("Name")["Energy"].to_dict()
+# make name lowercase for matching
+optimimal_energies = {k.lower(): v for k, v in optimimal_energies.items()}
+energy = optimimal_energies.get(prefix.lower(), None)
+energy = literal_eval(energy) if energy is not None else None
+print(f"Using optimal energy for {prefix}: {energy[0]} eV")
+
+energy_bound = energy[0] + energy_threshold if energy is not None else None
 
 bad_rows = []
 
@@ -18,7 +30,14 @@ def safe_parse_force(cell):
     except Exception as e:
         print(f"⚠️ Parse error in row: {e}")
         return None
-
+def safe_parse_energy(cell):
+    """Safely parse the energy string into a float."""
+    try:
+        val = float(cell)
+        return val
+    except Exception as e:
+        print(f"⚠️ Parse error in energy: {e}")
+        return None
 # Read CSV fully as text (no automatic type guessing)
 df = pd.read_csv(csv_path, dtype=str)
 max_force_ls = []
@@ -39,13 +58,21 @@ for i, row in df.iterrows():
     if max_force > force_threshold:
         #print(f"❌ Row {i} has high force magnitude: {max_force:.2f}")
         bad_rows.append(i)
+    if energy_bound is not None:
+        energy_val = safe_parse_energy(row["total_energy"])
+        if energy_val is None:
+            bad_rows.append(i)
+            continue
+        if energy_val > energy_bound:
+            #print(f"❌ Row {i} has high energy: {energy_val:.2f} (bound: {energy_bound:.2f})")
+            bad_rows.append(i)
 
 print("\n=== Summary ===")
 print(f"Total rows checked: {len(df)}")
 print(f"Bad rows found: {len(bad_rows)}")
 print(f"Maximum force magnitudes stats: min={np.min(max_force_ls):.2f}, max={np.max(max_force_ls):.2f}, mean={np.mean(max_force_ls):.2f}")
-print(f"Force id of maximum: {np.argmax(max_force_ls)} with value {np.max(max_force_ls):.2f}")
-print(f"bad row index of maxiximum: {bad_rows[np.argmax(max_force_ls)] if bad_rows else 'N/A'}")
+# print(f"Force id of maximum: {np.argmax(max_force_ls)} with value {np.max(max_force_ls):.2f}")
+# print(f"bad row index of maxiximum: {bad_rows[np.argmax(max_force_ls)] if bad_rows else 'N/A'}")
 # if bad_rows:
 #     print("Indices of bad rows:", bad_rows)
 

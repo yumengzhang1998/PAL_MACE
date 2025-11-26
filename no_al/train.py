@@ -508,6 +508,7 @@ def run(args: argparse.Namespace, train, val, test = None, latent = False, charg
     )  # pylint: disable=E1123
 
     lr_scheduler = LRScheduler(optimizer, args)
+    print(lr_scheduler.scheduler)      
 
     swa: Optional[tools.SWAContainer] = None
     swas = [False]
@@ -710,17 +711,17 @@ def run(args: argparse.Namespace, train, val, test = None, latent = False, charg
     if args.distributed:
         torch.distributed.destroy_process_group()
 
-def make_data(prefix, config_path, num_atom, charge,res_dir="nocharge", latent = False, charge_penalty = None):
+def make_data(prefix, config_path, num_atom, charge,res_dir="nocharge", latent = False, charge_penalty = None, clean = False):
     config = ConfigLoader(config_path)
     args_dict = config['args_dict']
     args = build_default_arg_parser_dict(args_dict)   
     print(args.swa)
 
-    results_dir = f"{res_dir}/{prefix}_logs/"
+    results_dir = f"{res_dir}/{prefix}_logs/" if clean == False else f"{res_dir}/{prefix}_clean_logs/"
     os.makedirs(results_dir, exist_ok=True)
-
+    raw_path = f'./collected_data/{prefix}.csv' if clean == False else f'./collected_data/{prefix}_clean.csv'
     # Load raw dataset
-    dataset = big_list(raw_data_path=f'./collected_data/{prefix}.csv',
+    dataset = big_list(raw_data_path=raw_path,
                        num_atom=num_atom,
                        charge=charge,
                        transform=None,
@@ -730,7 +731,7 @@ def make_data(prefix, config_path, num_atom, charge,res_dir="nocharge", latent =
     # Split raw into fixed validation set and trainable pool
 
     data_list = dataset.data_list.copy()
-    csv_data = pd.read_csv(f'./collected_data/{prefix}.csv')
+    csv_data = pd.read_csv(raw_path)
     has_source = 'source' in csv_data.columns
     
     if has_source:
@@ -822,6 +823,7 @@ if __name__ == "__main__":
     parser.add_argument("--charge", type=str, required=True)
     parser.add_argument("--config", type=str, default="config.yaml")
     parser.add_argument("--results_dir", type=str, default="coulomb")
+    parser.add_argument("--clean", type=bool, help="Use cleaned data")
 
     args = parser.parse_args()
 
@@ -837,6 +839,8 @@ if __name__ == "__main__":
     config_path = f"{args.config}"
     print("Using config:", config_path)
     res_dir = args.results_dir
-
-    make_data(prefix, config_path, num_atom, charge, res_dir=res_dir, latent=False, charge_penalty=None)
+    clean = args.clean if args.clean is not None else False
+    print("Using clean data:", clean)
+    print(type(clean))
+    make_data(prefix, config_path, num_atom, charge, res_dir=res_dir, latent=False, charge_penalty=None, clean = clean)
 
