@@ -1,0 +1,51 @@
+name: mace_al
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.10
+  - pip
+  - numpy=1.26
+  - scipy
+  - h5py
+  - pandas
+  - mpi4py
+  - matplotlib
+  - ase
+  - openmm
+  - scikit-learn
+  - tqdm
+  - pyyaml
+  - packaging
+
+  # PyTorch + CUDA 12.1
+  - pytorch=2.2.0
+  - torchvision=0.17.0
+  - torchaudio=2.2.0
+  - pytorch-cuda=12.1
+
+  - pip:
+      - cuequivariance==0.6.1
+      - cuequivariance-ops-cu12==0.6.1
+      - cuequivariance-ops-torch-cu12==0.6.1
+      - cuequivariance-torch==0.6.1
+
+      - torch-geometric==2.6.1
+      - e3nn==0.4.4
+      - matscipy==1.1.1
+      - lmdb
+      - orjson
+      - psutil
+      - prettytable
+      - requests
+      - python-hostlist
+      - rmsd
+
+      # Install PyTorch Geometric ops via wheel index
+      - torch-scatter==2.1.2
+      - torch-sparse==0.6.18
+      - torch-cluster==1.6.3
+      - torch-spline-conv==1.2.2

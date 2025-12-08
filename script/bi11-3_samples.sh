@@ -1,11 +1,11 @@
 #! /bin/bash
 #SBATCH --job-name=synMACE
-#SBATCH --partition=normal 
-#SBATCH --time=20:00:00
+#SBATCH --partition=accelerated 
+#SBATCH --time=10:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=60
 #SBATCH --cpus-per-task=1
-#SBATCH --output=syn.txt          # Output file
+#SBATCH --output=syn_out.txt          # Output file
 #SBATCH --error=syn_err.txt      # Error file
 
 #SBATCH --gres=gpu:2         
@@ -14,6 +14,6 @@
 #SBATCH --mail-user=noname19980927@gmail.com  # Email address to send notifications
 
 cd ..
-python generate_config_yaml.py --prefix bi11-3_samples --full_dataset False
+python generate_config_yaml.py --prefix bi11-3_samples --full_dataset False --num_traj_per_gene 5
 python generate_al_setting.py
 mpirun -n 60 python main.py

@@ -39,42 +39,60 @@ np.random.seed(random_seed)
 # Set a random seed for PyTorch
 #torch.manual_seed(random_seed)
 def max_atom_distance(coords):
-    """Compute maximum pairwise distance in coords (N,3)."""
+    """Compute maximum pairwise atomic distance (coords already in Å)."""
     d = pdist(np.asarray(coords, dtype=float), metric="euclidean")
-    return float(np.max(d))
+    return float(np.max(d)) if len(d) else 0.0
+
 
 def is_unreasonable_structure_list(input_list, ref_max_dist, tolerance=0.2):
     """
-    Check a list of structures and return indices of unreasonable ones.
+    Assumes:
+        - coords already in Å
+        - ref_max_dist is also in Å
+        - no unit conversion needed (handled in generator)
+    
+    Parameters
+    ----------
+    input_list : list of rec objects
+        Each rec[0] is the coordinate array (N,3)
+    ref_max_dist : float
+        reference maximum distance in Å (e.g., from metadata)
+    tolerance : float
+        fractional deviation allowed (e.g., 0.2 = +20%)
 
-    Args:
-        input_list (list): list of reconstructed data, each with coords in input_item[0].
-        ref_max_dist (float): reference maximum distance (Å).
-        tolerance (float): allowed fractional deviation.
-
-    Returns:
-        tuple: (indices, deviations, max_distances)
-            indices: np.ndarray of unreasonable indices
-            deviations: list of deviations for each structure
-            max_distances: list of max distances for each structure
+    Returns
+    -------
+    bad_indices : np.ndarray[int]
+        indices where max distance deviates too much
+    deviations : list[float]
+        deviation values
+    max_distances : list[float]
+        absolute maximum distances
     """
-    max_distances = []
+
+    bad_indices = []
     deviations = []
-    i_orcl_structural = []
+    max_distances = []
 
-    for idx, input_item in enumerate(input_list):
-        coords = np.array(input_item[0], dtype=float)
-        dmax = max_atom_distance(coords)
-        if ref_max_dist > 0:
-            deviation = (dmax - ref_max_dist) / ref_max_dist
-        else:
-            deviation = np.inf
+    for idx, rec in enumerate(input_list):
+        coords_ang = np.asarray(rec[0], dtype=float)
+
+        dmax = max_atom_distance(coords_ang)
         max_distances.append(dmax)
-        deviations.append(deviation)
-        if deviation > tolerance:
-            i_orcl_structural.append(idx)
 
-    return np.array(i_orcl_structural, dtype=int), deviations, max_distances
+        # compute fractional deviation
+        if ref_max_dist > 0:
+            dev = (dmax - ref_max_dist) / ref_max_dist
+        else:
+            dev = np.inf  # impossible case after initialization
+
+        deviations.append(dev)
+
+        # mark as unreasonable
+        if dev > tolerance:
+            bad_indices.append(idx)
+
+    return np.array(bad_indices, dtype=int), deviations, max_distances
 import numpy as np
 
 def select_uncertain_forces_GPA3(
@@ -266,13 +284,6 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
             f"Predictor output mismatch: expected {total_model_len}, got {D}"
         )
 
-    # reshape to (G, P, T, per_traj_model_len)
-    _, _, D = ldg.shape
-    expected_D = 1 + num_traj * per_traj_model_len
-
-    if D != expected_D:
-        raise ValueError(f"Predictor output length mismatch: expected {expected_D}, got {D}")
-
     # split iteration and blocks
     iters_raw = ldg[:, :, 0]      # (G,P)
     traj_raw  = ldg[:, :, 1:]     # (G,P, num_traj*34)
@@ -281,9 +292,9 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     model_array = traj_raw.reshape(G, P, num_traj, per_traj_model_len)
 
     # extract iter, energy, forces
-    iters  = model_array[:, :, :, 0].astype(int)         # (G,P,T)
-    energy = model_array[:, :, :, 1].astype(float)       # (G,P,T)
-    forces = model_array[:, :, :, 2:].reshape(G, P, num_traj, num_atoms, 3)
+    # iters  = model_array[:, :, :, 0].astype(int)         # (G,P,T)
+    energy = model_array[:, :, :, 0].astype(float)       # (G,P,T)
+    forces = model_array[:, :, :, 1:].reshape(G, P, num_traj, num_atoms, 3)
 
     # ---------------------------------------------------------
     # 3. Compute predictor MEANS across ensemble
@@ -321,8 +332,8 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
             rec[-2][0] += 1
 
         # structural sanity
-        _, is_bad, _ = is_unreasonable_structure_list([rec], max_dist, tolerance=0.1)
-        if is_bad[0]:
+        bad_idx, _, _ = is_unreasonable_structure_list([rec], max_dist, tolerance=0.3)
+        if len(bad_idx) > 0:
             rec[-2][1] += 1
 
         # patience rule
@@ -340,7 +351,7 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
 
     for g in range(num_generators):
         # choose appropriate iteration number (same for all T)
-        iter_g = int(iters[g].mean())
+        iter_g = int(np.mean(iters_raw[g]))
 
         pieces = [np.array([iter_g], dtype=float)]
 

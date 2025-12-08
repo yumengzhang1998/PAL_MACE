@@ -56,6 +56,8 @@ class UserOracle(object):
         self.counter = 0
         self.fail = 0
         self.avg_time = 0
+        # shape is 1 (energy) + 3 * N (forces)
+        self.shape = (1 + 3 * config['num_atom'], )
     def run_calc(self, input_to_orcl):
         """
         Run Oracle computation.
@@ -70,6 +72,7 @@ class UserOracle(object):
         ##### User Part #####
         # print('input_to_orcl', len(input_to_orcl))
         print(f'rank {self.rank} running')
+        # print('input_to_orcl shape', input_to_orcl)
         
         input_to_orcl = reconstruct_from_metadata(input_to_orcl, self.meta_data, rank = f"oracle {self.rank}")
         # print('input_to_orcl', input_to_orcl)

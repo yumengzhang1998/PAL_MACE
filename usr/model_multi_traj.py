@@ -256,7 +256,10 @@ class UserModel(object):
         self.ml_device = torch.device(f"cuda:{number}" if torch.cuda.is_available() else 'cpu')
         # self.ml_device = torch.device("cuda" if torch.cuda.is_available() else 'cpu')
         # self.pred_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.pred_device = torch.device('cpu')
+        if torch.cuda.is_available():
+            self.pred_device = torch.device(f"cuda:{number}")
+        else:
+            self.pred_device = torch.device("cpu")
         self.device = self.ml_device if self.mode == "train" else self.pred_device
         print(f"Rank {self.rank}: Device is {self.device}")
 
@@ -367,7 +370,7 @@ class UserModel(object):
             # --- Dual-patience with relative thresholds (Option B) ---
             self.pcfg = dict(
                 old_limit=10000,            # patience for initial (protect forgetting)
-                new_limit=20,             # patience for added (drive AL progress)
+                new_limit=10000,             # patience for added (drive AL progress)
                 rel_added_delta=0.5/100, # require ≥0.5% improvement on added (energy OR force)
                 init_tol=2.0/100,        # ≤2% worse on init = acceptable noise
                 init_hi=5.0/100          # >5% worse on init = "worse a lot"
@@ -405,104 +408,95 @@ class UserModel(object):
             
     def predict(self, list_data_to_pred):
         """
-        Predict energies and forces for generator inputs.
+        Correct handling of two formats:
 
-        Supports two input formats:
-        Format A: 1D flattened multi-trajectory packet:
-            [[sent0, flat0..., sent1, flat1..., ...], [sent0, flat0..., sent1, flat1..., ...]]
-            → output gets leading iter. THis comes from generator data_to_pred
+        Format A:
+            One long 1-D array of length = T * (1 + flat_len)
+            Meaning: [sent0, flat0..., sent1, flat1..., ...]
+            → Add iteration number to output
 
-        Format B: list of separately flattened trajectories:
-            [flat0, flat1, flat2, ...]
-            → output does NOT get iter at front. This comes from to_orcl_buffer that need to be predicted to rerank
+        Format B:
+            A list of arrays, each already one flattened trajectory
+            → No iter number, no sent values
         """
 
-        T = self.config["num_traj_per_gene"]          # # trajectories per generator
-        flat_len = self.cluster_data_length          # length of 1 flat traj
-        per_traj_len = 1 + flat_len                  # sent + flat
-        per_gen_len = T * per_traj_len               # expected total for Format A
+        T = self.config["num_traj_per_gene"]
+        flat_len = self.cluster_data_length
+        per_traj_len = 1 + flat_len
+        per_gen_len = T * per_traj_len
 
         final_outputs = []
 
-        # ============================================================
-        # STEP 1 — normalize input
-        # ============================================================
-        # For each generator in list_data_to_pred
-        for gene_arr in list_data_to_pred:
+        for item in list_data_to_pred:
 
-            gene_arr = np.array(gene_arr, dtype=float)  # ensure numeric
+            arr = np.asarray(item, dtype=float)
 
-            # -------------------------
-            # FORMAT A : shape = (T * (1+flat_len),)
-            # -------------------------
-            if gene_arr.ndim == 1 and len(gene_arr) == per_gen_len:
-
-                # unpack into (T, 1 + flat_len)
-                blocks = gene_arr.reshape(T, per_traj_len)
-
-                sent_list = blocks[:, 0]
-                flats = blocks[:, 1:]
-
+            # ------------------------------------------------------
+            # CASE 1: TRUE FORMAT A (one long flat packet)
+            # ------------------------------------------------------
+            if arr.ndim == 1 and arr.size == per_gen_len:
                 format_type = "A"
 
-            # -------------------------
-            # FORMAT B : treat as list of flats
-            # -------------------------
-            elif isinstance(gene_arr, (list, tuple)) or gene_arr.ndim != 1:
+                blocks = arr.reshape(T, per_traj_len)
 
-                # each element is flat_i of unknown count
-                flats = [np.array(x, dtype=float) for x in gene_arr]
-                sent_list = [0] * len(flats)
+                sent_list = blocks[:, 0].astype(int)
+                flats = [b[1:] for b in blocks]
 
+            # ------------------------------------------------------
+            # CASE 2: EVERYTHING ELSE → FORMAT B
+            # (This is your case based on printed output)
+            # ------------------------------------------------------
+            else:
                 format_type = "B"
 
-            else:
-                raise ValueError(
-                    f"predict(): cannot parse input of shape {gene_arr.shape}"
-                )
+                # list_data_to_pred contains list of flat trajectories
+                # → interpret directly
+                if arr.ndim == 1:
+                    # input is [flat] not [[flat]]
+                    flats = [arr]
+                else:
+                    # already list of arrays
+                    flats = [np.asarray(x, dtype=float) for x in item]
 
-            # ============================================================
-            # STEP 2 — run model prediction for ALL trajectories (flats)
-            # ============================================================
+                sent_list = [0] * len(flats)
 
-            # reconstruct metadata for each flat
+            # ------------------------------------------------------
+            # RECONSTRUCT METADATA
+            # ------------------------------------------------------
             traj_recs = [
                 reconstruct_from_metadata(f, self.metadata, rank=f"predict {self.rank}")
                 for f in flats
             ]
 
             data_objects = convert_to_data_object(traj_recs)
-            y_pred, force_pred, _, _ = evaluate(
+            y_pred, f_pred, _, _ = evaluate(
                 self.model,
                 data_objects,
                 batch_size=self.batch_size,
                 device=self.device
             )
 
-            y_pred = np.asarray(y_pred)          # shape: (#traj,)
-            force_pred = np.asarray(force_pred)  # shape: (#traj, N, 3)
+            y_pred = np.asarray(y_pred)
+            f_pred = np.asarray(f_pred)
 
-            # ============================================================
-            # STEP 3 — re-assemble final outgoing array
-            # ============================================================
-
+            # ------------------------------------------------------
+            # REASSEMBLE OUTPUT
+            # ------------------------------------------------------
             pieces = []
 
-            # FORMAT A → add iteration number in front
             if format_type == "A":
                 iter_val = int(self.counter) if self.iter_log else 0
-                pieces.append(np.array([iter_val], dtype=float))
+                pieces.append(np.array([iter_val], float))
 
-            # trajectories grouped in order
-            for sent_val, e, f in zip(sent_list, y_pred, force_pred):
-                # pieces.append(np.array([sent_val], dtype=float))
-                pieces.append(np.array([e], dtype=float))
-                pieces.append(f.reshape(-1))  # flatten forces N×3 → 3N
-                
-            pieces = [p.reshape(-1) for p in pieces]
-            out = np.concatenate(pieces)
-            final_outputs.append(out)
+            for e, f in zip(y_pred, f_pred):
+                pieces.append(np.array([e], float))
+                pieces.append(f.reshape(-1))
+
+            final = np.concatenate([p.reshape(-1) for p in pieces])
+            final_outputs.append(final)
+
         return final_outputs
+
  
 
     def update(self, weight_array):
@@ -808,6 +802,8 @@ class UserModel(object):
             train_sampler=self.train_sampler,
             rank=int(0),
         )
+        if args.ema:
+            ema.copy_to(self.model.parameters())
         logging.info("")
         logging.info(f"===========RANK {self.rank} FINISHED TRAINING NUM.{self.num_retraining_instances} ===========")
         logging.info("eveluation")

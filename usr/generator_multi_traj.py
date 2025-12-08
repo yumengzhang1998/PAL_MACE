@@ -28,7 +28,20 @@ from al_setting import AL_SETTING
 from tqdm import tqdm
 
 
+def reset_simulation_state(simulation, coords_ang):
+    """
+    Reinitialize positions/velocities in an existing Simulation object
+    without creating a new Simulation instance.
+    coords_ang must be in Å.
+    """
+    # convert Å → nm
+    coords_nm = coords_ang * 0.1
 
+    # reset positions
+    simulation.context.setPositions(coords_nm)
+
+    # reset velocities (fresh Maxwell distribution)
+    simulation.context.setVelocitiesToTemperature(298.0 * unit.kelvin)
 
 def vec3_to_numpy(vec3_list):
     # Convert list of Vec3 to a NumPy array
@@ -60,6 +73,7 @@ class UserGene(object):
         self.metadata = config['metadata']
         self.patience_threshold = config['patience_threshold']
         self.prefix = config['prefix']
+        self.num_atom = config['num_atom']
         self.stop = False
         pred_procs = AL_SETTING["pred_process"]
         self.gene_procs = AL_SETTING["gene_process"]
@@ -92,7 +106,7 @@ class UserGene(object):
     
     def set_up_simulations(self, data_batch):
         simulators = []
-        for idx, data in enumerate(tqdm(data_batch, desc="Setting up simulations")):
+        for idx, data in enumerate(data_batch):
             try:
                 molecule = self.set_up(data)
                 init_force = self.custom_force_initilize(molecule)
@@ -112,13 +126,13 @@ class UserGene(object):
                 print("Initial velocities set.")
 
                 simulators.append((simulation, init_force))
-                print(f"✅ Simulation #{idx} set up successfully.")
+                print(f"✅Rank {self.rank} Simulation #{idx} set up successfully.")
             except Exception as e:
                 print(f"❌ Failed to set up simulation #{idx}: {e}")
                 continue
         return simulators
     def read_in_data(self, counter):
-        print(f'reading in data number {counter} from {self.path}')
+        print(f'Rank {self.rank} reading in data number {counter} from {self.path} ')
         return get_specific_data(self.path, counter)
     def get_lenth(self):
         return sum(1 for _ in open(self.path)) -1
@@ -149,11 +163,11 @@ class UserGene(object):
         return force
         
 
-    def update_forces(self, force, predicted_forces, system):
+    def update_forces(self, force, predicted_forces):
         """
         Update the forces in CustomExternalForce from predicted forces in eV/Å.
         """
-        num_particles = system.getNumParticles()
+        num_particles = self.num_atom
         if predicted_forces.shape[0] != num_particles:
             raise ValueError(
                 f"predicted_forces has {predicted_forces.shape[0]} atoms, "
@@ -204,25 +218,41 @@ class UserGene(object):
         return traj
 
 
+
     def restart_traj(self, i):
-        """Restart trajectory i with a new random initial structure."""
+        """
+        Restart trajectory i safely:
+        - do NOT allocate new Simulation()
+        - reuse existing simulation + external force
+        - reset coords/vels/steps
+        """
+
+        # pick a new geometry from initial dataset
+        random.seed(self.rank) 
         idx = random.randint(0, self.init_length - 1)
         geom = self.read_in_data(counter=idx)
+        coords_ang = np.asarray(geom[0], dtype=float)
 
-        sims = self.set_up_simulations([geom])
-        if not sims:
-            raise RuntimeError("Failed to set up simulation during restart.")
-        simulation, force = sims[0]
+        traj_state = self.trajs[i]
+        simulation = traj_state["simulation"]
+        force      = traj_state["force"]
 
-        self.trajs[i] = {
-            "simulation": simulation,
-            "force": force,
-            "steps": 0,
-        }
+        # reset simulation state IN PLACE
+        reset_simulation_state(simulation, coords_ang)
+
+        # reset counters
+        traj_state["steps"] = 0
         self.starting_point[i] = 0
 
-        # one MD step to produce an initial sample
+        # reset force parameters to zero
+        N = len(coords_ang)
+        zero_force = np.zeros((N, 3), dtype=float)
+        self.update_forces(force, zero_force)
+        force.updateParametersInContext(simulation.context)
+
+        # produce a fresh MD step output
         sample = self.update(simulation, geom)
+
         return geom, sample
 
     def generate_new_data(self, data_to_gene):
@@ -244,7 +274,7 @@ class UserGene(object):
             sent = 0
             print(f"initializing data, PICKED randomly from initial data, "
                 f"{self.num_traj_per_gene} trajectories")
-
+            random.seed(self.rank) 
             indices = random.sample(range(0, self.init_length), self.num_traj_per_gene)
             data_batch = [self.read_in_data(counter=i) for i in indices]
 
@@ -344,8 +374,7 @@ class UserGene(object):
                     new_geom, sample = self.restart_traj(i)
                     sent_i = 0
 
-            # prepend sent flag and add to list
-            self.history[i].append([self.current_iteration, [sent_i,sample]])
+            self.history[i].append([self.current_iteration, [sent_i, sample]])
             sample = convert_to_1d_float_array(sample)
             sample = np.concatenate(([float(sent_i)], sample))
             
@@ -396,8 +425,8 @@ class UserGene(object):
                     # print('save progress:', self.history[0])
                 
         else:
-            self.history = self.history[-1:]
-            print(f'saving progress, {len(self.history)} trajectories in history')
+            self.history = [[] for _ in range(self.num_traj_per_gene)]
+            print(f'saving progress, history reset for {self.num_traj_per_gene} trajectories')
         
 
 
