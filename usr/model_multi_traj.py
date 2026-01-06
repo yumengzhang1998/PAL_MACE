@@ -511,9 +511,9 @@ class UserModel(object):
         for k in self.para_keys:
             param = self.model.state_dict()[k]
             param_size = param.numel()
-            if param.device != self.device:
+            if param.device != torch.device(self.device):
                 param = param.to(self.device)
-                print(f"Rank {self.rank}: model updated on device {self.device} but parameters are on {param.device}")
+                # print(f"Rank {self.rank}: model updated on device {self.device} but parameters are on {param.device}")
             new_tensor = torch.tensor(
                 weight_array[offset:offset + param_size], 
                 dtype=param.dtype,

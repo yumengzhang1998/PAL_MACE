@@ -27,6 +27,19 @@ import pandas as pd
 from al_setting import AL_SETTING
 from tqdm import tqdm
 
+def log_traj_restart(
+    rank,
+    traj_id,
+    steps,
+    energy_patience,
+    rmsd_patience,
+    iteration,
+    logfile="traj_restart.log",
+):
+    with open(logfile, "a") as f:
+        f.write(
+            f"{rank},{traj_id},{steps},{energy_patience},{rmsd_patience},{iteration}\n"
+        )
 
 def reset_simulation_state(simulation, coords_ang):
     """
@@ -103,6 +116,7 @@ class UserGene(object):
         self.cluster_data_length = compute_flat_length(self.metadata)
         self.trajs = [None] * self.num_traj_per_gene  # list of per-trajectory dicts
         self.history = [[] for _ in range(self.num_traj_per_gene)]
+        self.rng = random.Random(self.rank) # per-generator RNG
     
     def set_up_simulations(self, data_batch):
         simulators = []
@@ -228,8 +242,7 @@ class UserGene(object):
         """
 
         # pick a new geometry from initial dataset
-        random.seed(self.rank) 
-        idx = random.randint(0, self.init_length - 1)
+        idx = self.rng.randint(0, self.init_length - 1)
         geom = self.read_in_data(counter=idx)
         coords_ang = np.asarray(geom[0], dtype=float)
 
@@ -322,7 +335,7 @@ class UserGene(object):
         for i in range(num_traj):
             row = body_2d[i]
             sent_i_raw = int(row[0])
-            sent_i = 0 if sent_i_raw > 10 else sent_i_raw
+            sent_i = 0 if sent_i_raw > 1000 else sent_i_raw  # cooldown with 100
 
             flat_geom = row[1:]
             geometry = reconstruct_from_metadata(
@@ -340,11 +353,20 @@ class UserGene(object):
                 geometry[-2][1] > self.patience_threshold):
 
                 print(f"""Rank {self.rank} traj {i}: patience or step exceeded,
-        steps = {self.starting_point[i]},
-        energy patience = {geometry[-2][0]},
-        rmsd patience = {geometry[-2][1]},
-        model iteration = {iteration_marker},
-        restarting trajectory {i}""")
+                        steps = {self.starting_point[i]},
+                        energy patience = {geometry[-2][0]},
+                        rmsd patience = {geometry[-2][1]},
+                        model iteration = {iteration_marker},
+                        restarting trajectory {i}""")
+                log_traj_restart(
+                    rank=self.rank,
+                    traj_id=i,
+                    steps={self.starting_point[i]},
+                    energy_patience={geometry[-2][0]},
+                    rmsd_patience={geometry[-2][1]},
+                    iteration=iteration_marker,
+                    logfile=f"results/{self.prefix}/traj_restart_{self.rank}.log",
+                )
 
                 # restart only this trajectory
                 new_geom, sample = self.restart_traj(i)

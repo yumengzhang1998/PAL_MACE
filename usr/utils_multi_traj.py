@@ -6,7 +6,7 @@ Created on Mon Jul 31 13:44:34 2023
 @author: chen
 """
 import ast
-from math import pi
+from math import log, pi
 import pickle
 import numpy as np
 import pandas as pd
@@ -38,10 +38,10 @@ np.random.seed(random_seed)
 
 # Set a random seed for PyTorch
 #torch.manual_seed(random_seed)
-def max_atom_distance(coords):
+def max_min_atom_distance(coords):
     """Compute maximum pairwise atomic distance (coords already in Å)."""
     d = pdist(np.asarray(coords, dtype=float), metric="euclidean")
-    return float(np.max(d)) if len(d) else 0.0
+    return float(np.max(d)) if len(d) else 0.0, float(np.min(d)) if len(d) else 0.0
 
 
 def is_unreasonable_structure_list(input_list, ref_max_dist, tolerance=0.2):
@@ -77,7 +77,7 @@ def is_unreasonable_structure_list(input_list, ref_max_dist, tolerance=0.2):
     for idx, rec in enumerate(input_list):
         coords_ang = np.asarray(rec[0], dtype=float)
 
-        dmax = max_atom_distance(coords_ang)
+        dmax, dmin = max_min_atom_distance(coords_ang)
         max_distances.append(dmax)
 
         # compute fractional deviation
@@ -89,7 +89,7 @@ def is_unreasonable_structure_list(input_list, ref_max_dist, tolerance=0.2):
         deviations.append(dev)
 
         # mark as unreasonable
-        if dev > tolerance:
+        if dev > tolerance or dmin < 2.5:  # also check for too-close atoms
             bad_indices.append(idx)
 
     return np.array(bad_indices, dtype=int), deviations, max_distances
@@ -316,6 +316,8 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     # ---------------------------------------------------------
     energy_std = np.std(energy, axis=1, ddof=1)     # (G,T)
     force_std  = np.std(forces, axis=1, ddof=1)     # (G,T,N,3)
+    max_force_std = np.max(np.linalg.norm(force_std, axis=-1), axis=2)  # (G,T)
+    rms_force_std = np.sqrt(np.mean(force_std**2, axis=(2,3)))  # (G,T)
 
     oracle_indices = []
 
@@ -341,7 +343,7 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
             pass
 
         # STD filter
-        if energy_std[g, t] >= config["energy_std_threshold"]:
+        if energy_std[g, t] >= config["energy_std_threshold"] or max_force_std[g, t] >= config["force_atom_max_std"] or rms_force_std[g, t] >= config["force_rms_std"]:
             oracle_indices.append(idx)
 
     # ---------------------------------------------------------
@@ -379,6 +381,11 @@ def prediction_check(list_data_to_pred, list_data_to_gene):
     return list_input_to_orcl, list_data_to_gene_checked
 
 
+def log_oracle_filtering(n_kept, n_total, mode_msg, logfile="oracle_filter.log"):
+    with open(logfile, "a") as f:
+        f.write(f"{n_kept},{n_total},{mode_msg}\n")
+
+
 def adjust_input_for_oracle(to_orcl_buffer, pred_list):
     """
     User defined function to adjust data in oracle buffer based on the corresponding predictions in pred_list.
@@ -405,6 +412,7 @@ def adjust_input_for_oracle(to_orcl_buffer, pred_list):
     config = ConfigLoader("config.yaml")
     energy_threshold = float(config['energy_std_threshold'])
     force_threshold  = float(config['force_rms_std'])
+    prefix = config['prefix']
 
     if not to_orcl_buffer or not pred_list:
         print("Empty oracle buffer or prediction list; no adjustment made.")
@@ -442,8 +450,10 @@ def adjust_input_for_oracle(to_orcl_buffer, pred_list):
         mode_msg = "shuffled"
 
     adjusted = [np.asarray(s[3], dtype=np.float64) for s in selected]
-
-    print(f"After filtering: {len(adjusted)} kept out of {len(to_orcl_buffer)} → {mode_msg}")
+    n_kept = len(adjusted)
+    n_total = len(to_orcl_buffer)
+    log_oracle_filtering(n_kept, n_total, mode_msg, logfile=f"results/{prefix}/oracle_filter.log")
+    print(f"After filtering: {n_kept} kept out of {n_total} → {mode_msg}")
     if adjusted and ranked:
         print("Top few (force_std, energy_std):",
               [(round(s[2], 4), round(s[1], 4)) for s in selected[:5]])

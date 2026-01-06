@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 prefix = 'bi11-3_samples'
-model_number = 57
+model_number = 56
 path = f"../results/{prefix}/"
 json_path = os.path.join(path, f'retrain_history_{model_number}.json')
 

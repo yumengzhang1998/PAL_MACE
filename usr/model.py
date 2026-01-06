@@ -978,7 +978,7 @@ class UserModel(object):
         
 
     def check_stop(self):
-        if time.time() - self.start_time >= 72000:
+        if time.time() - self.start_time >= 7200000:
             print('time limit reached')
             self.stop = True
         if self.stop:
