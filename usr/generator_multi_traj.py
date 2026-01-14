@@ -41,7 +41,8 @@ def log_traj_restart(
             f"{rank},{traj_id},{steps},{energy_patience},{rmsd_patience},{iteration}\n"
         )
 
-def reset_simulation_state(simulation, coords_ang):
+def reset_simulation_state(simulation, coords_ang, temperature):
+
     """
     Reinitialize positions/velocities in an existing Simulation object
     without creating a new Simulation instance.
@@ -52,9 +53,8 @@ def reset_simulation_state(simulation, coords_ang):
 
     # reset positions
     simulation.context.setPositions(coords_nm)
-
     # reset velocities (fresh Maxwell distribution)
-    simulation.context.setVelocitiesToTemperature(298.0 * unit.kelvin)
+    simulation.context.setVelocitiesToTemperature(temperature)
 
 def vec3_to_numpy(vec3_list):
     # Convert list of Vec3 to a NumPy array
@@ -79,6 +79,8 @@ class UserGene(object):
         self.limit = float('inf')
         self.save_path = os.path.join(self.result_dir, f"generator_data_{rank}")
         self.temperature = 298.0 * unit.kelvin
+        self.T_low  = 298.0 * unit.kelvin
+        self.T_high = 700.0 * unit.kelvin
         self.collision_rate = 1.0 / unit.picosecond
         self.timestep = 2.0 * unit.femtoseconds
         config = ConfigLoader("config.yaml")
@@ -117,6 +119,10 @@ class UserGene(object):
         self.trajs = [None] * self.num_traj_per_gene  # list of per-trajectory dicts
         self.history = [[] for _ in range(self.num_traj_per_gene)]
         self.rng = random.Random(self.rank) # per-generator RNG
+        self.iteration_tracker = 0
+        self.restart_counter = 0
+        self.traj_temperature = [self.temperature] * self.num_traj_per_gene
+
     
     def set_up_simulations(self, data_batch):
         simulators = []
@@ -128,7 +134,7 @@ class UserGene(object):
                 # PBC not needed, skip box vectors
                 platform = openmm.Platform.getPlatformByName('CPU')
                 # print(f"Setting up simulation #{idx} on platform: {platform.getName()}")
-                integrator = openmm.LangevinIntegrator(self.temperature, self.collision_rate, self.timestep)
+                integrator = openmm.LangevinIntegrator(self.traj_temperature[idx], self.collision_rate, self.timestep)
                 # print(f"Integrator created: Langevin at {self.temperature}, collision rate {self.collision_rate}, timestep {self.timestep}")
                 simulation = app.Simulation(molecule.get_Topology(), molecule.get_System(), integrator, platform)
                 # print("Simulation object created.")
@@ -136,7 +142,7 @@ class UserGene(object):
                 coords_nm = coords * 0.1
                 simulation.context.setPositions(coords_nm * unit.nanometer)
                 print("Initial positions set.")
-                simulation.context.setVelocitiesToTemperature(self.temperature)
+                simulation.context.setVelocitiesToTemperature(self.traj_temperature[idx])
                 print("Initial velocities set.")
 
                 simulators.append((simulation, init_force))
@@ -158,6 +164,7 @@ class UserGene(object):
 
         molecule = Molecule(atom_types=atom_types, coordinates=coordinates)
         return molecule
+
 
 
     def random_strcuture_in_space(self, original_coord):
@@ -249,9 +256,17 @@ class UserGene(object):
         traj_state = self.trajs[i]
         simulation = traj_state["simulation"]
         force      = traj_state["force"]
+        if self.current_iteration < 20:
+            T = self.T_low
+        elif self.current_iteration < 40:
+            T = 500 * unit.kelvin
+        else:
+            T = 700 * unit.kelvin
 
+        self.traj_temperature[i] = T
         # reset simulation state IN PLACE
-        reset_simulation_state(simulation, coords_ang)
+        reset_simulation_state(simulation, coords_ang, self.traj_temperature[i])
+        self.restart_counter += 1
 
         # reset counters
         traj_state["steps"] = 0
@@ -315,6 +330,7 @@ class UserGene(object):
         # at this point data_to_gene is a 1D array:
         # [iteration_marker, sent0, flat0..., sent1, flat1..., ...]
         iteration_marker = int(data_to_gene[0])
+        self.iteration_tracker = iteration_marker
         body = data_to_gene[1:]
 
         # each traj contributes (1 sent flag + cluster_data_length) entries

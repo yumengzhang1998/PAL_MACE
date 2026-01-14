@@ -44,7 +44,7 @@ def max_min_atom_distance(coords):
     return float(np.max(d)) if len(d) else 0.0, float(np.min(d)) if len(d) else 0.0
 
 
-def is_unreasonable_structure_list(input_list, ref_max_dist, tolerance=0.2):
+def is_unreasonable_structure_list(input_list, ref_max_dist, tolerance=0.4):
     """
     Assumes:
         - coords already in Å
@@ -93,6 +93,7 @@ def is_unreasonable_structure_list(input_list, ref_max_dist, tolerance=0.2):
             bad_indices.append(idx)
 
     return np.array(bad_indices, dtype=int), deviations, max_distances
+
 import numpy as np
 
 def select_uncertain_forces_GPA3(

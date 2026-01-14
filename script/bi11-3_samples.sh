@@ -1,7 +1,7 @@
 #! /bin/bash
 #SBATCH --job-name=synMACE
 #SBATCH --partition=accelerated 
-#SBATCH --time=24:00:00
+#SBATCH --time=48:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=60
 #SBATCH --cpus-per-task=1
@@ -15,6 +15,6 @@
 #SBATCH --mail-user=noname19980927@gmail.com  # Email address to send notifications
 
 cd ..
-python generate_config_yaml.py --prefix bi11-3_samples --full_dataset False --num_traj_per_gene 10
+python generate_config_yaml.py --prefix bi11-3_samples --full_dataset False --num_traj_per_gene 20
 python generate_al_setting.py
 mpirun -n 60 python main.py
