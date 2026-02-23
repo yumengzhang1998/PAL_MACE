@@ -539,7 +539,7 @@ def save_data(data_list):
         energy.append(float(energy_row))  # force scalar float
         force.append(to_clean_repr(force_row))
         patience.append(patience_row)
-    df = pd.DataFrame({'atoms': atoms_list, 'node_feature': node_feature, 'global_charge': global_charge, 'energy': energy, 'force': force,'patience': patience})
+    df = pd.DataFrame({'atoms': atoms_list, 'coordinates': node_feature, 'charge': global_charge, 'energy': energy, 'forces': force,'patience': patience})
     return df
 def generate_xyz(atoms, tensor):
     n_atoms = len(atoms)
@@ -686,25 +686,52 @@ import re
 #     # print('data_list:', data_list[0].forces)
 #     return data_list
 
-def get_full_data_init(path, source = None):
+def get_full_data_init(path, source_column = None, source = None):
     if source is not None:
         data = pd.read_csv(path)
-        data = data[data['source'] == source]
+        data = data[data[source_column] == source]
     else:
         data = pd.read_csv(path)
-    elements = data["atoms"].values
-    elements = [literal_eval(e) for e in elements]
+    
     # TODO: add num_atoms based on initial pyg way
-    num_atoms = [len(e) for e in elements]  
-    elements_number = [[atomic_numbers[ei] for ei in e] for e in elements]
-    coords = data["coordinates"].values
+    
+    
+    if "coordinates" in data.columns:
+        print('using coordinates column from initial data')
+        coords = data["coordinates"].values
+        elements = data["atoms"].values
+        elements = [literal_eval(e) for e in elements]
+        if isinstance(elements[0][0], str):
+            elements_number = [[atomic_numbers[ei] for ei in e] for e in elements]
+        else:
+            elements_number = elements
+    else:
+        raise ValueError("No coordinates column found in the data.")
+    
+    num_atoms = [len(e) for e in elements_number]
     coords = [np.array(np.matrix(c.replace('\n', ';'))).reshape((num_atoms[i], 3)) for i, c in enumerate(coords)]
-    energies_0 = data['total_energy'].values
-    energies_0 = [literal_eval(e) for e in energies_0]
+
+    if "total_energy" in data.columns:
+        energies_0 = data['total_energy'].values
+        energies_0 = [literal_eval(e) for e in energies_0]
+    elif "energy" in data.columns:
+        energies_0 = data['energy'].values
+        energies_0 = [[float(e) ] for e in energies_0]
+    else:
+        raise ValueError("No energy column found in the data.")
+      
     # convert = lambda a: np.array(np.matrix(a.replace('\n', ';'))) if type(a) == str else a
-    forces_0 = data['forces'].values
+    if "forces" in data.columns:
+        forces_0 = data['forces'].values
+    elif "force" in data.columns:
+        forces_0 = data['force'].values
     forces_0 = [np.array(np.matrix(c.replace('\n', ';'))).reshape((num_atoms[i], 3)) for i, c in enumerate(forces_0)]
-    charge = [int(str(val).split('(')[1].split(',')[0]) if 'tensor' in str(val) else int(val) for val in data['charge'].values]
+    if "charge" in data.columns:
+        charge = [int(str(val).split('(')[1].split(',')[0]) if 'tensor' in str(val) else int(val) for val in data['charge'].values]
+    elif "global_charge" in data.columns:
+        charge = [int(val) for val in data['global_charge'].values]
+    else:
+        raise ValueError("No charge column found in the data.")
 
     data_list = []  
     for i in range(len(coords)):
@@ -757,9 +784,16 @@ def get_specific_data(file_path, line_number):
                 data.append(processed_data)
         return data
 
+
+
+
 def process_row(row, header):
     elements = literal_eval(row[header.index("atoms")])
-    elements_number = [atomic_numbers[ei] for ei in elements]
+    # if elements are made up from element type (e.g. ['C', 'H', 'H', 'H', 'H']), convert to atomic numbers
+    if isinstance(elements[0], str):
+        elements_number = [atomic_numbers[ei] for ei in elements]
+    else:
+        elements_number = elements
     charge = int(str(row[header.index("charge")]).split('(')[1].split(',')[0]) if 'tensor' in str(row[header.index("charge")]) else int(row[header.index("charge")])
     num_atom = len(elements)
     coords = np.array(np.matrix(row[header.index("coordinates")].replace('\n', ';'))).reshape((num_atom, 3))
@@ -779,7 +813,6 @@ def process_row(row, header):
     ]
     
     return data
-
 
 def compute_flat_length(metadata):
     total = 0

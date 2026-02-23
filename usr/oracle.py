@@ -12,14 +12,14 @@ import numpy as np
 import time
 import sys
 import pickle
-sys.path.append("../quantum_chem_python/")
+# sys.path.append("../quantum_chem_python/")
 import os
 current_path = os.getcwd()
 import re
 from quantum_chem_python.api.settings import GeneralSettings, MultiProcessingSettings, XTBSettings, TurbomolSettings
 from quantum_chem_python.api.turbomol.turbomol_api import TurbomolApi
 from quantum_chem_python.api.xtb.xtb_api import XTBApi
-from usr.utils import generate_xyz, reconstruct_from_metadata, convert_to_1d_float_array
+from usr.utils_multi_traj import reconstruct_from_metadata
 from usr.initial_pyg.functions.config import ConfigLoader
 import torch
 import ast
@@ -98,6 +98,7 @@ class UserOracle(object):
                                             input_in_angstrom=True, 
                                             use_cosmo = True, 
                                             epsilon = 'infinity', 
+                                            number_of_scf_iters = 100,
                                             charge = input_to_orcl[4])
 
 
@@ -116,7 +117,9 @@ class UserOracle(object):
                 np.atleast_1d(xtb_energies),  # Ensure xtb_energies is a 1D array
                 np.ravel(xtb_forces[0])       # Flatten the first element of xtb_forces
             ])
-
+            # if energy is 0, raise error
+            if xtb_energies == 0:
+                raise ValueError("XTB calculation failed, energy is 0")
             self.shape = orcl_calc_res.shape
             time_finished = time.time()
             self.counter += 1

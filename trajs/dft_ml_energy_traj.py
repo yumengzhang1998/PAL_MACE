@@ -2,7 +2,7 @@ import pickle
 
 import sys
 
-sys.path.append("../../quantum_chem_python/")
+
 import os
 current_path = os.getcwd()
 import re

@@ -107,9 +107,9 @@ class Generate_TrajsBatch:
         self.timestep = 2.0 * unit.femtoseconds
         self.save_stride = save_stride
         self.inner_steps = inner_steps
-        self.r_max = 20.0
+        self.r_max = 30.0
         if not torchforce:
-            path = f"../../results/{prefix}/model_{model_number}.pt"
+            path = f"../../results/{prefix}_org/model_{model_number}.pt"
             self.model = torch.load(path, map_location="cuda")
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             self.model.to(self.device).eval()
@@ -219,16 +219,22 @@ class Generate_TrajsBatch:
                 print(f"❌ Failed to set up simulation #{idx}: {e}")
                 continue
         return simulators
-    def init_h5(self, h5_path, steps, n_atoms, n_trajs, labels = None):
+    def init_h5(self, h5_path, steps, n_atoms, n_trajs, labels=None):
+
         n_frames = math.ceil(steps / self.save_stride)
         h5f = h5py.File(h5_path, "w")
+
         groups = []
-        label_ds = h5f.create_dataset(
-            "labels",
-            data=np.array(labels, dtype=h5py.string_dtype()),
-        )
+
         for i in range(n_trajs):
+
             g = h5f.create_group(f"traj_{i}")
+
+            # ---- SAFELY STORE LABEL PER TRAJ ----
+            if labels is not None:
+                g.attrs["label"] = str(labels[i])
+            else:
+                g.attrs["label"] = "None"
 
             g.create_dataset(
                 "coords",
@@ -237,6 +243,7 @@ class Generate_TrajsBatch:
                 chunks=(1, n_atoms, 3),
                 compression="gzip",
             )
+
             g.create_dataset(
                 "pred_forces",
                 shape=(n_frames, n_atoms, 3),
@@ -244,27 +251,30 @@ class Generate_TrajsBatch:
                 chunks=(1, n_atoms, 3),
                 compression="gzip",
             )
+
             g.create_dataset(
                 "pred_energy",
                 shape=(n_frames,),
                 dtype="f8",
             )
+
             g.create_dataset(
                 "md_step",
                 shape=(n_frames,),
                 dtype="i8",
             )
 
-
             groups.append(g)
 
         return h5f, groups
 
 
-    def run(self, steps, h5_path, label_batch=None):
+    def run(self, steps, h5_path, label_batch=None, final_path=None):
+
         simulators = []
         frames = []
 
+        # ----------------- SETUP (unchanged physics) -----------------
         for data in self.data_batch:
             mol = self.set_up(data)
             force = self.custom_force_initilize(mol)
@@ -287,54 +297,86 @@ class Generate_TrajsBatch:
         n_trajs = len(simulators)
         n_atoms = frames[0][0].shape[0]
 
-        h5f, groups = self.init_h5(h5_path, steps, n_atoms, n_trajs, labels=label_batch)
-        active = [True] * n_trajs
+        # ----------------- SAFE HDF5 INITIALIZATION -----------------
+        tmp_path = h5_path + ".tmp"
+        print(f"💾 Writing to temporary file: {tmp_path}")
 
+        h5f, groups = self.init_h5(
+            tmp_path, steps, n_atoms, n_trajs, labels=label_batch
+        )
+
+        active = [True] * n_trajs
         write_step = 0
 
-        for step in tqdm(range(steps), desc="MD"):
-            if not any(active):
-                print("🛑 All trajectories terminated early.")
-                break
-            energies, forces = self.get_predicted_energy_and_forces(frames)
+        try:
+            for step in tqdm(range(steps), desc="MD"):
 
-            for i, (sim, force) in enumerate(simulators):
-                if not active[i]:
-                    continue
-                self.update_forces(force, forces[i])
-                force.updateParametersInContext(sim.context)
-                sim.step(self.inner_steps)
+                if not any(active):
+                    print("🛑 All trajectories terminated early.")
+                    break
 
-                state = sim.context.getState(getPositions=True)
-                coords = np.array(
-                    [p.value_in_unit(unit.angstrom) for p in state.getPositions()]
-                )
+                energies, forces = self.get_predicted_energy_and_forces(frames)
 
-                frames[i][0] = coords
-                frames[i][5] = forces[i]
-                frames[i][6] = energies[i]
+                for i, (sim, force) in enumerate(simulators):
 
+                    if not active[i]:
+                        continue
+
+                    # apply ML forces
+                    self.update_forces(force, forces[i])
+                    force.updateParametersInContext(sim.context)
+                    sim.step(self.inner_steps)
+
+                    # get positions
+                    state = sim.context.getState(getPositions=True)
+                    coords = np.array(
+                        [p.value_in_unit(unit.angstrom) for p in state.getPositions()]
+                    )
+
+                    # update in-memory frames
+                    frames[i][0] = coords
+                    frames[i][5] = forces[i]
+                    frames[i][6] = energies[i]
+
+                    # ---- SAVE ONLY EVERY save_stride ----
+                    if step % self.save_stride == 0:
+                        g = groups[i]
+                        g["coords"][write_step] = coords
+                        g["pred_forces"][write_step] = forces[i]
+                        g["pred_energy"][write_step] = energies[i]
+                        g["md_step"][write_step] = step
+
+                # flush once per saved frame (not per traj)
                 if step % self.save_stride == 0:
-                    g = groups[i]
-                    g["coords"][write_step] = coords
-                    g["pred_forces"][write_step] = forces[i]
-                    g["pred_energy"][write_step] = energies[i]
-                    g["md_step"][write_step] = step
+                    h5f.flush()
+                    write_step += 1
 
-                if self._max_pair_distance(coords) > self.r_max:
-                    print(f"💥 Traj {i} exploded at step {step}")
-                    active[i] = False
+                # explosion check
+                for i in range(n_trajs):
+                    if active[i] and self._max_pair_distance(frames[i][0]) > self.r_max:
+                        print(f"💥 Traj {i} exploded at step {step}")
+                        active[i] = False
 
+        except KeyboardInterrupt:
+            print("🛑 Caught Ctrl+C — saving partial file safely.")
 
-            if step % self.save_stride == 0:
-                write_step += 1
-            if step % (1000 * self.save_stride) == 0:
+        finally:
+            try:
                 h5f.flush()
-        h5f.close()
-        print("✅ HDF5 trajectory written successfully")
+                h5f.close()
+            except Exception:
+                pass
 
+            # ---- ATOMIC RENAME: never leave corrupted files ----
+            if final_path is not None:
+                os.replace(tmp_path, final_path)
+                print(f"✅ Final file written safely: {final_path}")
+            else:
+                os.replace(tmp_path, h5_path)
+                print(f"✅ Final file written safely: {h5_path}")
 
-    def run_mixed(self, steps, h5_path, label_batch=None):
+    def run_mixed(self, steps, h5_path, label_batch=None, final_path=None):
+
         # ---------- setup ----------
         frames = self.data_batch
         n_trajs = len(frames)
@@ -347,9 +389,11 @@ class Generate_TrajsBatch:
         # Build topology manually (one chain per trajectory)
         topology = openmm.app.Topology()
         element_cache = {}
+
         for t in range(n_trajs):
             chain = topology.addChain()
             res = topology.addResidue(f"TRAJ{t}", chain)
+
             for z in atom_numbers:
                 sym = periodictable.elements[z].symbol
                 if sym not in element_cache:
@@ -359,24 +403,32 @@ class Generate_TrajsBatch:
         # Build system
         system = openmm.System()
         for _ in range(n_trajs * n_atoms):
-            system.addParticle(200.0 * unit.amu)  # or element mass if you want
+            system.addParticle(200.0 * unit.amu)
 
         # One CustomExternalForce for all particles
         force = openmm.CustomExternalForce("fx*x + fy*y + fz*z")
         force.addPerParticleParameter("fx")
         force.addPerParticleParameter("fy")
         force.addPerParticleParameter("fz")
+
         for i in range(n_trajs * n_atoms):
             force.addParticle(i, [0.0, 0.0, 0.0])
+
         system.addForce(force)
 
         # Integrator + Simulation
         integrator = openmm.LangevinIntegrator(
-            self.temperature, self.collision_rate, self.timestep
+            self.temperature,
+            self.collision_rate,
+            self.timestep
         )
+
         platform = openmm.Platform.getPlatformByName("CUDA")
         properties = {"CudaDeviceIndex": "0", "Precision": "single"}
-        sim = openmm.app.Simulation(topology, system, integrator, platform, properties)
+
+        sim = openmm.app.Simulation(
+            topology, system, integrator, platform, properties
+        )
 
         # Initial positions (stack all trajs)
         pos0 = np.concatenate([f[0] for f in frames], axis=0) * 0.1  # Å → nm
@@ -384,7 +436,9 @@ class Generate_TrajsBatch:
         sim.context.setVelocitiesToTemperature(self.temperature)
 
         # HDF5
-        h5f, groups = self.init_h5(h5_path, steps, n_atoms, n_trajs, labels=label_batch)
+        h5f, groups = self.init_h5(
+            h5_path, steps, n_atoms, n_trajs, labels=label_batch
+        )
 
         active = [True] * n_trajs
         write_step = 0
@@ -392,12 +446,14 @@ class Generate_TrajsBatch:
 
         # ---------- MD loop ----------
         for step in tqdm(range(steps), desc="MD (mixed)"):
+
             if not any(active):
                 print("🛑 All trajectories terminated early.")
                 break
 
-            # 1) Predict for all trajs (UNCHANGED)
+            # 1) Predict for all trajs
             energies, forces_pred = self.get_predicted_energy_and_forces(frames)
+
             # forces_pred shape: (n_trajs, n_atoms, 3)
 
             # 2) Update ONE force object
@@ -413,15 +469,19 @@ class Generate_TrajsBatch:
             # 3) Integrate
             sim.step(self.inner_steps)
 
-            # 4) Only sync when needed
+            # 4) Sync when needed
             if step % self.save_stride == 0 or any(active):
+
                 state = sim.context.getState(getPositions=True)
-                coords_nm = np.array(
-                    [p.value_in_unit(unit.nanometer) for p in state.getPositions()]
-                )
+                coords_nm = np.array([
+                    p.value_in_unit(unit.nanometer)
+                    for p in state.getPositions()
+                ])
+
                 coords = coords_nm.reshape(n_trajs, n_atoms, 3) / 0.1  # → Å
 
                 for i in range(n_trajs):
+
                     if not active[i]:
                         continue
 
@@ -450,6 +510,154 @@ class Generate_TrajsBatch:
 
         h5f.close()
         print("✅ HDF5 trajectory written successfully (mixed)")
+    def run_mixed_skip_bad(self, steps, h5_path, label_batch=None, final_path=None):
+
+        frames = self.data_batch
+        n_trajs = len(frames)
+        n_atoms = frames[0][0].shape[0]
+        atom_numbers = frames[0][1]
+
+        # ---------------- Topology ----------------
+        topology = openmm.app.Topology()
+        element_cache = {}
+        for t in range(n_trajs):
+            chain = topology.addChain()
+            res = topology.addResidue(f"TRAJ{t}", chain)
+            for z in atom_numbers:
+                sym = periodictable.elements[z].symbol
+                if sym not in element_cache:
+                    element_cache[sym] = openmm.app.Element.getBySymbol(sym)
+                topology.addAtom(sym, element_cache[sym], res)
+
+        # ---------------- System ----------------
+        system = openmm.System()
+        for _ in range(n_trajs * n_atoms):
+            system.addParticle(200.0 * unit.amu)
+
+        ml_force = openmm.CustomExternalForce("fx*x + fy*y + fz*z")
+        ml_force.addPerParticleParameter("fx")
+        ml_force.addPerParticleParameter("fy")
+        ml_force.addPerParticleParameter("fz")
+        for p in range(n_trajs * n_atoms):
+            ml_force.addParticle(p, [0.0, 0.0, 0.0])
+        system.addForce(ml_force)
+
+        integrator = openmm.LangevinIntegrator(self.temperature, self.collision_rate, self.timestep)
+        platform = openmm.Platform.getPlatformByName("CUDA")
+        properties = {"CudaDeviceIndex": "0", "Precision": "single"}
+        sim = openmm.app.Simulation(topology, system, integrator, platform, properties)
+
+        pos0_nm = np.concatenate([f[0] for f in frames], axis=0) * 0.1
+        sim.context.setPositions(pos0_nm)
+        sim.context.setVelocitiesToTemperature(self.temperature)
+
+        # ---------------- HDF5 ----------------
+        tmp_path = h5_path + ".tmp" if final_path else h5_path
+        h5f, groups = self.init_h5(tmp_path, steps, n_atoms, n_trajs, labels=label_batch)
+
+        # ---------------- CSV log ----------------
+        log_path = tmp_path.replace(".h5", "_explosions.csv")
+        log_file = open(log_path, "w")
+        log_file.write("traj_id,label,md_step,max_dist\n")
+        log_file.flush()
+
+        active = [True] * n_trajs
+        last_good_coords = [frames[i][0].copy() for i in range(n_trajs)]  # Å
+
+        forces_full = np.zeros((n_trajs, n_atoms, 3), dtype=np.float64)
+        energies_full = np.zeros((n_trajs,), dtype=np.float64)
+
+        conversion_factor = 96.485 * 10
+        write_step = 0
+
+        try:
+            for step in tqdm(range(steps), desc="MD (mixed_skip_bad)"):
+
+                if not any(active):
+                    print("🛑 All trajectories marked bad.")
+                    break
+
+                # -------- 1) ML inference ONLY for active trajs --------
+                active_ids = [i for i, a in enumerate(active) if a]
+                active_frames = [frames[i] for i in active_ids]
+
+                if active_frames:
+                    e_act, f_act = self.get_predicted_energy_and_forces(active_frames)
+                    for k, i in enumerate(active_ids):
+                        energies_full[i] = e_act[k]
+                        forces_full[i] = f_act[k]
+
+                # inactive -> zero forces so they don't slow ML / don't affect dynamics much
+                for i in range(n_trajs):
+                    if not active[i]:
+                        energies_full[i] = 0.0
+                        forces_full[i].fill(0.0)
+
+                # -------- 2) Apply ML forces --------
+                flat_forces = forces_full.reshape(-1, 3)
+                current_forces = -1.0 * flat_forces * conversion_factor
+
+                for p in range(n_trajs * n_atoms):
+                    fx, fy, fz = current_forces[p]
+                    ml_force.setParticleParameters(p, p, [fx, fy, fz])
+                ml_force.updateParametersInContext(sim.context)
+
+                # -------- 3) Integrate --------
+                sim.step(self.inner_steps)
+
+                # -------- 4) IMPORTANT: sync coords EVERY STEP (like your old method effectively did) --------
+                state = sim.context.getState(getPositions=True)
+                coords_nm = np.array([p.value_in_unit(unit.nanometer) for p in state.getPositions()])
+                coords_ang = coords_nm.reshape(n_trajs, n_atoms, 3) / 0.1
+
+                # update frames for next ML call (only active)
+                for i in range(n_trajs):
+                    if active[i]:
+                        frames[i][0] = coords_ang[i]
+                        last_good_coords[i] = coords_ang[i].copy()
+
+                # -------- 5) Explosion check + logging ONLY at save_stride --------
+                if step % self.save_stride == 0:
+                    for i in range(n_trajs):
+                        if not active[i]:
+                            continue
+
+                        max_dist = self._max_pair_distance(coords_ang[i])
+                        if max_dist > self.r_max:
+                            label = label_batch[i] if label_batch else "None"
+                            print(f"💥 Traj {i} ({label}) exploded at step {step} (max={max_dist:.2f})")
+
+                            log_file.write(f"{i},{label},{step},{max_dist:.6f}\n")
+                            log_file.flush()
+
+                            active[i] = False
+                            forces_full[i].fill(0.0)
+                            energies_full[i] = 0.0
+
+                    # -------- 6) Save --------
+                    for i in range(n_trajs):
+                        out_coords = last_good_coords[i]  # keep last good for dead ones too
+                        g = groups[i]
+                        g["coords"][write_step] = out_coords
+                        g["pred_forces"][write_step] = forces_full[i]
+                        g["pred_energy"][write_step] = energies_full[i]
+                        g["md_step"][write_step] = step
+
+                    write_step += 1
+                    h5f.flush()
+
+        except KeyboardInterrupt:
+            print("🛑 Interrupted — saving cleanly.")
+
+        finally:
+            log_file.close()
+            h5f.close()
+
+            if final_path is not None:
+                os.replace(tmp_path, final_path)
+                print(f"✅ Final file written: {final_path}")
+
+        print("✅ Finished run_mixed_skip_bad")
 
     def get_predicted_energy_and_forces(self, data_list):
         data_list = convert_to_data_object(data_list)
@@ -457,11 +665,46 @@ class Generate_TrajsBatch:
             data.z = torch.tensor(data.z)
         # dataset = retrain_dataset(data_list, transforms=self.transform)
         # dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
-        y_pred, force_pred, _, _ = evaluate(model=self.model, eval_dataset=data_list, batch_size=64, default_dtype= 'float64', device=self.device, compute_stress=False, return_contributions=False)
+        y_pred, force_pred, _, _ = evaluate(model=self.model, eval_dataset=data_list, batch_size=128, default_dtype= 'float64', device=self.device, compute_stress=False, return_contributions=False)
         num_data = len(data_list)
 
         force_pred = np.stack(force_pred).reshape(num_data, -1, 3)
         return y_pred, force_pred
+    @staticmethod
+    def pair_distance_status(coords_angstrom: np.ndarray,
+                            r_max: float = 15.0,
+                            r_min: float = 2.0):
+        """
+        Check for both:
+        - explosion (atoms too far apart)
+        - clash (atoms unrealistically close)
+
+        Returns a dict with:
+        max_dist : maximum pair distance (Å)
+        min_dist : minimum pair distance (Å)
+        exploded : True if any distance > r_max
+        clashed  : True if any distance < r_min
+        """
+        n = coords_angstrom.shape[0]
+        if n < 2:
+            return {
+                "max_dist": 0.0,
+                "min_dist": float("inf"),
+                "exploded": False,
+                "clashed": False,
+            }
+
+        dists = pdist(coords_angstrom)   # all pairwise distances
+
+        max_d = float(dists.max())
+        min_d = float(dists.min())
+
+        return {
+            "max_dist": max_d,
+            "min_dist": min_d,
+            "exploded": (max_d > r_max),
+            "clashed": (min_d < r_min),
+        }
 
 
 def convert_to_numpy_array(value):
@@ -522,7 +765,7 @@ if __name__ == "__main__":
     
     result_path = f'../../results/{prefix}'
 
-    job_tmp = Path(os.environ["PAL_MACE_JOB_TMP"])
+    job_tmp = Path(os.environ["PAL_MACE_JOB_TMP"]) if "PAL_MACE_JOB_TMP" in os.environ else Path("./tmp")
     print("Job temp dir:", job_tmp)
 
     result_path = job_tmp / "results" / prefix
@@ -547,7 +790,7 @@ if __name__ == "__main__":
     df['atoms'] = df['atoms'].apply(lambda x: [periodictable.elements.symbol(i).number for i in x])
     df['atoms'] = df['atoms'].apply(lambda x: np.array(x))
     atom_number = df['atoms'][0]
-    batch_size = 100
+    batch_size = 50
     # --- Stratified Sampling if "source" exists ---
     if (
         "source" in df.columns
@@ -555,6 +798,7 @@ if __name__ == "__main__":
         and (df["source"].astype(str).str.strip() != "").any()
     ):
         # Optionally remove "real" rows if you don’t want them
+        df['source'] = df['source'].astype(str).str.strip().str.lower()
         print("Performing stratified sampling based on 'source' column.")
         # df = df[df["source"].astype(str).str.strip().str.lower() != "real"].reset_index(drop=True)
 
@@ -572,24 +816,6 @@ if __name__ == "__main__":
         print("each source distribution in sampled data:")
         print(df_sampled['source'].value_counts())
 
-        # Use sklearn StratifiedShuffleSplit to sample proportionally
-        # sss = StratifiedShuffleSplit(
-        #     n_splits=1,
-        #     train_size=min(batch_size, len(df_syn) - 1),
-        #     random_state=42
-        # )
-
-        # try:
-        #     idx, _ = next(sss.split(df_syn, df_syn["source"]))
-        #     df_sampled = df_syn.iloc[idx].reset_index(drop=True)
-        #     df_sampled = pd.concat([df_sampled, df_real_sampled], ignore_index=True).reset_index(drop=True)
-        #     label_batch = df_sampled['source'].to_list()
-        #     print(f"Stratified sampling successful: {len(df_sampled)} samples selected.")
-        #     print("each source distribution in sampled data:")
-        #     print(df_sampled['source'].value_counts())
-        # except ValueError as e:
-        #     print(f"⚠️ Stratified sampling failed ({e}), falling back to random sampling.")
-        #     raise ValueError("Stratified sampling failed.")
 
     else:
         # No valid "source" column → random sampling
@@ -611,12 +837,15 @@ if __name__ == "__main__":
     os.makedirs(dir_path, exist_ok=True)   
 
     traj_gen = Generate_TrajsBatch(data_batch, result_path, model_number, prefix, temperature=temp)
+    out_file = f"{result_path}/{model_number}_{steps}steps_traj.h5"
+    tmp_file = out_file + ".tmp"
 
     try:
-        traj_gen.run_mixed(
-                        steps=steps,
-                        h5_path=f"{result_path}/{model_number}_{steps}steps_traj.h5",
-                        label_batch=label_batch,
-                    )
+        traj_gen.run_mixed_skip_bad(
+        steps=steps,
+        h5_path=tmp_file,      # <-- write to temp file!
+        label_batch=label_batch,
+        final_path=out_file,   # <-- rename to final file at the end
+    )
     except KeyboardInterrupt:
         print("🛑 Caught Ctrl+C — cleaning up!") 

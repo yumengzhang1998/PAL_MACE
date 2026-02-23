@@ -15,17 +15,21 @@ import os, pickle
 import openmm
 import openmm.app as app
 from openmm import unit, Vec3
-from usr.utils import get_specific_data, convert_to_1d_float_array, reconstruct_from_metadata, compute_flat_length
+from torch import log_
+from usr.utils_multi_traj import get_specific_data, convert_to_1d_float_array, reconstruct_from_metadata, compute_flat_length
 from usr.initial_pyg.functions.config import ConfigLoader
 import copy
 import random
-from usr.utils import Molecule
+from usr.utils_multi_traj import Molecule
 import sys
 import periodictable
 # from openmm import Vec3
 import pandas as pd
 from al_setting import AL_SETTING
 from tqdm import tqdm
+from usr.starting_point_pool import init_pool, random_pop_indices
+import csv
+import time
 
 def log_traj_restart(
     rank,
@@ -40,6 +44,41 @@ def log_traj_restart(
         f.write(
             f"{rank},{traj_id},{steps},{energy_patience},{rmsd_patience},{iteration}\n"
         )
+def log_traj_restart_csv(
+    rank,
+    pool_index,
+    steps,
+    energy_patience,
+    rmsd_patience,
+    iteration,
+    temperature,
+    logfile="traj_restart.csv",
+):
+    file_exists = os.path.exists(logfile)
+
+    with open(logfile, "a", newline="") as f:
+        writer = csv.writer(f)
+
+        if not file_exists:
+            writer.writerow([
+                "rank",
+                "pool_index",
+                "steps",
+                "energy_patience",
+                "rmsd_patience",
+                "iteration",
+                "temperature_K"
+            ])
+
+        writer.writerow([
+            rank,
+            pool_index,
+            steps,
+            energy_patience,
+            rmsd_patience,
+            iteration,
+            temperature
+        ])
 
 def reset_simulation_state(simulation, coords_ang, temperature):
 
@@ -88,7 +127,9 @@ class UserGene(object):
         self.metadata = config['metadata']
         self.patience_threshold = config['patience_threshold']
         self.prefix = config['prefix']
+        self.load_model = config['load_model']
         self.num_atom = config['num_atom']
+        self.starting_pool_update = config['starting_pool_update']
         self.stop = False
         pred_procs = AL_SETTING["pred_process"]
         self.gene_procs = AL_SETTING["gene_process"]
@@ -121,7 +162,18 @@ class UserGene(object):
         self.rng = random.Random(self.rank) # per-generator RNG
         self.iteration_tracker = 0
         self.restart_counter = 0
-        self.traj_temperature = [self.temperature] * self.num_traj_per_gene
+        self.pool_index_per_traj = [None] * self.num_traj_per_gene
+        if self.load_model == True:
+            self.traj_temperature = [self.rng.uniform(self.T_low.value_in_unit(unit.kelvin), self.T_high.value_in_unit(unit.kelvin)) * unit.kelvin for _ in range(self.num_traj_per_gene)]
+        else:
+            self.traj_temperature = [self.temperature] * self.num_traj_per_gene
+        if self.starting_pool_update:
+            # raise NotImplementedError("starting_pool_update option is not implemented yet.")
+            self.pool_path = init_pool(self.path, self.result_dir)
+        self.statr_time = time.time()
+            
+
+        
 
     
     def set_up_simulations(self, data_batch):
@@ -151,11 +203,22 @@ class UserGene(object):
                 print(f"❌ Failed to set up simulation #{idx}: {e}")
                 continue
         return simulators
+    
     def read_in_data(self, counter):
         print(f'Rank {self.rank} reading in data number {counter} from {self.path} ')
         return get_specific_data(self.path, counter)
     def get_lenth(self):
         return sum(1 for _ in open(self.path)) -1
+    
+    def dynamic_starting_pool_index(self):
+        raise NotImplementedError("dynamic_starting_pool_index option is not implemented yet.")
+    def read_in_data_from_pool(self, counter):
+        print(f'Rank {self.rank} reading in data number {counter} from starting pool csv ')
+        return get_specific_data(self.pool_path, counter)
+
+
+
+
 
     def set_up(self, data):
         atom_numbers = data[1]
@@ -249,19 +312,34 @@ class UserGene(object):
         """
 
         # pick a new geometry from initial dataset
-        idx = self.rng.randint(0, self.init_length - 1)
-        geom = self.read_in_data(counter=idx)
+        if self.starting_pool_update:
+            idx = random_pop_indices(
+                results_dir=self.result_dir,
+                rank=self.rank,
+                k=1,
+                seed=self.rank,
+            )
+            geom = self.read_in_data_from_pool(counter=idx[0])
+            pool_idx = idx[0]
+        else:
+            idx = self.rng.randint(0, self.init_length - 1)
+            geom = self.read_in_data(counter=idx)
+            pool_idx = idx
+
+        self.pool_index_per_traj[i] = pool_idx
         coords_ang = np.asarray(geom[0], dtype=float)
 
         traj_state = self.trajs[i]
         simulation = traj_state["simulation"]
         force      = traj_state["force"]
-        if self.current_iteration < 20:
-            T = self.T_low
-        elif self.current_iteration < 40:
-            T = 500 * unit.kelvin
+        if self.load_model == True:
+            # assign random structure near the original one
+            T = self.rng.uniform(self.T_low.value_in_unit(unit.kelvin), self.T_high.value_in_unit(unit.kelvin)) * unit.kelvin
+        # elif self.current_iteration < 20:
+        #     T = self.T_low
         else:
-            T = 700 * unit.kelvin
+            T = self.rng.uniform(self.T_low.value_in_unit(unit.kelvin), self.T_high.value_in_unit(unit.kelvin)) * unit.kelvin
+            print(f"Rank {self.rank} traj {i}: restarting at random temperature {T} K")
 
         self.traj_temperature[i] = T
         # reset simulation state IN PLACE
@@ -302,14 +380,26 @@ class UserGene(object):
             sent = 0
             print(f"initializing data, PICKED randomly from initial data, "
                 f"{self.num_traj_per_gene} trajectories")
-            random.seed(self.rank) 
-            indices = random.sample(range(0, self.init_length), self.num_traj_per_gene)
-            data_batch = [self.read_in_data(counter=i) for i in indices]
+            if self. starting_pool_update:
+                # raise NotImplementedError("starting_pool_update option is not implemented yet.")
+                indices = random_pop_indices(
+                    results_dir=self.result_dir,
+                    rank=self.rank,
+                    k=self.num_traj_per_gene,
+                    seed=self.rank,
+                )
+                data_batch = [self.read_in_data_from_pool(counter=i) for i in indices]
+            else:
+                random.seed(self.rank) 
+                indices = random.sample(range(0, self.init_length), self.num_traj_per_gene)
+                data_batch = [self.read_in_data(counter=i) for i in indices]
 
             sims = self.set_up_simulations(data_batch)
+            
 
             for j, ((simulation, force), geom) in enumerate(zip(sims, data_batch)):
                 # store per-trajectory state
+                self.pool_index_per_traj[j] = indices[j]
                 self.trajs[j] = {
                     "simulation": simulation,
                     "force": force,
@@ -359,9 +449,10 @@ class UserGene(object):
             )
 
             # print every 1000 steps for this trajectory
-            if self.starting_point[i] % 1000 == 0 and self.starting_point[i] != 0:
+            if self.starting_point[i] % 10000 == 0 and self.starting_point[i] != 0:
+                step_per_sec_i = self.starting_point[i] / (time.time() - self.statr_time)
                 print(f"Rank {self.rank}, traj {i}: MD has run for "
-                    f"{self.starting_point[i]} steps")
+                    f"{self.starting_point[i]} steps, time elapsed: {step_per_sec_i} steps/s, ")
 
             # check patience / max steps for THIS trajectory
             if (self.starting_point[i] >= 100000 or
@@ -374,14 +465,24 @@ class UserGene(object):
                         rmsd patience = {geometry[-2][1]},
                         model iteration = {iteration_marker},
                         restarting trajectory {i}""")
-                log_traj_restart(
+                # log_traj_restart(
+                #     rank=self.rank,
+                #     traj_id=i,
+                #     steps={self.starting_point[i]},
+                #     energy_patience={geometry[-2][0]},
+                #     rmsd_patience={geometry[-2][1]},
+                #     iteration=iteration_marker,
+                #     logfile=f"results/{self.prefix}/traj_restart_{self.rank}.log",
+                # )
+                log_traj_restart_csv(
                     rank=self.rank,
-                    traj_id=i,
-                    steps={self.starting_point[i]},
-                    energy_patience={geometry[-2][0]},
-                    rmsd_patience={geometry[-2][1]},
+                    pool_index=self.pool_index_per_traj[i],
+                    steps=self.starting_point[i],
+                    energy_patience=geometry[-2][0],
+                    rmsd_patience=geometry[-2][1],
                     iteration=iteration_marker,
-                    logfile=f"results/{self.prefix}/traj_restart_{self.rank}.log",
+                    temperature=self.traj_temperature[i].value_in_unit(unit.kelvin),
+                    logfile=f"results/{self.prefix}/traj_restart_{self.rank}.csv",
                 )
 
                 # restart only this trajectory
@@ -428,12 +529,17 @@ class UserGene(object):
             stop = True
 
         if self.num_generate % 10000 == 0:
-            print(f'{self.num_generate} Points are generated')
+            step_per_second = self.num_generate / (time.time() - self.statr_time)
+            print(f'{self.num_generate} Points in total are generated time elapsed: {step_per_second} steps/s')
+
 
         data_to_pred =  np.concatenate(data_to_pl, axis=0)
 
         if len(self.history[-1]) % 100000 == 0:
             self.save_progress()
+
+        if stop:
+            print(f"Generator {self.rank} is sending stop signal.")
 
         return stop, data_to_pred
 

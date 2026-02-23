@@ -1,8 +1,8 @@
+import copy
 import pickle
 
 import sys
-
-
+import h5py
 import os
 current_path = os.getcwd()
 import re
@@ -21,6 +21,7 @@ import tempfile
 import multiprocessing as mp
 from contextlib import contextmanager
 import numpy as np
+from tqdm import tqdm
 @contextmanager
 def set_threads(threads: int):
     # Tell OpenMP/BLAS libraries how many threads to use inside this process
@@ -99,80 +100,102 @@ def run_calc(atoms, pos, charge, dft):
         return None, None
 
 def read_traj(traj_file):
-    """Read a trajectory from a file."""
-    with open(traj_file, "rb") as f:
-        traj = pickle.load(f)
-    return traj
-def get_energy_list(traj):
-    """Get the energy list from a trajectory."""
-    return [float(frame[-3]) for frame in traj]
-def get_coord_list(traj):
-    """Get the coordinate list from a trajectory."""
-    return [frame[0] for frame in traj]
-def _valid_xy(y, x_step=1):
-    """Return x,y with None/NaN filtered out. x grows by x_step."""
+    """
+    Open HDF5 trajectory file.
+    Returns (h5_file_handle, list_of_traj_groups)
+    """
+    h5f = h5py.File(traj_file, "r")
+    traj_groups = [h5f[k] for k in h5f.keys() if k.startswith("traj_")]
+    return h5f, traj_groups
+
+
+def get_energy_list(traj_grp):
+    """
+    Return predicted energy list from HDF5 trajectory.
+    """
+    return traj_grp["pred_energy"][:]   # NumPy array (steps,)
+
+def get_coord_list(traj_grp):
+    """
+    Return coordinates from HDF5 trajectory.
+    """
+    return traj_grp["coords"][:]   # NumPy array (steps, N, 3)
+
+def energy_vs_md_step(energy, md_step):
     xs, ys = [], []
-    for k, v in enumerate(y):
-        if v is not None and not (isinstance(v, float) and (v != v)):  # filter None/NaN
-            xs.append(k * x_step)
-            ys.append(v)
+    for e, s in zip(energy, md_step):
+        if e is not None and not (isinstance(e, float) and np.isnan(e)):
+            xs.append(s)
+            ys.append(e)
     return xs, ys
 
-def plot_energy_trend(energy_trajs, prefix, traj_name, num_trajs):
+def plot_energy_trend(energy_trajs, md_steps, prefix, traj_name, num_trajs):
     plt.figure(figsize=(8, 5))
-    for i, energy_list in enumerate(energy_trajs):
-        xs, ys = _valid_xy(energy_list, x_step=1)
+    for i, (energy, steps) in enumerate(zip(energy_trajs, md_steps)):
+        xs, ys = energy_vs_md_step(energy, steps)
         plt.plot(xs, ys, label=f"Traj {i+1}", alpha=0.7)
-    plt.axhline(y=0, color='red', linestyle='--', linewidth=1.5, label='Optimized Energy')
-    plt.xlabel("Time Step")
-    plt.ylabel("Predicted Energy - Optimized Energy (eV)")
-    plt.title("Energy Change Trend Over Time for random Trajectories")
+
+    plt.axhline(y=0, color="red", linestyle="--", linewidth=1.5)
+    plt.xlabel("MD step")
+    plt.ylabel("Predicted Energy − Optimized Energy (eV)")
+    plt.title("Predicted energy along MD")
     plt.legend()
     plt.grid(True)
     plt.savefig(f"{prefix}/{traj_name}/pred_energy_traj_{num_trajs}.png")
     plt.close()
 
-def plot_dft_energy_trend(energy_trajs, prefix, traj_name, num_trajs, interval=500):
+def plot_dft_energy_trend(dft_energy_trajs, md_steps_dft, prefix, traj_name, num_trajs):
     plt.figure(figsize=(8, 5))
-    for i, energy_list in enumerate(energy_trajs):
-        xs, ys = _valid_xy(energy_list, x_step=interval)
-        plt.plot(xs, ys, label=f"Traj {i+1}", alpha=0.7)
-    plt.axhline(y=0, color='red', linestyle='--', linewidth=1.5, label='Optimized Energy')
-    plt.xlabel("Time Step")
-    plt.ylabel("DFT Energy - Optimized Energy (eV)")
-    plt.title("Energy Change Trend Over Time for random Trajectories (DFT)")
+    for i, (energy, steps) in enumerate(zip(dft_energy_trajs, md_steps_dft)):
+        xs, ys = energy_vs_md_step(energy, steps)
+        plt.plot(xs, ys, "o-", label=f"Traj {i+1}", alpha=0.7)
+
+    plt.axhline(y=0, color="red", linestyle="--", linewidth=1.5)
+    plt.xlabel("MD step")
+    plt.ylabel("DFT Energy − Optimized Energy (eV)")
+    plt.title("DFT energy along MD")
     plt.legend()
     plt.grid(True)
     plt.savefig(f"{prefix}/{traj_name}/dft_energy_traj_{num_trajs}.png")
     plt.close()
 
-def plot_combined_energy_trend(pred_energy_trajs, dft_energy_trajs, prefix, traj_name, num_trajs, interval=500):
+
+def plot_combined_energy_trend(
+    pred_energy_trajs,
+    pred_md_steps,
+    dft_energy_trajs,
+    dft_md_steps,
+    prefix,
+    traj_name,
+    num_trajs,
+):
     fig, axs = plt.subplots(1, 2, figsize=(14, 5), sharey=True)
 
-    axs[0].set_title("Predicted Energy Change Trend")
-    for i, energy_list in enumerate(pred_energy_trajs):
-        xs, ys = _valid_xy(energy_list, x_step=1)
+    # ML energies
+    axs[0].set_title("Predicted Energy")
+    for i, (energy, steps) in enumerate(zip(pred_energy_trajs, pred_md_steps)):
+        xs, ys = energy_vs_md_step(energy, steps)
         axs[0].plot(xs, ys, label=f"Traj {i+1}", alpha=0.7)
-    axs[0].axhline(y=0, color='red', linestyle='--', linewidth=1.5, label='Optimized Energy')
-    axs[0].set_xlabel("Time Step")
-    axs[0].set_ylabel("Energy - Optimized (eV)")
-    axs[0].grid(True)
+    axs[0].axhline(y=0, color="red", linestyle="--")
+    axs[0].set_xlabel("MD step")
+    axs[0].set_ylabel("Energy − Optimized (eV)")
     axs[0].legend()
+    axs[0].grid(True)
 
-    axs[1].set_title("DFT Energy Change Trend")
-    for i, energy_list in enumerate(dft_energy_trajs):
-        xs, ys = _valid_xy(energy_list, x_step=interval)
-        axs[1].plot(xs, ys, label=f"Traj {i+1}", alpha=0.7)
-    axs[1].axhline(y=0, color='red', linestyle='--', linewidth=1.5, label='Optimized Energy')
-    axs[1].set_xlabel(f"Time Step (Interval = {interval})")
-    axs[1].grid(True)
+    # DFT energies
+    axs[1].set_title("DFT Energy")
+    for i, (energy, steps) in enumerate(zip(dft_energy_trajs, dft_md_steps)):
+        xs, ys = energy_vs_md_step(energy, steps)
+        axs[1].plot(xs, ys, "o-", label=f"Traj {i+1}", alpha=0.7)
+    axs[1].axhline(y=0, color="red", linestyle="--")
+    axs[1].set_xlabel("MD step")
     axs[1].legend()
+    axs[1].grid(True)
 
     plt.tight_layout()
-    combined_path = f"{prefix}/{traj_name}/combined_energy_trend.png"
-    plt.savefig(combined_path)
+    plt.savefig(f"{prefix}/{traj_name}/combined_energy_trend.png")
     plt.close()
-    print(f"✅ Combined energy trend plot saved in: {combined_path}")
+
 
 def read_optimimal_energy(prefix):
     print(f"Reading optimized energy from {prefix}")
@@ -217,10 +240,10 @@ def _one_dft_indexed(t):
         E, F = run_calc(atoms, coords, charge, use_dft)
         return idx, E, F
 
-def get_dft_energy_parallel(coord_traj, atoms, charge, interval, n_jobs=4, threads_per_job=4):
+def get_dft_energy_parallel(coord_traj, atoms, charge, n_jobs=4, threads_per_job=4):
     """Evaluate DFT every `interval` frames in parallel."""
     # pick frames
-    frames = list(range(0, len(coord_traj), interval))
+    frames = range(len(coord_traj))
 
     # restore original order (imap_unordered returns arbitrary order)
     # safer: re-run with enumerate index
@@ -231,7 +254,12 @@ def get_dft_energy_parallel(coord_traj, atoms, charge, interval, n_jobs=4, threa
     energies = [None]*len(frames)
     forces   = [None]*len(frames)
     with mp.get_context("spawn").Pool(processes=n_jobs) as pool:
-        for idx, E, F in pool.imap_unordered(_one_dft_indexed, tasks2, chunksize=1):
+        for idx, E, F in tqdm(
+            pool.imap_unordered(_one_dft_indexed, tasks2, chunksize=1),
+            total=len(tasks2),
+            desc="DFT calculations",
+            unit="calc",
+        ):
             energies[idx] = E
             forces[idx]   = F
 
@@ -239,6 +267,20 @@ def get_dft_energy_parallel(coord_traj, atoms, charge, interval, n_jobs=4, threa
 def get_label_list(traj):
     """Get the label list from a trajectory."""
     return [frame[-2] for frame in traj]
+def select_dft_frames(coords, steps, interval, include_first=True, include_last=True):
+    steps = np.asarray(steps)
+
+    mask = (steps % interval == 0)  # includes 0, interval, 2*interval, ...
+
+    if include_first:
+        mask |= (steps == steps.min())  # step 0
+    if include_last:
+        mask |= (steps == steps.max())  # step 99 in your case
+
+    idx = np.where(mask)[0]
+    return coords[idx], steps[idx]
+
+
 
 if __name__ == '__main__':
 
@@ -269,27 +311,35 @@ if __name__ == '__main__':
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     project_name = args.project
-    a = read_traj(f"{prefix}/{project_name}/{traj_name}_traj.pkl")
-    all_traj = len(a)
+    traj_file = f"{prefix}/{project_name}/{traj_name}_traj.h5"
+
+    h5f, traj_groups = read_traj(traj_file)
+
+    all_traj = len(traj_groups)
     print(f"Total number of trajectories: {all_traj}")
     print("Load the trajectories...")
-    energy_trajs = [get_energy_list(traj) for traj in a]
-    coord_trajs = [get_coord_list(traj) for traj in a]
+
+    energy_trajs = [traj_grp["pred_energy"][:] for traj_grp in traj_groups]
+    coord_trajs  = [traj_grp["coords"][:] for traj_grp in traj_groups]
+    md_steps     = [traj_grp["md_step"][:] for traj_grp in traj_groups]
+
+
+    labels = h5f["labels"][:]   # shape (n_trajs,)
+
+
     # sample from trajs
     # sample from trajs
-    label_list = [get_label_list(traj) for traj in a]
-    print("label list example:", label_list[0][0])
-    has_labels = any(any(label is not None for label in labels) for labels in label_list)
+
+    print("label list example:", labels[0])
+    has_labels = any(label is not None for label in labels)
+
     print("Sampling the trajectories by label...")
 
-    n_per_label = 5  # <-- number of trajectories per label
+    n_per_label = 1  # <-- number of trajectories per label
 
     # Step 1: extract one representative label per trajectory
-    traj_labels = []
-    for labels in label_list:
-        valid = [l for l in labels if l is not None]
-        traj_labels.append(valid[0] if valid else None)
-
+    traj_labels = copy.deepcopy(labels)
+    
     traj_labels = np.array(traj_labels)
 
     # Step 2: group trajectory indices by label
@@ -320,12 +370,28 @@ if __name__ == '__main__':
 
     print(f"✅ Selected {len(selected_indices)} trajectories in total")
     print(f"✅ Selected indices: {selected_indices}")
+    # ---- save selected indices ----
+    sel_idx_path = f"{prefix}/{project_name}/selected_indices"
 
-    # Select the sampled trajectories: Selected indices: [20,3,0,23,8]
+
+    # binary (fast, exact)
+    np.save(f"{sel_idx_path}.npy", np.array(selected_indices, dtype=int))
+
+    # human-readable (for logs / debugging)
+    with open(f"{sel_idx_path}.txt", "w") as f:
+        for i in selected_indices:
+            f.write(f"{i}\n")
+
+    print(f"💾 Saved selected indices to:")
+    print(f"   {sel_idx_path}.npy")
+    print(f"   {sel_idx_path}.txt")
+
     
     energy_trajs = [energy_trajs[i] for i in selected_indices]
     
     coord_trajs = [coord_trajs[i] for i in selected_indices]
+    md_steps = [md_steps[i] for i in selected_indices]
+
     # energy_trajs = random.sample(energy_trajs, 150)
     # get the energy of the optimized structure
     optimized_energy = read_optimimal_energy(prefix)
@@ -343,22 +409,60 @@ if __name__ == '__main__':
     dft_energy_list = []   # to store DFT energies
     dft_force_list = []    # to store DFT forces
 
-    # Loop over each selected trajectory
-    for coord_traj in coord_trajs:
-        frames_i, E_i, F_i = get_dft_energy_parallel(
-            coord_traj,
-            atoms,
-            args.charge,
-            dft_interval,
-            n_jobs=args.n_jobs,
-            threads_per_job=args.threads_per_job,
-        )
-        dft_frames_list.append(frames_i)
-        dft_energy_list.append(E_i)
-        dft_force_list.append(F_i)
 
+    coord_trajs_dft = []
+    md_steps_dft = []
 
-    print("✅ DFT calculations finished.")
+    for coords, steps in zip(coord_trajs, md_steps):
+        coords_i, steps_i = select_dft_frames(coords, steps, dft_interval)
+        coord_trajs_dft.append(coords_i)
+        md_steps_dft.append(steps_i)
+
+    # for coord_traj in coord_trajs_dft:
+    #     _, E_i, F_i = get_dft_energy_parallel(
+    #         coord_traj,
+    #         atoms,
+    #         args.charge,
+    #         n_jobs=args.n_jobs,
+    #         threads_per_job=args.threads_per_job,
+    #     )
+    #     dft_energy_list.append(E_i)
+    #     dft_force_list.append(F_i)
+    tasks = []
+    task_meta = []  # (traj_idx, frame_idx)
+
+    for ti, coord_traj in enumerate(coord_trajs_dft):
+        for fi, coords in enumerate(coord_traj):
+            tasks.append((len(task_meta), atoms, coords, args.charge, True, args.threads_per_job))
+            task_meta.append((ti, fi))
+    total_dft = len(tasks)
+    print(f"🔬 Total DFT calculations to run: {total_dft}")
+    dft_energy_list = [
+        [None] * len(coord_trajs_dft[ti])
+        for ti in range(len(coord_trajs_dft))
+    ]
+
+    dft_force_list = [
+        [None] * len(coord_trajs_dft[ti])
+        for ti in range(len(coord_trajs_dft))
+    ]
+    with mp.get_context("spawn").Pool(processes=args.n_jobs) as pool:
+        for idx, E, F in tqdm(
+            pool.imap_unordered(_one_dft_indexed, tasks, chunksize=1),
+            total=len(tasks),
+            desc="DFT calculations",
+            unit="calc",
+            dynamic_ncols=True,
+        ):
+            # Recover trajectory + frame index
+            ti, fi = task_meta[idx]
+
+            # Store results in the preallocated lists
+            dft_energy_list[ti][fi] = E
+            dft_force_list[ti][fi] = F
+
+    print("✅ All DFT calculations finished.")
+
     #print(dft_energy_list)
     # Save the DFT energy list
     with open(f"{prefix}/{traj_name}/dft_energy_list.pkl", "wb") as f:
@@ -374,17 +478,33 @@ if __name__ == '__main__':
         ]
         for energy in dft_energy_list
     ]
-    plot_energy_trend(energy_trajs, prefix, traj_name, num_of_selected_trajs)
-    plot_dft_energy_trend(dft_energy_list, prefix, traj_name, num_of_selected_trajs)
-    plot_combined_energy_trend(
-    pred_energy_trajs=energy_trajs,
-    dft_energy_trajs=dft_energy_list,
-    prefix=prefix,
-    traj_name=traj_name,
-    num_trajs=num_of_selected_trajs,
-    interval=dft_interval
-)
+    energy_trajs_sel = copy.deepcopy(energy_trajs)
+    md_steps_sel     = copy.deepcopy(md_steps)
+    plot_energy_trend(
+        energy_trajs_sel,
+        md_steps_sel,
+        prefix,
+        traj_name,
+        num_of_selected_trajs,
+    )
 
+    plot_dft_energy_trend(
+        dft_energy_list,
+        md_steps_dft,
+        prefix,
+        traj_name,
+        num_of_selected_trajs,
+    )
+
+    plot_combined_energy_trend(
+        energy_trajs_sel,
+        md_steps_sel,
+        dft_energy_list,
+        md_steps_dft,
+        prefix,
+        traj_name,
+        num_of_selected_trajs,
+    )
     print(f"✅ Energy trend plot saved in: {output_dir}/pred_energy_traj.png")
     print(f"✅ DFT energy trend plot saved in: {output_dir}/dft_energy_traj.png")
     print(f"✅ combined prediction and DFT energy trend plot saved in: {output_dir}/combined_energy_trend.png")

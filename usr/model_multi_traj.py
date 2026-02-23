@@ -6,19 +6,24 @@ Created on Tue Jul  4 23:53:03 2023
 @author: chen
 """
 from copy import deepcopy
+import gc
 import logging
+from math import e
 import psutil
 import numpy as np
 import torch, time, os, json
 from torch import nn
-from usr.utils import  shuffle_dataset, save_data, get_full_data_init, compute_flat_length
+from PAL_MACE.usr import starting_point_pool
+from usr.utils_multi_traj import  shuffle_dataset, save_data, get_full_data_init, compute_flat_length
 from usr.initial_pyg.functions.config import ConfigLoader
 from usr.initial_pyg.evaluation import evaluate
 import sys
 import pandas as pd
+from ast import literal_eval
+from ase.data import chemical_symbols
 
 import matplotlib.pyplot as plt
-from usr.utils import convert_to_data_object, reconstruct_from_metadata
+from usr.utils_multi_traj import convert_to_data_object, reconstruct_from_metadata
 import glob
 import random
 import sys
@@ -59,7 +64,12 @@ import ast
 from mace.tools.utils import AtomicNumberTable
 from torch.utils.data import ConcatDataset
 from al_setting import AL_SETTING
-
+def norm_from_serialized_force(x):
+    if isinstance(x, str):
+        arr = np.array(literal_eval(x))
+    else:
+        arr = np.array(x)
+    return np.linalg.norm(arr)
 def list_cuda_devices():
     if torch.cuda.is_available():
         print("Available CUDA devices:")
@@ -68,6 +78,18 @@ def list_cuda_devices():
     else:
         print("❌ No CUDA devices available.")
 
+
+
+def convert_atoms_column(df):
+    def convert(atom_entry):
+        # If it's a string, parse it
+        if isinstance(atom_entry, str):
+            atom_entry = ast.literal_eval(atom_entry)
+
+        return [chemical_symbols[int(z)] for z in atom_entry]
+
+    df["atoms"] = df["atoms"].apply(convert)
+    return df
 
 def reset_logging():
     """Reset logging to prevent duplicate messages in loops."""
@@ -230,7 +252,7 @@ class UserModel(object):
         self.iter_log = True
         self.num_retraining_instances = 0 # count how many times retraining happened for retraining
         self.counter = 0 # count how many times retraining happened for predictor
-        loss = "huber_energy_forces"
+        # loss = "huber_energy_forces"
 
         pred_procs = AL_SETTING["pred_process"]
         orcl_procs = AL_SETTING["orcl_process"]
@@ -246,6 +268,7 @@ class UserModel(object):
             number = self.rank - pred_start
         elif mode == "train":
             ml_start = 2 + pred_procs + orcl_procs + gene_procs
+            self.ml_start = ml_start
             number = self.rank - ml_start
         else:
             raise ValueError(f"Unknown mode: {mode}")
@@ -308,6 +331,18 @@ class UserModel(object):
             PATH = f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
         else:
             PATH = f'usr/initial_pyg/results/charge_embedding/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
+        self.load_model = bool(self.config['load_model'])
+        self.load_dataset = bool(self.config['load_dataset'])
+        if self.load_model:
+            
+            
+            if self.mode == "train":
+                PATH = f"results/{self.prefix}/model_{self.rank}.pt"
+                print(f"[ML KERNEL]: Loading model from last AL run under {PATH}...")
+            else:
+                corresponding_ml_rank = self.rank + gene_procs + orcl_procs + pred_procs
+                PATH = f"results/{self.prefix}/model_{corresponding_ml_rank}.pt"
+                print(f"[Prediction process]: Loading model from last AL run under {PATH}...")
         print(f"✅ [Rank {self.rank}] ({mode}) → Loaded model {PATH}")
         self.model = torch.load(PATH, map_location=self.device)
         self.model = self.model.to(self.device)
@@ -319,44 +354,72 @@ class UserModel(object):
         for buffer_name, buffer in self.model.named_buffers():
             if isinstance(buffer, torch.Tensor):
                 setattr(self.model, buffer_name, buffer.to(dtype=torch.get_default_dtype(), device=self.device))
-
-
+        if self.load_model and os.path.exists("al_state.json"):
+            print(f"Rank {self.rank}: Loading AL state from previous run...")
+            state = json.load(open("al_state.json"))
+            self.pat_old = state["pat_old"]
+            self.pat_new = state["pat_new"]
+            self.best_mae = state["best_mae"]
+            self.num_retraining_instances = state["num_retraining_instances"]
+            self.counter = state["num_retraining_instances"]
+        elif self.load_model and (not os.path.exists("al_state.json")):
+            print("Rank {self.rank}: No previous AL state found, but load_model is True. Starting fresh.")
+            self.pat_old = 0
+            self.pat_new = 0
+            self.best_mae = {
+                                "init_e": float("inf"),
+                                "init_f": float("inf"),
+                                "added_e": float("inf"),
+                                "added_f": float("inf"),
+                            }
+            self.num_retraining_instances = 0
+            self.counter = 0
+        else:
+            self.num_retraining_instances = 0
+            self.counter = 0
+            print(f"Rank {self.rank}: No previous AL state found, starting fresh.")
         if self.mode == "predict":
             print('predicting', self.rank)
             # self.para_keys = list(self.model.state_dict().keys())
-            self.batch_size = 16
+            self.batch_size = 128
         
         else:
             self.start_time = time.time()
-            
-            print('training', self.rank)
-            if self.config["full_dataset"] and self.add_all_cluster:
-                print('full dataset')
-                init_data = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv')
-                self.val = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv')
-                print(f'loading initial dataset that contains all cluster data')
-                print('initial dataset size', len(init_data))
-                print('validation dataset size', len(self.val))
-                print("Finished loading initial dataset")
-            elif self.config["full_dataset"] and (not self.add_all_cluster):
-                print('full dataset but not all cluster')
-                print(f'loading initial dataset that only contains {data_type} data')
-                init_data = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv', source = data_type)
-                self.val = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv', source= data_type)
-                print('initial dataset size', len(init_data))
-                print('validation dataset size', len(self.val))
-                print("Finished loading initial dataset")
-            elif not self.config['full_dataset'] :
-                print('single cluster run')
-                init_data = get_full_data_init(f'usr/initial_pyg/samples/{self.prefix}/sample_{number}/train.csv')
-                self.val = get_full_data_init(f'usr/initial_pyg/samples/{self.prefix}/sample_{number}/val.csv')
-            random.shuffle(init_data)
+            self.starting_pool_update = bool(self.config['starting_pool_update'])
+            if not self.load_dataset:
+                print('training', self.rank)
+                if self.config["full_dataset"] and self.add_all_cluster:
+                    print('full dataset')
+                    init_data = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv')
+                    self.val = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv')
+                    print(f'loading initial dataset that contains all cluster data')
+                    print('initial dataset size', len(init_data))
+                    print('validation dataset size', len(self.val))
+                    print("Finished loading initial dataset")
+                elif self.config["full_dataset"] and (not self.add_all_cluster):
+                    print('full dataset but not all cluster')
+                    print(f'loading initial dataset that only contains {data_type} data')
+                    init_data = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv', source = data_type)
+                    self.val = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv', source= data_type)
+                    print('initial dataset size', len(init_data))
+                    print('validation dataset size', len(self.val))
+                    print("Finished loading initial dataset")
+                elif not self.config['full_dataset'] :
+                    print('single cluster run')
+                    init_data = get_full_data_init(f'usr/initial_pyg/samples/{self.prefix}/sample_{number}/train.csv')
+                    self.val = get_full_data_init(f'usr/initial_pyg/samples/{self.prefix}/sample_{number}/val.csv')
+                random.shuffle(init_data)
 
-            self.train = init_data
-            
+                self.train = init_data
+            else:
+                print(f"Loading dataset from last AL run under {self.result_dir}/{self.rank}_added_data.csv...")
+
+                self.train = get_full_data_init(f"{self.result_dir}/{self.rank}_added_data.csv", source="train", source_column="type" )
+                self.val = get_full_data_init(f"{self.result_dir}/{self.rank}_added_data.csv", source="val", source_column="type" )
+                print(f"Finished loading dataset with {len(self.train)} training points and {len(self.val)} validation points.")
+                
 
             self.val_split = 0.2
-            
             self.history = {
                 "MSE_train": [],
                 "MSE_val": [],
@@ -375,19 +438,24 @@ class UserModel(object):
                 init_tol=2.0/100,        # ≤2% worse on init = acceptable noise
                 init_hi=5.0/100          # >5% worse on init = "worse a lot"
             )
-            self.pat_old = 0
-            self.pat_new = 0
-            self.best_mae = {
-                "init_e": float("inf"),
-                "init_f": float("inf"),
-                "added_e": float("inf"),
-                "added_f": float("inf"),
-            }
+            if not self.load_model:
+                self.pat_old = 0
+                self.pat_new = 0
+                self.best_mae = {
+                    "init_e": float("inf"),
+                    "init_f": float("inf"),
+                    "added_e": float("inf"),
+                    "added_f": float("inf"),
+                }
 
-            self.init_val_size = len(self.val)
-            self.init_train_size = len(self.train)
-
-
+                self.init_val_size = len(self.val)
+                self.init_train_size = len(self.train)
+            elif self.load_model and os.path.exists("al_state.json"):
+                self.init_train_size = state["init_train_size"]
+                self.init_val_size = state["init_val_size"]
+            else:
+                self.init_train_size = len(self.train)
+                self.init_val_size = len(self.val)
 
 
         self.para_keys = list(self.model.state_dict().keys())
@@ -395,7 +463,6 @@ class UserModel(object):
         self.retrain_patience = 10
         self.best_val_loss = float('inf')
         self.patience_counter = 0
-        self.extend_val = False
         
 
 
@@ -407,97 +474,91 @@ class UserModel(object):
     ##########################################        
             
     def predict(self, list_data_to_pred):
-        """
-        Correct handling of two formats:
-
-        Format A:
-            One long 1-D array of length = T * (1 + flat_len)
-            Meaning: [sent0, flat0..., sent1, flat1..., ...]
-            → Add iteration number to output
-
-        Format B:
-            A list of arrays, each already one flattened trajectory
-            → No iter number, no sent values
-        """
 
         T = self.config["num_traj_per_gene"]
         flat_len = self.cluster_data_length
         per_traj_len = 1 + flat_len
         per_gen_len = T * per_traj_len
 
-        final_outputs = []
+        # ---- Step 1: collect all flats ----
+        item_info = []       # (format_type, n_flats)
+        all_flats = []       # all flattened geometries
+        flat_owner = []      # which original item each flat belongs to
 
-        for item in list_data_to_pred:
+        for item_idx, item in enumerate(list_data_to_pred):
 
             arr = np.asarray(item, dtype=float)
 
-            # ------------------------------------------------------
-            # CASE 1: TRUE FORMAT A (one long flat packet)
-            # ------------------------------------------------------
+            # ---- Format A ----
             if arr.ndim == 1 and arr.size == per_gen_len:
                 format_type = "A"
-
                 blocks = arr.reshape(T, per_traj_len)
-
-                sent_list = blocks[:, 0].astype(int)
                 flats = [b[1:] for b in blocks]
 
-            # ------------------------------------------------------
-            # CASE 2: EVERYTHING ELSE → FORMAT B
-            # (This is your case based on printed output)
-            # ------------------------------------------------------
+            # ---- Format B ----
             else:
                 format_type = "B"
-
-                # list_data_to_pred contains list of flat trajectories
-                # → interpret directly
                 if arr.ndim == 1:
-                    # input is [flat] not [[flat]]
                     flats = [arr]
                 else:
-                    # already list of arrays
                     flats = [np.asarray(x, dtype=float) for x in item]
 
-                sent_list = [0] * len(flats)
+            item_info.append((format_type, len(flats)))
 
-            # ------------------------------------------------------
-            # RECONSTRUCT METADATA
-            # ------------------------------------------------------
-            traj_recs = [
-                reconstruct_from_metadata(f, self.metadata, rank=f"predict {self.rank}")
-                for f in flats
-            ]
+            for f in flats:
+                all_flats.append(f)
+                flat_owner.append(item_idx)
 
-            data_objects = convert_to_data_object(traj_recs)
-            y_pred, f_pred, _, _ = evaluate(
-                self.model,
-                data_objects,
-                batch_size=self.batch_size,
-                device=self.device
-            )
+        if len(all_flats) == 0:
+            return []
 
-            y_pred = np.asarray(y_pred)
-            f_pred = np.asarray(f_pred)
+        # ---- Step 2: reconstruct ALL at once ----
+        traj_recs = [
+            reconstruct_from_metadata(f, self.metadata, rank=f"predict {self.rank}")
+            for f in all_flats
+        ]
 
-            # ------------------------------------------------------
-            # REASSEMBLE OUTPUT
-            # ------------------------------------------------------
+        data_objects = convert_to_data_object(traj_recs)
+
+        # ---- Step 3: evaluate in batch ----
+        y_pred, f_pred, _, _ = evaluate(
+            self.model,
+            data_objects,
+            batch_size=256,  # now this finally matters
+            device=self.device,
+        )
+
+        y_pred = np.asarray(y_pred, dtype=float).reshape(-1)
+        f_pred = np.asarray(f_pred, dtype=float).reshape(
+            -1, self.config["num_atom"] * 3
+        )
+
+        # ---- Step 4: split back per item ----
+        per_item_energy = [[] for _ in list_data_to_pred]
+        per_item_force = [[] for _ in list_data_to_pred]
+
+        for i, owner in enumerate(flat_owner):
+            per_item_energy[owner].append(y_pred[i])
+            per_item_force[owner].append(f_pred[i])
+
+        final_outputs = []
+
+        for item_idx, (format_type, _) in enumerate(item_info):
+
             pieces = []
 
             if format_type == "A":
                 iter_val = int(self.counter) if self.iter_log else 0
                 pieces.append(np.array([iter_val], float))
 
-            for e, f in zip(y_pred, f_pred):
+            for e, f in zip(per_item_energy[item_idx], per_item_force[item_idx]):
                 pieces.append(np.array([e], float))
                 pieces.append(f.reshape(-1))
 
-            final = np.concatenate([p.reshape(-1) for p in pieces])
-            final_outputs.append(final)
+            final_outputs.append(np.concatenate(pieces))
 
         return final_outputs
 
- 
 
     def update(self, weight_array):
         """
@@ -584,6 +645,7 @@ class UserModel(object):
         for data in datapoints:
             if np.all(data[1] == 0):
                 print('failed to get energy')
+                # print('data:', data)
                 fail += 1
                 continue
             else:
@@ -613,9 +675,11 @@ class UserModel(object):
             self.val.extend(val)
 
             
-        if len(self.train) > 10000:
-            print('10000 training points reached')
+        if len(self.train) > 1000000:
+            print('1000000 training points reached')
             self.stop = True
+        print(f"Rank {self.rank}: add_trainingset done. fail={fail}. train_len={len(self.train)} val_len={len(self.val)}", flush=True)
+
         print(f"Rank {self.rank}: training set size increased")
     
     def retrain(self, req_data):
@@ -754,7 +818,7 @@ class UserModel(object):
         loss_fn = get_loss_fn(args, dipole_only, args.compute_dipole)
         lr_scheduler = LRScheduler(optimizer, self.args)
         self.train_sampler, self.valid_sampler = None, None
-        checkpoint_handler = tools.CheckpointHandler(
+        checkpoint_handler = starting_point_pool.DummyCheckpointHandler(
                         directory=args.checkpoints_dir,
                         tag=tag,
                         keep=args.keep_checkpoints,
@@ -948,6 +1012,18 @@ class UserModel(object):
             PATH = os.path.join(self.result_dir, f"model_{self.rank}.pt")
             torch.save(self.model, PATH)
             print(f"Rank {self.rank}: model saved")
+            al_state = {
+                "num_retraining_instances": self.num_retraining_instances,
+                "counter": self.counter,
+                "pat_old": self.pat_old,
+                "pat_new": self.pat_new,
+                "best_mae": self.best_mae,
+                "init_train_size": self.init_train_size,
+                "init_val_size": self.init_val_size,
+            }
+            with open(f"{self.result_dir}/al_state_{self.rank}.json", "w") as f:
+                json.dump(al_state, f, indent=2)
+
             
         if self.stop == True:
             self.save_dataset(path = os.path.join(self.result_dir, f"{self.rank}_added_data.csv"))
@@ -961,8 +1037,8 @@ class UserModel(object):
         
         train_energy = _to_numeric_energy(train_df['energy'])
         val_energy = _to_numeric_energy(val_df['energy'])
-        train_force = _to_numeric_forces(train_df['force'])
-        val_force = _to_numeric_forces(val_df['force'])
+        train_force = _to_numeric_forces(train_df['forces'])
+        val_force = _to_numeric_forces(val_df['forces'])
         # Predict on train and val sets
         train_en_pred, train_force_pred, _, _ = evaluate(
             self.model,
@@ -1017,10 +1093,43 @@ class UserModel(object):
         train_df["pred_energy"] = train_en_pred
         train_df["pred_forces"] = train_force_pred
         train_df["type"] = ["train"] * len(train_df)
+        train_df["init"] = [1] * self.init_train_size + [0] * (len(train_df) - self.init_train_size)
 
         val_df["pred_energy"] = val_en_pred
         val_df["pred_forces"] = val_force_pred
         val_df["type"] = ["val"] * len(val_df)
+        val_df["init"] = [1] * self.init_val_size + [0] * (len(val_df) - self.init_val_size)
+
+        # add starting point pool
+        if self.starting_pool_update and self.rank == self.ml_start:
+            print(f"rank {self.rank}: updating starting pool with top 10 largest force error data points")
+            # build empty df with coloumn ["atoms", "coordinates", "total_energy", "forces", "charge"]
+            start_pool_df = pd.DataFrame(columns=["atoms", "coordinates", "total_energy", "forces", "charge"])
+            added_df  = train_df[train_df["init"] == 0]
+            force_error = np.abs(
+                added_df["forces"].apply(norm_from_serialized_force)
+                - added_df["pred_forces"].apply(norm_from_serialized_force)
+            )            # gte the top 10 largest force error rows as starting pool
+            top_error_df = added_df.loc[force_error.nlargest(10).index] 
+            # extract atoms, coordinates, total_energy, forces, charge from top_error_df and add to start_pool_df
+            start_pool_df["atoms"] = top_error_df["atoms"]
+            # change atoms number to atom type with periodic table
+            start_pool_df = convert_atoms_column(start_pool_df)
+            start_pool_df["coordinates"] = top_error_df["coordinates"]
+            start_pool_df["total_energy"] = [[i] for i in top_error_df["energy"]]
+            start_pool_df["forces"] = top_error_df["forces"]
+            start_pool_df["charge"] = top_error_df["charge"]
+            file_path = os.path.join(self.result_dir, f"starting_point_pool.csv")
+            write_header = not os.path.exists(file_path)
+
+            start_pool_df.to_csv(
+                file_path,
+                index=False,
+                mode='a',
+                header=write_header
+            )
+            # start_pool_df.to_csv(os.path.join(self.result_dir, f"starting_point_pool.csv"), index=False, mode = 'a')
+
 
         # Plot results
         self.plot(train_df, val_df)
@@ -1106,8 +1215,8 @@ class UserModel(object):
     #     plt.close(fig) 
 
     def plot_force(self, train_df, val_df):
-        tr_true, tr_pred = _flatten_pair(train_df, 'force', 'pred_forces')
-        va_true, va_pred = _flatten_pair(val_df,   'force', 'pred_forces')
+        tr_true, tr_pred = _flatten_pair(train_df, 'forces', 'pred_forces')
+        va_true, va_pred = _flatten_pair(val_df,   'forces', 'pred_forces')
 
         fig, axs = plt.subplots(1, 2, figsize=(12, 5))
 

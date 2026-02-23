@@ -27,7 +27,7 @@ AL_SETTING = {
         "oracle": None,                    # list for the number of tasks per node (length must matches the number of nodes), None for no limit
         "learning": None,                # list for the number of tasks per node (length must matches the number of nodes), None for no limit
     },
-    "orcl_time": 10,                       # Oracle calculation time in seconds
+    "orcl_time": 60,                       # Oracle calculation time in seconds
     "progress_save_interval": 60,          # time interval (in seconds) to save the progress
     "retrain_size": 50,                    # batch size of increment retraining set
     "dynamic_orcale_list": True,           # adjust data points for orcale calculation based on ML predictions everytime when retrainings finish

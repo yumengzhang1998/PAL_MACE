@@ -541,6 +541,7 @@ if __name__ == "__main__":
 
         if not stop_run:
             ml_worker.add_trainingset(dataset_new)
+            print(f"[ML {rank}] add_trainingset() called, very beginning and stop run is {stop_run}", flush=True)
             if adjust_orcale and oracl_data_arrive != -1 and not stop_run and not stop_retrain:
 
                 # receive data size info
@@ -572,6 +573,8 @@ if __name__ == "__main__":
             # start retraining while waiting for new training data
             if not stop_retrain:
                 stop_run_1 = ml_worker.retrain(new_data_req)
+                print(f"[ML {rank}] LOOP TOP stop_retrain={stop_retrain} stop_run={stop_run}", flush=True)
+
 
             # wait for receiving new data points
             # retrainig should stop before or when receiving new data points
@@ -633,6 +636,8 @@ if __name__ == "__main__":
             # add new data points to the training set
             if not stop_run and not stop_retrain and dataset_new:
                 ml_worker.add_trainingset(dataset_new)
+                print(f"[ML {rank}] add_trainingset() called", flush=True)
+
             
             # save the current progress/data/state of machine learning progress
             ml_worker.save_progress(stop_run=False)

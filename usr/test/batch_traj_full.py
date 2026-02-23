@@ -15,7 +15,7 @@ sys.path.append("../initial_pyg")
 import os
 current_path = os.getcwd()
 from openmm import unit
-from utils import Molecule, convert_to_data_object
+from utils_multi_traj import Molecule, convert_to_data_object
 import torch
 import ast
 import periodictable
@@ -39,10 +39,10 @@ def vec3_to_numpy(vec3_list):
     # Convert list of Vec3 to a NumPy array
     return np.array([[v.x, v.y, v.z] for v in vec3_list])
 class Generate_TrajsBatch(object):
-    def __init__(self, data_batch, result_path, model_number, prefix):
+    def __init__(self, data_batch, result_path, model_number, prefix, temperature=298.0):
         # Initialize with a batch of data
         self.data_batch = data_batch
-        self.temperature = 298.0 * unit.kelvin
+        self.temperature = temperature * unit.kelvin
         self.collision_rate = 1.0 / unit.picosecond
         self.timestep = 2.0 * unit.femtoseconds
         self.external_force = openmm.CustomExternalForce('fx * x + fy * y + fz * z')         
@@ -237,13 +237,13 @@ class Generate_TrajsBatch(object):
                     n_active -= 1
 
             # periodic checkpointing of the whole batch (optional)
-            if step % 1000 == 0 and step > 0:
-                print(f"Step {step} completed.")
-                try:
-                    with open(f'{traj_dir}/{self.model_number}_{step}steps_tmp_traj.pkl', 'wb') as f:
-                        pickle.dump(trajs, f)
-                except Exception as e:
-                    print(f"⚠️ Failed to write periodic snapshot at step {step}: {e}")
+            # if step % 1000 == 0 and step > 0:
+            #     print(f"Step {step} completed.")
+            #     try:
+            #         with open(f'{traj_dir}/{self.model_number}_{step}steps_tmp_traj.pkl', 'wb') as f:
+            #             pickle.dump(trajs, f)
+            #     except Exception as e:
+            #         print(f"⚠️ Failed to write periodic snapshot at step {step}: {e}")
 
         return trajs
 
@@ -282,6 +282,8 @@ if __name__ == "__main__":
     parser.add_argument("--steps", type=int, required=True, help="Number of steps to simulate")
     parser.add_argument("--synthesis", type=str, default='False', help="Synthesis or not (e.g., True or False)")
     parser.add_argument("--compact_type", type=str, required=False,default='bi4', help="Compact type bi4 or bi2")
+    parser.add_argument("--T", type=float, default=298.0, help="Temperature in Kelvin")
+
     args = parser.parse_args()
 
 
@@ -293,6 +295,7 @@ if __name__ == "__main__":
     steps = args.steps
     synthesis = args.synthesis
     compact_type = args.compact_type
+    temp = args.T
     # Convert synthesis to boolean
     if synthesis.lower() == 'true':
         synthesis = True
@@ -384,7 +387,7 @@ if __name__ == "__main__":
 
     
 
-    traj_gen = Generate_TrajsBatch(data_batch, result_path, model_number, prefix)
+    traj_gen = Generate_TrajsBatch(data_batch, result_path, model_number, prefix, temperature=temp)
 
     try:
         batch_trajs = traj_gen.generate_batch_trajs_setup_in_batch(steps, chunk_size=200, traj_dir=f'trajs_{prefix}')

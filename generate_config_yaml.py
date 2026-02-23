@@ -204,7 +204,7 @@ def load_prefix_settings(prefix):
 
     return settings
 
-def generate_config_yaml(prefix, full_dataset, coord_dict, num_traj_per_gene):
+def generate_config_yaml(prefix, full_dataset, coord_dict, num_traj_per_gene, load_model, load_dataset, starting_pool_update):
     if prefix not in coord_dict:
         raise ValueError(f"Coordinates not found in CSV for prefix '{prefix}'.")
     if not full_dataset in [True, False]:
@@ -253,6 +253,12 @@ time_stamp: {add_time_stamp(prefix)}
 # MD settings
 num_traj_per_gene: {num_traj_per_gene}
 
+# Retraining settings
+load_model: {str(load_model)}
+load_dataset: {str(load_dataset)}
+starting_pool_update: {str(starting_pool_update)}
+pool_csv: "starting_point_pool.csv"
+
 # active learning
 patience_threshold: 10
 
@@ -290,15 +296,21 @@ metadata:
     with open("config.yaml", "w") as f:
         f.write(content)
     print(f"✅ config.yaml generated for prefix '{prefix}'")
-
+def str2bool(v):
+    return v.lower() in ("true", "1", "yes")
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--prefix", required=True, help="Prefix to use (e.g., bi4-2)")
     parser.add_argument("--full_dataset", required=True, help="Use full dataset (True/False)")
     parser.add_argument("--num_traj_per_gene", type=int, default=1, help="Number of trajectories per generation (default: 1)")
+    parser.add_argument("--load_model", type=str2bool, default=False, help="Whether to load existing model (default: False)")
+    parser.add_argument("--load_dataset", type=str2bool, default=False, help="Whether to load existing dataset (default: False)")
+    parser.add_argument("--starting_pool_update", type=str2bool, default=False, help="Whether to update starting point pool in Generator process (default: False)")
 
     args = parser.parse_args()
     full_dataset_bool = args.full_dataset == "True"
+    print(args.load_model, args.load_dataset, args.starting_pool_update)
+
 
     coord_data = load_coord_from_csv("optimized.csv")
-    generate_config_yaml(args.prefix, full_dataset_bool, coord_data, args.num_traj_per_gene)
+    generate_config_yaml(args.prefix, full_dataset_bool, coord_data, args.num_traj_per_gene, args.load_model, args.load_dataset, args.starting_pool_update)
