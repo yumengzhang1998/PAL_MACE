@@ -12,19 +12,13 @@ import numpy as np
 import pandas as pd
 import torch
 from scipy.spatial.distance import pdist, squareform
-from torch_geometric.data import Data, DataLoader
+from torch_geometric.data import Data
 import torch
 import torch.nn.functional as F
-from usr.initial_pyg.functions.config import ConfigLoader
-import matplotlib.pyplot as plt
-from openmm import unit, Vec3
+from usr.pretrain.functions.config import ConfigLoader
 import random
 import numpy as np
-
-from usr.initial_pyg.functions.config import ConfigLoader
-import time
 import openmm.app as mmapp
-import copy
 import openmm as mm
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
@@ -649,42 +643,6 @@ class retrain_dataset(Dataset):
 from ast import literal_eval   
 from ase.data import atomic_numbers
 import re
-# def get_init_data(path):
-#     match = re.search(r"bi(\d+)(-?\d+)(?:_(?:samples|parsed))*\.csv", path)
-
-#     if match:
-#         num_atom = int(match.group(1))
-#         charge = int(match.group(2))
-#         print(f"num_atom: {num_atom}, charge: {charge}")
-#     else:
-#         print("Pattern not found")
-#     data = pd.read_csv(path)
-#     elements = data["atoms"].values
-#     elements = [literal_eval(e) for e in elements]
-#     elements_number = [[atomic_numbers[ei] for ei in e] for e in elements]
-#     coords = data["coordinates"].values
-#     coords = [np.array(np.matrix(c.replace('\n', ';'))).reshape((num_atom, 3)) for c in coords]
-#     energies_0 = data['total_energy'].values
-#     energies_0 = [literal_eval(e) for e in energies_0]
-#     # convert = lambda a: np.array(np.matrix(a.replace('\n', ';'))) if type(a) == str else a
-#     forces_0 = data['forces'].values
-#     forces_0 = [np.array(np.matrix(c.replace('\n', ';'))).reshape((num_atom, 3)) for c in forces_0]
-#     data_list = []  
-#     for i in range(len(coords)):
-
-#         data = [
-#             torch.tensor(coords[i]), 
-#             torch.tensor(elements_number[i]), 
-#             torch.tensor(energies_0[i]), 
-#             torch.tensor(forces_0[i]), 
-#             torch.tensor(charge, dtype=torch.int64), 
-#             torch.zeros(coords[i].shape),
-#             None, 
-#             [0,0],
-#             torch.zeros(coords[i].shape)]
-#         data_list.append(data)
-#     # print('data_list:', data_list[0].forces)
-#     return data_list
 
 def get_full_data_init(path, source_column = None, source = None):
     if source is not None:

@@ -20,7 +20,7 @@ from quantum_chem_python.api.settings import GeneralSettings, MultiProcessingSet
 from quantum_chem_python.api.turbomol.turbomol_api import TurbomolApi
 from quantum_chem_python.api.xtb.xtb_api import XTBApi
 from usr.utils_multi_traj import reconstruct_from_metadata
-from usr.initial_pyg.functions.config import ConfigLoader
+from usr.pretrain.functions.config import ConfigLoader
 import torch
 import ast
 import periodictable

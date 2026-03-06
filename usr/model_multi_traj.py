@@ -13,10 +13,10 @@ import psutil
 import numpy as np
 import torch, time, os, json
 from torch import nn
-from PAL_MACE.usr import starting_point_pool
+from usr.starting_point_pool import DummyCheckpointHandler
 from usr.utils_multi_traj import  shuffle_dataset, save_data, get_full_data_init, compute_flat_length
-from usr.initial_pyg.functions.config import ConfigLoader
-from usr.initial_pyg.evaluation import evaluate
+from usr.pretrain.functions.config import ConfigLoader
+from usr.pretrain.evaluation import evaluate
 import sys
 import pandas as pd
 from ast import literal_eval
@@ -295,10 +295,10 @@ class UserModel(object):
         data_type = self.config["prefix"]
         if self.config["full_dataset"]:
             self.prefix = "bi0"
-            log_file = f"usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/logs/{self.prefix}_run-123.log" 
+            log_file = f"usr/pretrain/full_data_charge_embed/{self.prefix}_logs/sample_{number}/logs/{self.prefix}_run-123.log" 
         else:
             self.prefix = self.config["prefix"]
-            log_file = f"usr/initial_pyg/results/charge_embedding/{self.prefix}_logs/sample_{number}/logs/{self.prefix}_run-123.log"
+            log_file = f"usr/pretrain/results/charge_embedding/{self.prefix}_logs/sample_{number}/logs/{self.prefix}_run-123.log"
         args = build_default_arg_parser_dict(self.config['args_dict']) 
         
         if self.fix_e0:
@@ -328,9 +328,9 @@ class UserModel(object):
         args.log_dir = f"{self.args.results_dir}/logs"
         args.model_dir = f"{self.args.results_dir}"
         if self.config["full_dataset"]:
-            PATH = f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
+            PATH = f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
         else:
-            PATH = f'usr/initial_pyg/results/charge_embedding/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
+            PATH = f'usr/pretrain/results/charge_embedding/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
         self.load_model = bool(self.config['load_model'])
         self.load_dataset = bool(self.config['load_dataset'])
         if self.load_model:
@@ -360,8 +360,6 @@ class UserModel(object):
             self.pat_old = state["pat_old"]
             self.pat_new = state["pat_new"]
             self.best_mae = state["best_mae"]
-            self.num_retraining_instances = state["num_retraining_instances"]
-            self.counter = state["num_retraining_instances"]
         elif self.load_model and (not os.path.exists("al_state.json")):
             print("Rank {self.rank}: No previous AL state found, but load_model is True. Starting fresh.")
             self.pat_old = 0
@@ -372,11 +370,7 @@ class UserModel(object):
                                 "added_e": float("inf"),
                                 "added_f": float("inf"),
                             }
-            self.num_retraining_instances = 0
-            self.counter = 0
         else:
-            self.num_retraining_instances = 0
-            self.counter = 0
             print(f"Rank {self.rank}: No previous AL state found, starting fresh.")
         if self.mode == "predict":
             print('predicting', self.rank)
@@ -390,8 +384,8 @@ class UserModel(object):
                 print('training', self.rank)
                 if self.config["full_dataset"] and self.add_all_cluster:
                     print('full dataset')
-                    init_data = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv')
-                    self.val = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv')
+                    init_data = get_full_data_init(f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv')
+                    self.val = get_full_data_init(f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv')
                     print(f'loading initial dataset that contains all cluster data')
                     print('initial dataset size', len(init_data))
                     print('validation dataset size', len(self.val))
@@ -399,15 +393,15 @@ class UserModel(object):
                 elif self.config["full_dataset"] and (not self.add_all_cluster):
                     print('full dataset but not all cluster')
                     print(f'loading initial dataset that only contains {data_type} data')
-                    init_data = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv', source = data_type)
-                    self.val = get_full_data_init(f'usr/initial_pyg/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv', source= data_type)
+                    init_data = get_full_data_init(f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv', source = data_type)
+                    self.val = get_full_data_init(f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv', source= data_type)
                     print('initial dataset size', len(init_data))
                     print('validation dataset size', len(self.val))
                     print("Finished loading initial dataset")
                 elif not self.config['full_dataset'] :
                     print('single cluster run')
-                    init_data = get_full_data_init(f'usr/initial_pyg/samples/{self.prefix}/sample_{number}/train.csv')
-                    self.val = get_full_data_init(f'usr/initial_pyg/samples/{self.prefix}/sample_{number}/val.csv')
+                    init_data = get_full_data_init(f'usr/pretrain/samples/{self.prefix}/sample_{number}/train.csv')
+                    self.val = get_full_data_init(f'usr/pretrain/samples/{self.prefix}/sample_{number}/val.csv')
                 random.shuffle(init_data)
 
                 self.train = init_data
@@ -438,19 +432,8 @@ class UserModel(object):
                 init_tol=2.0/100,        # ≤2% worse on init = acceptable noise
                 init_hi=5.0/100          # >5% worse on init = "worse a lot"
             )
-            if not self.load_model:
-                self.pat_old = 0
-                self.pat_new = 0
-                self.best_mae = {
-                    "init_e": float("inf"),
-                    "init_f": float("inf"),
-                    "added_e": float("inf"),
-                    "added_f": float("inf"),
-                }
-
-                self.init_val_size = len(self.val)
-                self.init_train_size = len(self.train)
-            elif self.load_model and os.path.exists("al_state.json"):
+            if self.load_model and os.path.exists("al_state.json"):
+                print("Rank {self.rank}: Loading initial training/validation sizes from previous AL state... ")
                 self.init_train_size = state["init_train_size"]
                 self.init_val_size = state["init_val_size"]
             else:
@@ -679,7 +662,19 @@ class UserModel(object):
             print('1000000 training points reached')
             self.stop = True
         print(f"Rank {self.rank}: add_trainingset done. fail={fail}. train_len={len(self.train)} val_len={len(self.val)}", flush=True)
-
+        # log the increase in train/val size and iteration
+        al_aquistion_df = pd.DataFrame({
+            "iteration": [self.counter],
+            "train_size": [len(self.train)],
+            "val_size": [len(self.val)],
+            "failed_points": [fail]
+        })
+        # if file exsit append, else create new
+        al_aquistion_file = f"{self.result_dir}/rank_{self.rank}/al_aquisition.csv"
+        if os.path.exists(al_aquistion_file):
+            al_aquistion_df.to_csv(al_aquistion_file, mode='a', header=False, index=False)
+        else:
+            al_aquistion_df.to_csv(al_aquistion_file, index=False)
         print(f"Rank {self.rank}: training set size increased")
     
     def retrain(self, req_data):
@@ -818,7 +813,7 @@ class UserModel(object):
         loss_fn = get_loss_fn(args, dipole_only, args.compute_dipole)
         lr_scheduler = LRScheduler(optimizer, self.args)
         self.train_sampler, self.valid_sampler = None, None
-        checkpoint_handler = starting_point_pool.DummyCheckpointHandler(
+        checkpoint_handler = DummyCheckpointHandler(
                         directory=args.checkpoints_dir,
                         tag=tag,
                         keep=args.keep_checkpoints,
@@ -1026,7 +1021,7 @@ class UserModel(object):
 
             
         if self.stop == True:
-            self.save_dataset(path = os.path.join(self.result_dir, f"{self.rank}_added_data.csv"))
+            self.save_dataset(path = os.path.join(self.result_dir, f"rank_{self.rank}/added_data.csv"))
 
     def save_dataset(self, path):
         print("Saving dataset...")

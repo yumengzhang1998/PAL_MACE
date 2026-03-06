@@ -17,7 +17,7 @@ import openmm.app as app
 from openmm import unit, Vec3
 from torch import log_
 from usr.utils_multi_traj import get_specific_data, convert_to_1d_float_array, reconstruct_from_metadata, compute_flat_length
-from usr.initial_pyg.functions.config import ConfigLoader
+from usr.pretrain.functions.config import ConfigLoader
 import copy
 import random
 from usr.utils_multi_traj import Molecule
@@ -138,12 +138,12 @@ class UserGene(object):
         self.sample_count  = 0
         if self.full_dataset:
             raise NotImplementedError("full_dataset option is not implemented yet.")
-            df = pd.read_csv('usr/initial_pyg/raw/bi0_parsed.csv')
+            df = pd.read_csv('usr/pretrain/raw/bi0_parsed.csv')
             df = df[df['source'] == self.prefix]
             df.to_csv(f'{self.result_dir}/{self.prefix}.csv', index=False)
             self.path = f'{self.result_dir}/{self.prefix}.csv'
         else:
-            self.path = f'usr/initial_pyg/samples/{self.prefix}/sample_{self.sample_count}/train.csv'
+            self.path = f'usr/pretrain/samples/{self.prefix}/sample_{self.sample_count}/train.csv'
         self.init_length = self.get_lenth()
         print(f"Generator {rank} initialized with path: {self.path}, init_length: {self.init_length}")
         

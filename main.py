@@ -273,18 +273,17 @@ if __name__ == "__main__":
     
     # set up communicators between different groups of processes
     t_pred_ex = 0                                    # mpi tag for communication between Pred and EXCHANGE process
-    t_gene_ex = 1                                  # mpi tag for communication between Gene and EXCHANGE process
-    t_ex_mg = 2                                    # mpi tag for communication between EXCHANGE and MG process
+    t_gene_ex = 1                                  # mpi tag for communication between Gene and EXCHANGE process                                 
     #TODO:DEBUG
-    t_ex_mg_int = 2
-    t_ex_mg_float = 3
+    t_ex_mg_int = 2                                 # mpi tag for communication between EXCHANGE and MG process as integer (e.g. for data size communication)
+    t_ex_mg_float = 3                               # mpi tag for communication between EXCHANGE and MG process as float (e.g. for data communication)
 
-    t_ml_mg = 3                                    # mpi tag for communication between ML and MG process
-    t_ml_pred = 4                                    # mpi tag for communication between ML and Pred process
-    t_ml = 5                                       # mpi tag for communication among ML processes
-    t_gene = 6                                     # mpi tag for communication among Gene processes
-    t_pred = 7                                       # mpi tag for communication among Pred processes
-    t_orcl_mg = list(range(8, n_orcl+8))           # mpi tag for communication between Orcl and MG processes
+    t_ml_mg = 3 + 1                                   # mpi tag for communication between ML and MG process
+    t_ml_pred = 4  + 1                                  # mpi tag for communication between ML and Pred process
+    t_ml = 5 + 1                                      # mpi tag for communication among ML processes
+    t_gene = 6 + 1                                    # mpi tag for communication among Gene processes
+    t_pred = 7 + 1                                      # mpi tag for communication among Pred processes
+    t_orcl_mg = list(range(8+1, n_orcl+8))           # mpi tag for communication between Orcl and MG processes
     
     # for generator and exchange process
     group_gene_ex = group_world.Incl([RANK_EXCHANGE,] + rank_gene)

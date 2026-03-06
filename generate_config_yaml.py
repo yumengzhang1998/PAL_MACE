@@ -127,7 +127,7 @@ def load_coord_from_csv(csv_path):
 #     }
 # }
 def load_prefix_settings(prefix):
-    base_dir = Path("usr/initial_pyg/results/charge_embedding")
+    base_dir = Path("usr/pretrain/results/charge_embedding")
     prefixes = ["bi4-2", "bi4-6", "bi7-3", "bi11-3", "bi11-3_samples","bi2-2", "bi11-3_samples_bi2"]
     if prefix not in prefixes:
         raise ValueError(f"Prefix '{prefix}' is not recognized. Available: {prefixes}")
@@ -229,10 +229,10 @@ args_dict: {{
     "E0s": "average",
     "statistics_file": None,
     "model": "MACE_with_charge",
-    "num_interactions": 2,
+    "num_interactions": 3,
     "num_channels": 128,
     "max_L": 1,
-    "r_max": 9.0,
+    "r_max": 5.0,
     "patience": 20,
     "correlation": 3,
     "batch_size": 32,

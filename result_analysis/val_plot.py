@@ -24,7 +24,7 @@ def arr(d, key, friendly):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--prefix", type=str, default="bi4-2",
+    p.add_argument("--prefix", type=str, default="bi11-3_samples",
                    help="cluster prefix (not used directly, for user reference).")
     p.add_argument("--model_number", type=int, default=56,
                    help="model number (not used directly, for user reference).")
