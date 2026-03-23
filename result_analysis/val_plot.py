@@ -30,7 +30,7 @@ def main():
                    help="model number (not used directly, for user reference).")
 
     args = p.parse_args()
-    file_path = f"../results/{args.prefix}/retrain_history_{args.model_number}.json"
+    file_path = f"../results/{args.prefix}_org/retrain_history_{args.model_number}.json"
     with open(file_path, "r") as f:
         data = json.load(f)
 
@@ -77,9 +77,9 @@ def main():
 
     # --- Save ---
 
-    plt.savefig(f"../results/{args.prefix}/{args.model_number}_val_plot.png", dpi=200, bbox_inches="tight")
+    plt.savefig(f"../results/{args.prefix}_org/{args.model_number}_val_plot.png", dpi=200, bbox_inches="tight")
     plt.show()
-    print(f"Saved figure to: {args.prefix}/{args.model_number}_val_plot.png")
+    print(f"Saved figure to: {args.prefix}_org/{args.model_number}_val_plot.png")
 
 if __name__ == "__main__":
     main()

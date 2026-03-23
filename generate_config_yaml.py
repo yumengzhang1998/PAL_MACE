@@ -229,10 +229,10 @@ args_dict: {{
     "E0s": "average",
     "statistics_file": None,
     "model": "MACE_with_charge",
-    "num_interactions": 3,
+    "num_interactions": 2,
     "num_channels": 128,
     "max_L": 1,
-    "r_max": 5.0,
+    "r_max": 9.0,
     "patience": 20,
     "correlation": 3,
     "batch_size": 32,
@@ -280,7 +280,7 @@ soft_bound: {settings['soft_bound']}
 num_atom: {settings['num_atom']}
 coord: {coord}
 max_dist: {settings['max_dist']}
-
+source: {{"real": 0, "synthesis_bi4": 1, "synthesis_bi2": 2}}
 metadata:
   - {{ name: coords,          type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }}
   - {{ name: atomic_numbers,  type: tensor,   shape: [{settings['num_atom']}],    dtype: torch.int64}}  # or tensor with int dtype
@@ -290,7 +290,7 @@ metadata:
   - {{ name: pred_forces,     type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }} # ← this one commonly mis-set
   - {{ name: pred_energy,     type: scalar_nullable,        dtype: float  }}
   - {{ name: patience,        type: list,   shape: [2]    , dtype: int }}  # must be BEFORE velocities
-  - {{ name: velocities,      type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }}
+  - {{ name: data_type,       type: scalar_nullable,        dtype: int }} 
 '''
 
     with open("config.yaml", "w") as f:

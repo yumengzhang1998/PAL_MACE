@@ -276,12 +276,12 @@ class UserGene(object):
     def update(self, simulation, geometry):
         simulation.step(1)
         state_pos = simulation.context.getState(getPositions=True)
-        state_vel = simulation.context.getState(getVelocities=True)
+        # state_vel = simulation.context.getState(getVelocities=True)
 
         current_positions = state_pos.getPositions()
         coords_distorded = np.array([pos.value_in_unit(unit.angstrom) for pos in current_positions])
 
-        velosity = state_vel.getVelocities()
+        # velosity = state_vel.getVelocities()
         true_force_empty = np.zeros(coords_distorded.shape)
 
         traj = [
@@ -293,7 +293,7 @@ class UserGene(object):
             geometry[5],               # pred_forces
             None,                      # pred_energy
             geometry[-2],              # patience
-            vec3_to_numpy(velosity),   # velocities
+            geometry[-1],   # data type
         ]
 
         if geometry[7][0] < 0 or geometry[7][1] < 0:

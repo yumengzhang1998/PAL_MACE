@@ -6,7 +6,7 @@ import torch
 import sys
 sys.dont_write_bytecode = True
 from functions.config import ConfigLoader
-from data import  big_list, split_data
+from data import  big_list
 import pickle
 import pandas as pd
 import random

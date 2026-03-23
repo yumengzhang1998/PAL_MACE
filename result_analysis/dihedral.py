@@ -52,10 +52,10 @@ if __name__ == "__main__":
         if args.compact_type == "bi2":
             prefix = f"{args.element}{args.num_atom}{args.charge}_samples_bi2"
         else:
-            prefix = f"{args.element}{args.num_atom}{args.charge}_samples"
+            prefix = f"{args.element}{args.num_atom}{args.charge}_samples_org"
     else:
         prefix = f"{args.element}{args.num_atom}{args.charge}"
     number = args.model_number
-    json_file_path = f"../{args.json_dir}/{prefix}/"
+    json_file_path = f"../{args.json_dir}/{prefix}"
     retraining_trend(number, json_file_path)
 

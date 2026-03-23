@@ -8,10 +8,10 @@ import pandas as pd
 from ast import literal_eval
 from torch_geometric.data import Data
 from torch_geometric.data import  Dataset
-from torch_geometric.data.lightning import LightningDataset
+
 
 from functions.config import ConfigLoader
-import functions.properties as ppt
+
 
 
 class big_list:
@@ -48,10 +48,18 @@ class big_list:
                 data = pd.read_csv(raw_path)
                 elements = data["atoms"].values
                 elements = [literal_eval(e) for e in elements]
-                elements_number = [[atomic_numbers[ei] for ei in e] for e in elements]
+                if len(elements) > 0 and type(elements[0][0]) == str:
+                    elements_number = [[atomic_numbers[ei] for ei in e] for e in elements]
+                else:
+                    elements_number = [[ei for ei in e] for e in elements]
                 coords = data["coordinates"].values
                 coords = [np.array(np.matrix(c.replace('\n', ';'))).reshape((self.num_atom, 3)) for c in coords]
-                energies_0 = data['total_energy'].values
+                # if "total_energy" in data.columns:
+                # charge,energy,forces
+                if "total_energy" in data.columns:
+                    energies_0 = data['total_energy'].values
+                else:
+                    energies_0 = data['energy'].values
                 if type(energies_0[0]) == str:
                     energies_0 = [literal_eval(e) for e in energies_0]
                 else:

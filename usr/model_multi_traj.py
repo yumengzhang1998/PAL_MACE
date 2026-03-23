@@ -298,7 +298,7 @@ class UserModel(object):
             log_file = f"usr/pretrain/full_data_charge_embed/{self.prefix}_logs/sample_{number}/logs/{self.prefix}_run-123.log" 
         else:
             self.prefix = self.config["prefix"]
-            log_file = f"usr/pretrain/results/charge_embedding/{self.prefix}_logs/sample_{number}/logs/{self.prefix}_run-123.log"
+            log_file = f"usr/pretrain/results/charge_embedding_low_rmax/{self.prefix}_logs/sample_{number}/logs/{self.prefix}_run-123.log"
         args = build_default_arg_parser_dict(self.config['args_dict']) 
         
         if self.fix_e0:
@@ -324,18 +324,17 @@ class UserModel(object):
         # name and directory
         self.args.name = f'{self.prefix}_{self.rank}'
         self.args.results_dir = os.path.join(self.result_dir, f'rank_{self.rank}')
+        os.makedirs(self.args.results_dir, exist_ok=True)
         args.checkpoints_dir = f"{self.args.results_dir}/checkpoints" 
         args.log_dir = f"{self.args.results_dir}/logs"
         args.model_dir = f"{self.args.results_dir}"
         if self.config["full_dataset"]:
             PATH = f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
         else:
-            PATH = f'usr/pretrain/results/charge_embedding/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
+            PATH = f'usr/pretrain/results/charge_embedding_low_rmax/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
         self.load_model = bool(self.config['load_model'])
         self.load_dataset = bool(self.config['load_dataset'])
         if self.load_model:
-            
-            
             if self.mode == "train":
                 PATH = f"results/{self.prefix}/model_{self.rank}.pt"
                 print(f"[ML KERNEL]: Loading model from last AL run under {PATH}...")
@@ -348,20 +347,21 @@ class UserModel(object):
         self.model = self.model.to(self.device)
         torch.set_default_dtype(torch.float64)
         recursive_to(self.model, device=self.device, dtype=torch.get_default_dtype())
+        self.state_json = f"al_state_{self.rank}.json"
         for param in self.model.parameters():
             param.data = param.data.to(dtype=torch.get_default_dtype())
 
         for buffer_name, buffer in self.model.named_buffers():
             if isinstance(buffer, torch.Tensor):
                 setattr(self.model, buffer_name, buffer.to(dtype=torch.get_default_dtype(), device=self.device))
-        if self.load_model and os.path.exists("al_state.json"):
+        if self.load_model and os.path.exists(self.state_json):
             print(f"Rank {self.rank}: Loading AL state from previous run...")
-            state = json.load(open("al_state.json"))
+            state = json.load(open(self.state_json, "r"))
             self.pat_old = state["pat_old"]
             self.pat_new = state["pat_new"]
             self.best_mae = state["best_mae"]
-        elif self.load_model and (not os.path.exists("al_state.json")):
-            print("Rank {self.rank}: No previous AL state found, but load_model is True. Starting fresh.")
+        else:
+            print(f"Rank {self.rank}: No previous AL state found, but load_model is True. Starting fresh.")
             self.pat_old = 0
             self.pat_new = 0
             self.best_mae = {
@@ -370,8 +370,6 @@ class UserModel(object):
                                 "added_e": float("inf"),
                                 "added_f": float("inf"),
                             }
-        else:
-            print(f"Rank {self.rank}: No previous AL state found, starting fresh.")
         if self.mode == "predict":
             print('predicting', self.rank)
             # self.para_keys = list(self.model.state_dict().keys())
@@ -382,26 +380,26 @@ class UserModel(object):
             self.starting_pool_update = bool(self.config['starting_pool_update'])
             if not self.load_dataset:
                 print('training', self.rank)
-                if self.config["full_dataset"] and self.add_all_cluster:
-                    print('full dataset')
-                    init_data = get_full_data_init(f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv')
-                    self.val = get_full_data_init(f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv')
-                    print(f'loading initial dataset that contains all cluster data')
-                    print('initial dataset size', len(init_data))
-                    print('validation dataset size', len(self.val))
-                    print("Finished loading initial dataset")
-                elif self.config["full_dataset"] and (not self.add_all_cluster):
-                    print('full dataset but not all cluster')
-                    print(f'loading initial dataset that only contains {data_type} data')
-                    init_data = get_full_data_init(f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv', source = data_type)
-                    self.val = get_full_data_init(f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv', source= data_type)
-                    print('initial dataset size', len(init_data))
-                    print('validation dataset size', len(self.val))
-                    print("Finished loading initial dataset")
-                elif not self.config['full_dataset'] :
-                    print('single cluster run')
-                    init_data = get_full_data_init(f'usr/pretrain/samples/{self.prefix}/sample_{number}/train.csv')
-                    self.val = get_full_data_init(f'usr/pretrain/samples/{self.prefix}/sample_{number}/val.csv')
+                # if self.config["full_dataset"] and self.add_all_cluster:
+                #     print('full dataset')
+                #     init_data = get_full_data_init(f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv')
+                #     self.val = get_full_data_init(f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv')
+                #     print(f'loading initial dataset that contains all cluster data')
+                #     print('initial dataset size', len(init_data))
+                #     print('validation dataset size', len(self.val))
+                #     print("Finished loading initial dataset")
+                # elif self.config["full_dataset"] and (not self.add_all_cluster):
+                #     print('full dataset but not all cluster')
+                #     print(f'loading initial dataset that only contains {data_type} data')
+                #     init_data = get_full_data_init(f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/sample_{number}/train.csv', source = data_type)
+                #     self.val = get_full_data_init(f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/{self.prefix}.csv', source= data_type)
+                #     print('initial dataset size', len(init_data))
+                #     print('validation dataset size', len(self.val))
+                #     print("Finished loading initial dataset")
+                # elif not self.config['full_dataset'] :
+                print('single cluster run')
+                init_data = get_full_data_init(f'usr/pretrain/samples/{self.prefix}/sample_{number}/train.csv')
+                self.val = get_full_data_init(f'usr/pretrain/samples/{self.prefix}/sample_{number}/val.csv')
                 random.shuffle(init_data)
 
                 self.train = init_data
@@ -432,7 +430,7 @@ class UserModel(object):
                 init_tol=2.0/100,        # ≤2% worse on init = acceptable noise
                 init_hi=5.0/100          # >5% worse on init = "worse a lot"
             )
-            if self.load_model and os.path.exists("al_state.json"):
+            if self.load_model and os.path.exists(self.state_json):
                 print("Rank {self.rank}: Loading initial training/validation sizes from previous AL state... ")
                 self.init_train_size = state["init_train_size"]
                 self.init_val_size = state["init_val_size"]
@@ -1016,7 +1014,7 @@ class UserModel(object):
                 "init_train_size": self.init_train_size,
                 "init_val_size": self.init_val_size,
             }
-            with open(f"{self.result_dir}/al_state_{self.rank}.json", "w") as f:
+            with open(f"{self.result_dir}/{self.state_json}", "w") as f:
                 json.dump(al_state, f, indent=2)
 
             

@@ -519,6 +519,7 @@ def save_data(data_list):
     energy = []
     force = []
     patience = []
+    data_type = []
     for data in data_list:
         atoms = data[1]
         node_feature_row = data[0]
@@ -526,6 +527,7 @@ def save_data(data_list):
         energy_row = data[2]
         patience_row = data[-2]
         force_row = data[3]
+        data_type.append(data[-1])
 
         atoms_list.append(to_clean_repr(atoms))
         node_feature.append(to_clean_repr(node_feature_row))
@@ -533,7 +535,7 @@ def save_data(data_list):
         energy.append(float(energy_row))  # force scalar float
         force.append(to_clean_repr(force_row))
         patience.append(patience_row)
-    df = pd.DataFrame({'atoms': atoms_list, 'coordinates': node_feature, 'charge': global_charge, 'energy': energy, 'forces': force,'patience': patience})
+    df = pd.DataFrame({'atoms': atoms_list, 'coordinates': node_feature, 'charge': global_charge, 'energy': energy, 'forces': force,'patience': patience, 'source': data_type})
     return df
 def generate_xyz(atoms, tensor):
     n_atoms = len(atoms)
@@ -653,7 +655,12 @@ def get_full_data_init(path, source_column = None, source = None):
     
     # TODO: add num_atoms based on initial pyg way
     
-    
+    if "source" in data.columns:
+        print('source column found in data, preserving source')
+        sources = [int(s) for s in data["source"].values]
+    # else:
+    #     print('no source column found in data, setting source to 0')
+    #     sources = [0] * len(data)
     if "coordinates" in data.columns:
         print('using coordinates column from initial data')
         coords = data["coordinates"].values
@@ -694,7 +701,7 @@ def get_full_data_init(path, source_column = None, source = None):
     data_list = []  
     for i in range(len(coords)):
 
-        data = [
+        data_item = [
             torch.tensor(coords[i]), 
             torch.tensor(elements_number[i]), 
             torch.tensor(energies_0[i]), 
@@ -703,8 +710,8 @@ def get_full_data_init(path, source_column = None, source = None):
             torch.zeros(coords[i].shape),
             None, 
             [0,0],
-            torch.zeros(coords[i].shape)]
-        data_list.append(data)
+            sources[i] if "source" in data.columns else 0]
+        data_list.append(data_item)
     # print('data_list:', data_list[0].forces)
     return data_list
 
@@ -757,6 +764,7 @@ def process_row(row, header):
     coords = np.array(np.matrix(row[header.index("coordinates")].replace('\n', ';'))).reshape((num_atom, 3))
     energies_0 = literal_eval(row[header.index("total_energy")])
     forces_0 = np.array(np.matrix(row[header.index("forces")].replace('\n', ';'))).reshape((num_atom, 3))
+    sources = int(row[header.index("source")]) if "source" in header else 0
 
     data = [
         torch.tensor(coords),
@@ -767,7 +775,7 @@ def process_row(row, header):
         torch.zeros(coords.shape),  # Placeholder for 'pred_force'
         None, # Placeholder for 'pred_energy'
         [0,0], 
-        torch.zeros(coords.shape)
+        sources
     ]
     
     return data
@@ -946,3 +954,4 @@ def parse_list_data_to_gene(list_data_to_gene, has_iter=False):
 
     forces = forces_flat.reshape(G, P, T, N, 3)
     return energy, forces, iters
+

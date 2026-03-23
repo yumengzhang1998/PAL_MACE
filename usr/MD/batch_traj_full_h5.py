@@ -23,7 +23,7 @@ import openmm as mm
 from scipy.spatial.distance import pdist
 from tqdm import tqdm
 import argparse
-from pretrain.evaluation import evaluate
+from pretrain.evaluation import eval_md
 import openmm.app as app
 from pathlib import Path
 import tempfile
@@ -576,8 +576,12 @@ class Generate_TrajsBatch:
         write_step = 0
         timing_file = open(f"{self.result_path}/timing_log.csv", "w")
         evaluate_timing_file = open(f"{self.result_path}/evaluate_timing_log.csv", "w")
+        mace_log = open(f"{self.result_path}/mace_log.csv", "w")
+        mace_time_log = open(f"{self.result_path}/mace_time_log.csv", "w")
         timing_file.write("step,t_frame,t_force_calc,t_explode_force_alloc,t_force_apply,t_run_step,t_update_frames,t_explosion_check,t_save, alloc, reserved\n")
         evaluate_timing_file.write("step,t_convert,t_to_tensor,t_pred,t_force_rearrange\n")
+        mace_log.write("step,atoms,edges,avg_neighbors\n")
+        mace_time_log.write("step,t_graph,t_forward,t_assign\n")
 
 
         try:
@@ -595,7 +599,7 @@ class Generate_TrajsBatch:
                 t_frame = time.time()
 
                 if active_frames:
-                    e_act, f_act = self.get_predicted_energy_and_forces(active_frames, step=step, evaluate_timing_file=evaluate_timing_file)
+                    e_act, f_act = self.get_predicted_energy_and_forces(active_frames, step=step, evaluate_timing_file=evaluate_timing_file, mace_log=mace_log, mace_time_log=mace_time_log)
                     for k, i in enumerate(active_ids):
                         energies_full[i] = e_act[k]
                         forces_full[i] = f_act[k]
@@ -685,7 +689,7 @@ class Generate_TrajsBatch:
 
 
 
-    def get_predicted_energy_and_forces(self, data_list, step = None, evaluate_timing_file=None):
+    def get_predicted_energy_and_forces(self, data_list, step = None, evaluate_timing_file=None, mace_log=None, mace_time_log=None):
         t0 = time.time()
         data_list = convert_to_data_object(data_list)
         t_convert = time.time()
@@ -694,7 +698,7 @@ class Generate_TrajsBatch:
         t_to_tensor = time.time()
         # dataset = retrain_dataset(data_list, transforms=self.transform)
         # dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
-        y_pred, force_pred, _, _ = evaluate(model=self.model, eval_dataset=data_list, batch_size=128, default_dtype= 'float64', device=self.device, compute_stress=False, return_contributions=False)
+        y_pred, force_pred, _, _ = eval_md(model=self.model, eval_dataset=data_list, batch_size=128, default_dtype= 'float64', device=self.device, compute_stress=False, return_contributions=False, step=step, log=mace_log, time_log=mace_time_log)
         t_pred = time.time()
         num_data = len(data_list)
 

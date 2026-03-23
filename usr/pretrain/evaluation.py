@@ -10,7 +10,7 @@ import ase.data
 import ase.io
 import numpy as np
 import torch
-
+import time
 from mace import data
 from mace.tools import torch_geometric, torch_tools, utils
 
@@ -31,8 +31,7 @@ def evaluate(   model,
                 default_dtype = "float64",
                 device = "cpu",                 
                 compute_stress = False,
-                return_contributions = False,
-                step = None
+                return_contributions = False
                  ) -> Tuple[np.ndarray, List[np.ndarray], Union[np.ndarray, None], Union[List[np.ndarray], None]]:
     torch_tools.set_default_dtype(default_dtype)
     device = init_device(device)
@@ -53,19 +52,41 @@ def evaluate(   model,
         heads = model.heads
     except AttributeError:
         heads = None
+    # data_loader = torch_geometric.dataloader.DataLoader(
+    #     dataset=[
+    #         data.AtomicData.from_data(
+    #             eval_data, z_table=z_table, cutoff=float(model.r_max), heads=heads
+    #         )
+    #         for eval_data in eval_dataset
+    #     ],
+    #     batch_size = batch_size,
+    #     shuffle=False,
+    #     drop_last=False,
+    # )
+    dataset = []
+
+    for eval_data in eval_dataset:
+
+        eval_data = eval_data.clone()
+
+        # ⭐ center coordinates (safe optimization)
+        eval_data.pos -= eval_data.pos.mean(dim=0)
+
+        dataset.append(
+            data.AtomicData.from_data(
+                eval_data,
+                z_table=z_table,
+                cutoff=float(model.r_max),
+                heads=heads,
+            )
+        )
 
     data_loader = torch_geometric.dataloader.DataLoader(
-        dataset=[
-            data.AtomicData.from_data(
-                eval_data, z_table=z_table, cutoff=float(model.r_max), heads=heads
-            )
-            for eval_data in eval_dataset
-        ],
-        batch_size = batch_size,
+        dataset=dataset,
+        batch_size=batch_size,
         shuffle=False,
         drop_last=False,
     )
-
     # Collect data
     energies_list = []
     contributions_list = []
@@ -74,6 +95,7 @@ def evaluate(   model,
 
     for batch in data_loader:
         batch = batch.to(device)
+
         output = model(batch.to_dict(), compute_stress=compute_stress)
         energies_list.append(torch_tools.to_numpy(output["energy"]))
         if compute_stress:
@@ -98,5 +120,128 @@ def evaluate(   model,
         stresses = np.concatenate(stresses_list, axis=0)
         assert len(eval_dataset) == stresses.shape[0]
 
+
     return energies, forces_list, stresses_list, contributions_list
+
+def eval_md(
+        model,
+        eval_dataset,
+        batch_size,
+        default_dtype="float64",
+        device="cpu",
+        compute_stress=False,
+        return_contributions=False,
+        step=None,
+        log=None,
+        time_log=None
+):
+
+    torch_tools.set_default_dtype(default_dtype)
+    device = init_device(device)
+
+    model = model.to(device)
+    model.eval()
+
+    for param in model.parameters():
+        param.requires_grad = False
+
+    z_table = utils.AtomicNumberTable([int(z) for z in model.atomic_numbers])
+
+    try:
+        heads = model.heads
+    except AttributeError:
+        heads = None
+
+    t0 = time.time()
+
+    # -------- build graph --------
+    dataset = []
+
+    for eval_data in eval_dataset:
+
+        eval_data = eval_data.clone()
+
+        # ⭐ center coordinates (safe optimization)
+        eval_data.pos -= eval_data.pos.mean(dim=0)
+
+        dataset.append(
+            data.AtomicData.from_data(
+                eval_data,
+                z_table=z_table,
+                cutoff=float(model.r_max),
+                heads=heads,
+            )
+        )
+
+    data_loader = torch_geometric.dataloader.DataLoader(
+        dataset=dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=False,
+    )
+
+    t_grph = time.time()
+
+    energies_list = []
+    contributions_list = []
+    stresses_list = []
+    forces_collection = []
+
+    for batch in data_loader:
+
+        batch = batch.to(device)
+
+        if step is not None and step % 1000 == 0:
+
+            n_edges = batch.edge_index.shape[1]
+            n_atoms = batch.num_nodes
+            avg_neighbors = n_edges / n_atoms
+
+            if log is not None:
+                log.write(f"{step},{n_atoms},{n_edges},{avg_neighbors:.4f}\n")
+                log.flush()
+
+
+        output = model(batch.to_dict(), compute_stress=compute_stress)
+
+        energies_list.append(torch_tools.to_numpy(output["energy"]))
+
+        if compute_stress:
+            stresses_list.append(torch_tools.to_numpy(output["stress"]))
+
+        if return_contributions:
+            contributions_list.append(torch_tools.to_numpy(output["contributions"]))
+
+        forces = np.split(
+            torch_tools.to_numpy(output["forces"]),
+            indices_or_sections=batch.ptr[1:],
+            axis=0,
+        )
+
+        forces_collection.append(forces[:-1])
+
+    t_forward = time.time()
+
+    energies = np.concatenate(energies_list, axis=0)
+
+    forces_list = [
+        forces for forces_list in forces_collection for forces in forces_list
+    ]
+
+    assert len(eval_dataset) == len(energies) == len(forces_list)
+
+    if compute_stress:
+        stresses = np.concatenate(stresses_list, axis=0)
+        assert len(eval_dataset) == stresses.shape[0]
+
+    t_rearrange = time.time()
+
+    if time_log is not None and step is not None and step % 1000 == 0:
+        time_log.write(
+            f"{step},{t_grph - t0:.4f},{t_forward - t_grph:.4f},{t_rearrange - t_forward:.4f}\n"
+        )
+        time_log.flush()
+
+    return energies, forces_list, stresses_list, contributions_list
+
 

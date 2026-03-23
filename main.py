@@ -283,7 +283,7 @@ if __name__ == "__main__":
     t_ml = 5 + 1                                      # mpi tag for communication among ML processes
     t_gene = 6 + 1                                    # mpi tag for communication among Gene processes
     t_pred = 7 + 1                                      # mpi tag for communication among Pred processes
-    t_orcl_mg = list(range(8+1, n_orcl+8))           # mpi tag for communication between Orcl and MG processes
+    t_orcl_mg = list(range(8+1, n_orcl+8+1))           # mpi tag for communication between Orcl and MG processes
     
     # for generator and exchange process
     group_gene_ex = group_world.Incl([RANK_EXCHANGE,] + rank_gene)

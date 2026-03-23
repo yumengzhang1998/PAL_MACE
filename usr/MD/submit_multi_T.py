@@ -6,7 +6,7 @@ import subprocess
 # 1. Temperature list
 # ==============================
 temperatures = [300, 400, 500, 600, 700]
-temperatures = [300]  # For testing, comment out for full run
+temperatures = [500,525,575]
 # ==============================
 # 2. Base SLURM template
 # ==============================
@@ -14,7 +14,7 @@ slurm_template = """#!/bin/bash
 #SBATCH --job-name=1ns_{T}K
 #SBATCH --partition=accelerated
 #SBATCH --constraint=LSDF
-#SBATCH --time=48:00:00
+#SBATCH --time=40:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=8
@@ -50,7 +50,10 @@ save_results() {{
   else
     echo "!!! No results directory found"
   fi
+
+  rm -rf "$JOB_TMP"
 }}
+
 
 trap save_results EXIT TERM INT
 
@@ -63,7 +66,6 @@ python batch_traj_full_h5.py \
   --synthesis True \
   --T {T}.0
 
-rm -rf "$JOB_TMP"
 echo "Job finished cleanly."
 """
 
