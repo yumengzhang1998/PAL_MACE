@@ -1086,14 +1086,7 @@ if __name__ == "__main__":
                     p.setflags(write=False)
                 # to_orcl_buffer += input_to_orcl
                 if stop_run:
-                    # Tell ALL oracle ranks to stop right now (free or busy)
-                    for r in rank_orcl:
-                        idx = rank_orcl.index(r)
-                        tag_here = t_orcl_mg[idx]
-                        # header says: 2 control fields; payload has [1.0, -1.0] (stop)
-                        comm_world.Send([np.array([2], dtype=DINT), MPI.LONG], dest=r, tag=tag_here)
-                        comm_world.Send([np.array([1.0, -1.0], dtype=DFLOAT), MPI.DOUBLE], dest=r, tag=tag_here)
-                    # Exit the MG loop immediately to avoid scheduling any more work
+                    # Let the common shutdown drain busy Oracles before signaling them.
                     break
                 to_orcl_buffer.extend(parts) 
             ################# Done ##################
