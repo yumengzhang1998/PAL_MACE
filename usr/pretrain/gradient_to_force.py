@@ -26,6 +26,6 @@ if __name__ == "__main__":
     prefix = ['bi4-2', 'bi4-6', 'bi7-3', 'bi11-3', 'bi11-3_samples']
     prefix = ['bi2-2','bi11-3_samples_bi2']
     prefix = ['bi0']
-    prefix = ['Bi11-3_samples_bi2']
+    prefix = ['Bi14_3Bi4_1Bi2_samples']
     for p in prefix:
         parse(path = "raw/", prefix = p)

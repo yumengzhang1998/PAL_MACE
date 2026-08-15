@@ -95,10 +95,16 @@ class UserOracle(object):
         turbomol_settings = TurbomolSettings(basis="dhf-TZVP ", 
                                             functional="tpss", 
                                             method="ridft",
+                                            # expect_timeout=60,
                                             input_in_angstrom=True, 
                                             use_cosmo = True, 
                                             epsilon = 'infinity', 
                                             number_of_scf_iters = 100,
+                                            filter_scf_oscillation = True,
+                                            filter_scf_higher_energy = True,
+                                            filter_scf_plateau = True,
+                                            scf_oscillation_threshold = 1e-2,
+                                            scf_higher_energy_threshold = 1e-2,
                                             charge = input_to_orcl[4])
 
 

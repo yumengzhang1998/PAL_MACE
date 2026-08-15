@@ -1,6 +1,7 @@
 import os
 import argparse
 import ast
+import numpy as np
 import pandas as pd
 from pathlib import Path
 import json
@@ -31,7 +32,7 @@ def _normalize_quantile(q):
 def extract_std(std_path: str, property_list, quantile: str | int):
     """
     Read quantiles from summary JSONs produced by make_val_std_distribution.py.
-    std_path: directory like 'usr/initial_pyg/results/charge_embedding/{prefix}/{prefix}_VAL_uncertainty/'
+    std_path: directory like 'usr/pretrain/results/charge_embedding/{prefix}/{prefix}_VAL_uncertainty/'
     property_list: e.g. ['energy_std', 'force_std_max_atomnorm', 'force_std_rms']
     quantile: e.g. 'q75' or 75
     Returns: dict {property_name: float}
@@ -77,6 +78,150 @@ def load_coord_from_csv(csv_path):
         coord = ast.literal_eval(row["coord"])
         coord_dict[name] = coord
     return coord_dict
+
+
+def _parse_csv_array(value, column, row_number, train_path):
+    """Parse one array-like CSV field and attach row/path context to failures."""
+    if isinstance(value, str):
+        try:
+            value = ast.literal_eval(value)
+        except (ValueError, SyntaxError) as exc:
+            raise ValueError(
+                f"Could not parse '{column}' at data row {row_number} in {train_path}: {exc}"
+            ) from exc
+    return value
+
+
+def load_pretrain_reference(prefix, num_models):
+    """Derive global AL references from the first ``num_models`` bootstrap members.
+
+    For example, ``num_models=2`` combines ``sample_0/train.csv`` and
+    ``sample_1/train.csv``. The same value controls the AL predictor/trainer
+    ensemble size in the generated configuration.
+    """
+    if num_models < 1:
+        raise ValueError(f"num_models must be positive, got {num_models}.")
+
+    selected_model_indices = list(range(num_models))
+    train_paths = [
+        Path("usr/pretrain/samples")
+        / prefix
+        / f"sample_{model_index}"
+        / "train.csv"
+        for model_index in selected_model_indices
+    ]
+    num_atom = None
+    max_distances = []
+    energies = []
+
+    for train_path in train_paths:
+        if not train_path.is_file():
+            raise ValueError(f"Pretraining reference CSV does not exist: {train_path}")
+
+        df = pd.read_csv(train_path)
+        required_columns = {"coordinates", "total_energy"}
+        missing_columns = sorted(required_columns.difference(df.columns))
+        if missing_columns:
+            raise ValueError(
+                f"Pretraining reference CSV {train_path} is missing required columns: "
+                f"{missing_columns}"
+            )
+        if df.empty:
+            raise ValueError(f"Pretraining reference CSV is empty: {train_path}")
+
+        for row_number, row in df.iterrows():
+            coordinates = _parse_csv_array(
+                row["coordinates"], "coordinates", row_number, train_path
+            )
+            try:
+                coordinates = np.asarray(coordinates, dtype=float)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Coordinates at data row {row_number} in {train_path} are not numeric."
+                ) from exc
+
+            if coordinates.ndim != 2 or coordinates.shape[1] != 3:
+                raise ValueError(
+                    f"Coordinates at data row {row_number} in {train_path} must have "
+                    f"shape (N, 3), got {coordinates.shape}."
+                )
+            if not np.all(np.isfinite(coordinates)):
+                raise ValueError(
+                    f"Coordinates at data row {row_number} in {train_path} contain "
+                    "non-finite values."
+                )
+
+            row_num_atom = int(coordinates.shape[0])
+            if num_atom is None:
+                num_atom = row_num_atom
+            elif row_num_atom != num_atom:
+                raise ValueError(
+                    f"Inconsistent atom counts in {train_path}: expected {num_atom}, "
+                    f"got {row_num_atom} at data row {row_number}."
+                )
+
+            if "atoms" in df.columns:
+                atoms = _parse_csv_array(
+                    row["atoms"], "atoms", row_number, train_path
+                )
+                if len(atoms) != row_num_atom:
+                    raise ValueError(
+                        f"Atom/coordinate count mismatch at data row {row_number} in "
+                        f"{train_path}: {len(atoms)} atoms and "
+                        f"{row_num_atom} coordinates."
+                    )
+
+            if row_num_atom < 2:
+                max_distances.append(0.0)
+            else:
+                displacements = (
+                    coordinates[:, np.newaxis, :] - coordinates[np.newaxis, :, :]
+                )
+                max_distances.append(
+                    float(
+                        np.sqrt(
+                            np.sum(displacements * displacements, axis=-1)
+                        ).max()
+                    )
+                )
+
+            energy = _parse_csv_array(
+                row["total_energy"], "total_energy", row_number, train_path
+            )
+            try:
+                energy_values = np.asarray(energy, dtype=float).reshape(-1)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Energy at data row {row_number} in {train_path} is not numeric."
+                ) from exc
+            if energy_values.size != 1 or not np.isfinite(energy_values[0]):
+                raise ValueError(
+                    f"Energy at data row {row_number} in {train_path} must contain "
+                    f"one finite value, got {energy!r}."
+                )
+            energies.append(float(energy_values[0]))
+
+    energy_threshold = float(np.median(energies))
+    q25, q75 = (float(value) for value in np.percentile(energies, [25, 75]))
+    iqr = q75 - q25
+
+    reference = {
+        "num_atom": int(num_atom),
+        "max_dist": float(np.max(max_distances)),
+        "energy_threshold": energy_threshold,
+        "hard_bound": 3.0 * iqr,
+        "soft_bound": 1.5 * iqr,
+        "reference_sources": [str(path) for path in train_paths],
+        "reference_model_indices": selected_model_indices,
+    }
+    print(
+        f"Using pretraining models {selected_model_indices} from {train_paths}: "
+        f"num_atom={reference['num_atom']}, "
+        f"max_dist={reference['max_dist']}, "
+        f"energy_threshold={reference['energy_threshold']}, "
+        f"q25={q25}, q75={q75}"
+    )
+    return reference
 
 # Prefix base settings (excluding coord)
 # prefix_settings = {
@@ -126,10 +271,10 @@ def load_coord_from_csv(csv_path):
 #         "max_dist": 9.055371
 #     }
 # }
-def load_prefix_settings(prefix):
+def load_prefix_settings(prefix, use_pretrain_reference=False, num_models=2):
     base_dir = Path("usr/pretrain/results/charge_embedding")
-    prefixes = ["bi4-2", "bi4-6", "bi7-3", "bi11-3", "bi11-3_samples","bi2-2", "bi11-3_samples_bi2"]
-    if prefix not in prefixes:
+    prefixes = ["bi4-2", "bi4-6", "bi7-3", "bi11-3", "bi11-3_samples","bi2-2", "bi11-3_samples_bi2", "bi14-6_samples"]
+    if not use_pretrain_reference and prefix not in prefixes:
         raise ValueError(f"Prefix '{prefix}' is not recognized. Available: {prefixes}")
     settings = {}
 
@@ -143,80 +288,150 @@ def load_prefix_settings(prefix):
     except ValueError as e:
         raise ValueError(f"Error extracting stds for prefix '{prefix}': {e}")
 
-    # Load max_dist from a precomputed JSON file
-    max_dist_file ='optimized.csv'
-    if not os.path.exists(max_dist_file):
-        raise ValueError(f"max_dist_file does not exist: {max_dist_file}")
-    df = pd.read_csv(max_dist_file)
-    max_dist_data = df[df["Name"].str.lower() == prefix]['MaxDistance']
-    max_dist_data = max_dist_data.iloc[0] if not max_dist_data.empty else None
-    max_dist = float(max_dist_data) if max_dist_data is not None else None
-    if max_dist is None:    
-        raise ValueError(f"Could not find max_dist for prefix '{prefix}' in {max_dist_file}")
+    if use_pretrain_reference:
+        reference = load_pretrain_reference(prefix, num_models)
+    else:
+        reference_file = "optimized.csv"
+        if not os.path.exists(reference_file):
+            raise ValueError(f"Reference file does not exist: {reference_file}")
 
-    num_atom = df[df["Name"].str.lower() == prefix]['NumAtoms']
-    num_atom = int(num_atom.iloc[0]) if not num_atom.empty else None
-    if max_dist_data is None or num_atom is None:
-        raise ValueError(f"Could not find max_dist or num_atom for prefix '{prefix}' in {max_dist_file}")
-    energy_threshold = df[df["Name"].str.lower() == prefix]['energy_threshold']
-    q25 = df[df["Name"].str.lower() == prefix]['q25']
-    q75 = df[df["Name"].str.lower() == prefix]['q75']
-    # convert string to list of floats
-    energy_threshold = energy_threshold.iloc[0] if not energy_threshold.empty else None
-    q25 = q25.iloc[0] if not q25.empty else None
-    q75 = q75.iloc[0] if not q75.empty else None
-    energy_threshold = ast.literal_eval(energy_threshold)[0]
-    q25 = ast.literal_eval(q25)[0]
-    q75 = ast.literal_eval(q75)[0]
+        df = pd.read_csv(reference_file)
+        required_columns = {
+            "Name", "MaxDistance", "NumAtoms", "energy_threshold", "q25", "q75"
+        }
+        missing_columns = sorted(required_columns.difference(df.columns))
+        if missing_columns:
+            raise ValueError(
+                f"Reference file {reference_file} is missing required columns: "
+                f"{missing_columns}"
+            )
 
-    if energy_threshold is None:
-        raise ValueError(f"Could not find energy_threshold for prefix '{prefix}' in {max_dist_file}")
-    print(f"For prefix '{prefix}': energy_threshold={energy_threshold}, q25={q25}, q75={q75}")
-    IQR = q75 - q25
-    energy_bound_soft = 1.5 * IQR
-    energy_bound_hard = 3.0 * IQR
-    print(f"For prefix '{prefix}': energy_bound_soft={energy_bound_soft}, energy_bound_hard={energy_bound_hard}")
+        matching_rows = df[df["Name"].astype(str).str.lower() == prefix]
+        if matching_rows.empty:
+            raise ValueError(
+                f"Could not find prefix '{prefix}' in reference file {reference_file}."
+            )
+        row = matching_rows.iloc[0]
+        try:
+            energy_threshold = float(
+                np.asarray(ast.literal_eval(row["energy_threshold"])).reshape(-1)[0]
+            )
+            q25 = float(np.asarray(ast.literal_eval(row["q25"])).reshape(-1)[0])
+            q75 = float(np.asarray(ast.literal_eval(row["q75"])).reshape(-1)[0])
+            num_atom = int(row["NumAtoms"])
+            max_dist = float(row["MaxDistance"])
+        except (TypeError, ValueError, SyntaxError, IndexError) as exc:
+            raise ValueError(
+                f"Invalid reference values for prefix '{prefix}' in {reference_file}: {exc}"
+            ) from exc
 
-
-    # Set energy_threshold based on known values
-    # energy_thresholds = {
-    #     "bi4-2": -23365.0,
-    #     "bi4-6": -23374.0,
-    #     "bi7-3": -40889.9,
-    #     "bi11-3": -64250.5,
-    #     "bi11-3_samples": -64250.5
-    # }
-    # energy_threshold = energy_thresholds.get(prefix)
-    if energy_threshold is None:
-        raise ValueError(f"No predefined energy_threshold for prefix '{prefix}'")
+        iqr = q75 - q25
+        reference = {
+            "energy_threshold": energy_threshold,
+            "hard_bound": 3.0 * iqr,
+            "soft_bound": 1.5 * iqr,
+            "num_atom": num_atom,
+            "max_dist": max_dist,
+            "reference_sources": [reference_file],
+            "reference_model_indices": None,
+        }
+        print(
+            f"Using optimized reference {reference_file} for prefix '{prefix}': "
+            f"num_atom={num_atom}, max_dist={max_dist}, "
+            f"energy_threshold={energy_threshold}, q25={q25}, q75={q75}"
+        )
 
     settings[prefix] = {
-        "energy_threshold": energy_threshold,
+        "energy_threshold": reference["energy_threshold"],
         "energy_std_threshold": stds["energy_std"],
         "force_atom_max_std": stds["force_std_max_atomnorm"],
         "force_rms_std": stds["force_std_rms"],
         "bound": 10,
-        "hard_bound": energy_bound_hard,
-        "soft_bound": energy_bound_soft,
-        "num_atom": num_atom,
-        "max_dist": max_dist
+        "hard_bound": reference["hard_bound"],
+        "soft_bound": reference["soft_bound"],
+        "num_atom": reference["num_atom"],
+        "max_dist": reference["max_dist"],
+        "reference_sources": reference["reference_sources"],
+        "reference_model_indices": reference["reference_model_indices"],
     }
 
     return settings
 
-def generate_config_yaml(prefix, full_dataset, coord_dict, num_traj_per_gene, load_model, load_dataset, starting_pool_update):
-    if prefix not in coord_dict:
-        raise ValueError(f"Coordinates not found in CSV for prefix '{prefix}'.")
+def generate_config_yaml(
+    prefix,
+    full_dataset,
+    coord_dict,
+    num_traj_per_gene,
+    load_model,
+    load_dataset,
+    starting_pool_update,
+    use_pretrain_reference=False,
+    num_models=2,
+    save_gene_traj=False,
+    gene_temperature_low=None,
+    gene_temperature_high=None,
+    max_steps_per_traj=100000,
+    num_gen_process=2,
+):
     if not full_dataset in [True, False]:
         raise ValueError(f"full_dataset must be True or False, got '{full_dataset}'")
+    if num_models < 1:
+        raise ValueError(f"num_models must be positive, got {num_models}.")
+    if max_steps_per_traj < 1:
+        raise ValueError(
+            f"max_steps_per_traj must be positive, got {max_steps_per_traj}."
+        )
+    if num_gen_process < 1:
+        raise ValueError(
+            f"num_gen_process must be positive, got {num_gen_process}."
+        )
+    if (gene_temperature_low is None) != (gene_temperature_high is None):
+        raise ValueError(
+            "gene_temperature_low and gene_temperature_high must either both "
+            "be set or both be omitted."
+        )
+    if gene_temperature_low is not None:
+        gene_temperature_low = float(gene_temperature_low)
+        gene_temperature_high = float(gene_temperature_high)
+        if not (
+            np.isfinite(gene_temperature_low)
+            and np.isfinite(gene_temperature_high)
+        ):
+            raise ValueError("Generator temperature bounds must be finite.")
+        if gene_temperature_low <= 0 or gene_temperature_high <= 0:
+            raise ValueError("Generator temperature bounds must be positive.")
+        if gene_temperature_low > gene_temperature_high:
+            raise ValueError(
+                "gene_temperature_low must not exceed gene_temperature_high."
+            )
+    if not use_pretrain_reference and (coord_dict is None or prefix not in coord_dict):
+        raise ValueError(f"Coordinates not found in CSV for prefix '{prefix}'.")
     if not full_dataset:
-        prefix_settings = load_prefix_settings(prefix)
+        prefix_settings = load_prefix_settings(
+            prefix,
+            use_pretrain_reference=use_pretrain_reference,
+            num_models=num_models,
+        )
         settings = prefix_settings[prefix]
     if full_dataset:
         raise ValueError("full_dataset=True is not supported in this script. Please provide specific settings for the prefix.")
-    coord = coord_dict[prefix]
+    coord = None if use_pretrain_reference else coord_dict[prefix]
+    coord_yaml = "null" if coord is None else repr(coord)
+    reference_model_indices_yaml = (
+        "null"
+        if settings["reference_model_indices"] is None
+        else json.dumps(settings["reference_model_indices"])
+    )
+    reference_sources_yaml = json.dumps(settings["reference_sources"])
+    gene_temperature_low_yaml = (
+        "null" if gene_temperature_low is None else repr(gene_temperature_low)
+    )
+    gene_temperature_high_yaml = (
+        "null" if gene_temperature_high is None else repr(gene_temperature_high)
+    )
     print(f"Using settings for prefix '{prefix}': {settings}")
-    print(f"Using coordinates for prefix '{prefix}': {coord}")
+    if coord is not None:
+        print(f"Using coordinates for prefix '{prefix}': {coord}")
 
     content = f'''# MACE
 args_dict: {{
@@ -252,6 +467,10 @@ time_stamp: {add_time_stamp(prefix)}
 
 # MD settings
 num_traj_per_gene: {num_traj_per_gene}
+max_steps_per_traj: {max_steps_per_traj}
+save_gene_traj: {str(save_gene_traj)}
+gene_temperature_low: {gene_temperature_low_yaml}
+gene_temperature_high: {gene_temperature_high_yaml}
 
 # Retraining settings
 load_model: {str(load_model)}
@@ -262,12 +481,15 @@ pool_csv: "starting_point_pool.csv"
 # active learning
 patience_threshold: 10
 
-num_pred_process: 2
+num_pred_process: {num_models}
 num_orcl_process: 50
-num_gen_process: 2
+num_gen_process: {num_gen_process}
 retrain_size: 50
 
 full_dataset: {full_dataset}
+use_pretrain_reference: {str(use_pretrain_reference)}
+reference_sources: {reference_sources_yaml}
+reference_model_indices: {reference_model_indices_yaml}
 
 prefix: {prefix}
 energy_threshold: {settings['energy_threshold']}
@@ -278,7 +500,7 @@ bound: {settings['bound']}
 hard_bound: {settings['hard_bound']}
 soft_bound: {settings['soft_bound']}
 num_atom: {settings['num_atom']}
-coord: {coord}
+coord: {coord_yaml}
 max_dist: {settings['max_dist']}
 source: {{"real": 0, "synthesis_bi4": 1, "synthesis_bi2": 2}}
 metadata:
@@ -290,7 +512,7 @@ metadata:
   - {{ name: pred_forces,     type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }} # ← this one commonly mis-set
   - {{ name: pred_energy,     type: scalar_nullable,        dtype: float  }}
   - {{ name: patience,        type: list,   shape: [2]    , dtype: int }}  # must be BEFORE velocities
-  - {{ name: data_type,       type: scalar_nullable,        dtype: int }} 
+  - {{ name: velocities,      type: array,  shape: [{settings['num_atom']}, 3], dtype: float64 }}
 '''
 
     with open("config.yaml", "w") as f:
@@ -303,14 +525,101 @@ if __name__ == "__main__":
     parser.add_argument("--prefix", required=True, help="Prefix to use (e.g., bi4-2)")
     parser.add_argument("--full_dataset", required=True, help="Use full dataset (True/False)")
     parser.add_argument("--num_traj_per_gene", type=int, default=1, help="Number of trajectories per generation (default: 1)")
+    parser.add_argument(
+        "--max_steps_per_traj",
+        type=int,
+        default=100000,
+        help=(
+            "Maximum MD steps in one generator trajectory episode before "
+            "restart (default: 100000)"
+        ),
+    )
+    parser.add_argument(
+        "--num_gen_process",
+        type=int,
+        default=2,
+        help="Number of generator MPI processes (default: 2)",
+    )
     parser.add_argument("--load_model", type=str2bool, default=False, help="Whether to load existing model (default: False)")
     parser.add_argument("--load_dataset", type=str2bool, default=False, help="Whether to load existing dataset (default: False)")
     parser.add_argument("--starting_pool_update", type=str2bool, default=False, help="Whether to update starting point pool in Generator process (default: False)")
+    parser.add_argument(
+        "--save_gene_traj",
+        type=str2bool,
+        default=False,
+        help=(
+            "Save compact generator coordinates every 100 successful MD steps "
+            "(default: False)"
+        ),
+    )
+    parser.add_argument(
+        "--gene_temperature_low",
+        type=float,
+        default=None,
+        help=(
+            "Lower bound for uniformly sampled generator temperatures in K. "
+            "Set together with --gene_temperature_high."
+        ),
+    )
+    parser.add_argument(
+        "--gene_temperature_high",
+        type=float,
+        default=None,
+        help=(
+            "Upper bound for uniformly sampled generator temperatures in K. "
+            "Set together with --gene_temperature_low."
+        ),
+    )
+    parser.add_argument(
+        "--use_pretrain_reference",
+        type=str2bool,
+        default=False,
+        help=(
+            "Derive num_atom, max_dist, and energy_threshold from a pretraining "
+            "sample train.csv instead of optimized.csv (default: False)"
+        ),
+    )
+    parser.add_argument(
+        "--num_models",
+        type=int,
+        default=2,
+        help=(
+            "Number of AL ensemble models. With --use_pretrain_reference True, "
+            "N selects and combines sample_0 through sample_(N-1) (default: 2)"
+        ),
+    )
 
     args = parser.parse_args()
     full_dataset_bool = args.full_dataset == "True"
-    print(args.load_model, args.load_dataset, args.starting_pool_update)
+    print(
+        args.load_model,
+        args.load_dataset,
+        args.starting_pool_update,
+        args.save_gene_traj,
+        args.gene_temperature_low,
+        args.gene_temperature_high,
+        args.use_pretrain_reference,
+        args.num_models,
+    )
 
-
-    coord_data = load_coord_from_csv("optimized.csv")
-    generate_config_yaml(args.prefix, full_dataset_bool, coord_data, args.num_traj_per_gene, args.load_model, args.load_dataset, args.starting_pool_update)
+    coord_data = (
+        None
+        if args.use_pretrain_reference
+        else load_coord_from_csv("optimized.csv")
+    )
+    generate_config_yaml(
+        args.prefix,
+        full_dataset_bool,
+        coord_data,
+        args.num_traj_per_gene,
+        args.load_model,
+        args.load_dataset,
+        args.starting_pool_update,
+        save_gene_traj=args.save_gene_traj,
+        gene_temperature_low=args.gene_temperature_low,
+        gene_temperature_high=args.gene_temperature_high,
+        max_steps_per_traj=args.max_steps_per_traj,
+        num_gen_process=args.num_gen_process,
+        use_pretrain_reference=args.use_pretrain_reference,
+        num_models=args.num_models,
+    )

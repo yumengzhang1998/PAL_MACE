@@ -11,7 +11,7 @@ def get_energy_distribution(prefix):
     under the folder with name as {prefix}_parsed.csv
     Returns (max, min, median, mean)
     """
-    energy_path = f"usr/initial_pyg/raw/{prefix}_parsed.csv"
+    energy_path = f"usr/pretrain/raw/{prefix}_parsed.csv"
     df = pd.read_csv(energy_path)
     if "total_energy" not in df.columns:
         raise ValueError("CSV must contain an 'Energy' column.")

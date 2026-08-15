@@ -48,7 +48,6 @@ from mace.cli.convert_e3nn_cueq import run as run_e3nn_to_cueq
 from mace.tools import torch_geometric
 from mace.tools.multihead_tools import (
     HeadConfig,
-    assemble_mp_data,
     dict_head_to_dataclass,
     prepare_default_head,
 )
@@ -152,6 +151,9 @@ def run(args: argparse.Namespace, train, val, test = None, latent = False, charg
     val = deepcopy(val)
     tag = tools.get_tag(name=args.name, seed=args.seed)
     args, input_log_messages = tools.check_args(args)
+
+    args.key_specification = data.KeySpecification()
+    data.update_keyspec_from_kwargs(args.key_specification, vars(args))
 
 
     if args.device == "xpu":
@@ -695,7 +697,9 @@ def boot_train(prefix, num_samples, config_path, res_dir="nocharge", latent = Fa
         'charge': data.charge if hasattr(data, 'charge') else None,
         "source": data.source if hasattr(data, 'source') else None
     } for data in val_data])
-    val_df.to_csv(f'{results_dir}/{prefix}.csv', index=False, header=['atoms', 'coordinates', 'total_energy', 'forces', 'charge', 'source'] if has_source else ['atoms', 'coordinates', 'total_energy', 'forces', 'charge'])
+    if not has_source:
+        val_df = val_df.drop(columns=["source"])
+    val_df.to_csv(f'{results_dir}/{prefix}.csv', index=False)
 
     
     del csv_data

@@ -54,7 +54,6 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from mace.tools import torch_geometric
 from mace.tools.multihead_tools import (
     HeadConfig,
-    assemble_mp_data,
     dict_head_to_dataclass,
     prepare_default_head,
 )
@@ -298,7 +297,7 @@ class UserModel(object):
             log_file = f"usr/pretrain/full_data_charge_embed/{self.prefix}_logs/sample_{number}/logs/{self.prefix}_run-123.log" 
         else:
             self.prefix = self.config["prefix"]
-            log_file = f"usr/pretrain/results/charge_embedding_low_rmax/{self.prefix}_logs/sample_{number}/logs/{self.prefix}_run-123.log"
+            log_file = f"usr/pretrain/results/charge_embedding/{self.prefix}_logs/sample_{number}/logs/{self.prefix}_run-123.log"
         args = build_default_arg_parser_dict(self.config['args_dict']) 
         
         if self.fix_e0:
@@ -306,7 +305,12 @@ class UserModel(object):
         else :
             args.E0s = "average"
         self.args, input_log_messages = tools.check_args(args)
-        self.args.heads = prepare_default_head(args)
+        self.args.key_specification = data.KeySpecification()
+        data.update_keyspec_from_kwargs(
+            self.args.key_specification,
+            vars(self.args),
+        )
+        self.args.heads = prepare_default_head(self.args)
         # self.args.loss = loss
         self.batch_size = self.args.batch_size
         compute_virials = self.args.loss in ("stress", "virials", "huber", "universal")
@@ -331,7 +335,7 @@ class UserModel(object):
         if self.config["full_dataset"]:
             PATH = f'usr/pretrain/full_data_charge_embed/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
         else:
-            PATH = f'usr/pretrain/results/charge_embedding_low_rmax/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
+            PATH = f'usr/pretrain/results/charge_embedding/{self.prefix}_logs/sample_{number}/{self.prefix}.model'
         self.load_model = bool(self.config['load_model'])
         self.load_dataset = bool(self.config['load_dataset'])
         if self.load_model:
@@ -347,21 +351,36 @@ class UserModel(object):
         self.model = self.model.to(self.device)
         torch.set_default_dtype(torch.float64)
         recursive_to(self.model, device=self.device, dtype=torch.get_default_dtype())
-        self.state_json = f"al_state_{self.rank}.json"
+        self.state_json = os.path.join(
+            self.result_dir, f"al_state_{self.rank}.json"
+        )
         for param in self.model.parameters():
             param.data = param.data.to(dtype=torch.get_default_dtype())
 
         for buffer_name, buffer in self.model.named_buffers():
             if isinstance(buffer, torch.Tensor):
                 setattr(self.model, buffer_name, buffer.to(dtype=torch.get_default_dtype(), device=self.device))
+        state = None
         if self.load_model and os.path.exists(self.state_json):
             print(f"Rank {self.rank}: Loading AL state from previous run...")
-            state = json.load(open(self.state_json, "r"))
+            with open(self.state_json, "r") as state_file:
+                state = json.load(state_file)
             self.pat_old = state["pat_old"]
             self.pat_new = state["pat_new"]
             self.best_mae = state["best_mae"]
+            self.num_retraining_instances = state["num_retraining_instances"]
+            self.counter = state["counter"]
         else:
-            print(f"Rank {self.rank}: No previous AL state found, but load_model is True. Starting fresh.")
+            if self.load_model:
+                print(
+                    f"Rank {self.rank}: No previous AL state found, but "
+                    "load_model is True. Starting with fresh AL state."
+                )
+            else:
+                print(
+                    f"Rank {self.rank}: load_model is False. Starting from the "
+                    "pretrained model with fresh AL state."
+                )
             self.pat_old = 0
             self.pat_new = 0
             self.best_mae = {
@@ -412,7 +431,7 @@ class UserModel(object):
                 
 
             self.val_split = 0.2
-            self.history = {
+            empty_history = {
                 "MSE_train": [],
                 "MSE_val": [],
                 "start_MAE_train": [],
@@ -422,16 +441,37 @@ class UserModel(object):
                 "new_val_force_mae": [],
                 "init_val_force_mae": []
                 }
+            history_path = os.path.join(
+                self.result_dir, f"retrain_history_{self.rank}.json"
+            )
+            if self.load_model and os.path.exists(history_path):
+                with open(history_path, "r") as history_file:
+                    loaded_history = json.load(history_file)
+                missing_history = set(empty_history).difference(loaded_history)
+                if missing_history:
+                    raise ValueError(
+                        f"Cannot resume rank {self.rank}: {history_path} is "
+                        f"missing history keys {sorted(missing_history)}"
+                    )
+                self.history = {
+                    key: loaded_history[key] for key in empty_history
+                }
+                print(
+                    f"Rank {self.rank}: Loaded {len(self.history['MSE_train'])} "
+                    "retraining-history entries."
+                )
+            else:
+                self.history = empty_history
             # --- Dual-patience with relative thresholds (Option B) ---
             self.pcfg = dict(
                 old_limit=10000,            # patience for initial (protect forgetting)
-                new_limit=10000,             # patience for added (drive AL progress)
+                new_limit=20,                # patience for added (drive AL progress)
                 rel_added_delta=0.5/100, # require ≥0.5% improvement on added (energy OR force)
                 init_tol=2.0/100,        # ≤2% worse on init = acceptable noise
                 init_hi=5.0/100          # >5% worse on init = "worse a lot"
             )
-            if self.load_model and os.path.exists(self.state_json):
-                print("Rank {self.rank}: Loading initial training/validation sizes from previous AL state... ")
+            if state is not None:
+                print(f"Rank {self.rank}: Loading initial training/validation sizes from previous AL state... ")
                 self.init_train_size = state["init_train_size"]
                 self.init_val_size = state["init_val_size"]
             else:
@@ -656,9 +696,6 @@ class UserModel(object):
             self.val.extend(val)
 
             
-        if len(self.train) > 1000000:
-            print('1000000 training points reached')
-            self.stop = True
         print(f"Rank {self.rank}: add_trainingset done. fail={fail}. train_len={len(self.train)} val_len={len(self.val)}", flush=True)
         # log the increase in train/val size and iteration
         al_aquistion_df = pd.DataFrame({
@@ -950,18 +987,12 @@ class UserModel(object):
         # Update bests AFTER deciding patience
         self._update_bests(init_e, init_f, add_e, add_f)
 
-        # ----- Size gates (unchanged) -----
+        # Require enough acquired data before patience is allowed to stop AL.
         num_data_minimum = int(self.config['retrain_size']) * 15 + self.init_train_size
-        K = 0.1 # least 10% of initial training data
-        num_data_max = (self.init_train_size) / K
 
         should_stop_dual = (self.pat_old >= self.pcfg["old_limit"]) or (self.pat_new >= self.pcfg["new_limit"])
         if should_stop_dual and len(self.train) >= num_data_minimum:
             print(f"Rank {self.rank}: dual-patience reached (pat_old={self.pat_old}, pat_new={self.pat_new})")
-            self.stop = True
-
-        if len(self.train) >= num_data_max:
-            print(f"Rank {self.rank}: maximum training data size {num_data_max:.0f} reached")
             self.stop = True
 
 
@@ -1014,7 +1045,7 @@ class UserModel(object):
                 "init_train_size": self.init_train_size,
                 "init_val_size": self.init_val_size,
             }
-            with open(f"{self.result_dir}/{self.state_json}", "w") as f:
+            with open(self.state_json, "w") as f:
                 json.dump(al_state, f, indent=2)
 
             

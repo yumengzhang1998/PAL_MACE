@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-import os
 import subprocess
+from pathlib import Path
 
 # ==============================
 # 1. Temperature list
 # ==============================
 temperatures = [300, 400, 500, 600, 700]
 temperatures = [500,525,575]
+job_type = "batch_traj"
+log_dir = Path("slurm_logs") / job_type
+log_dir.mkdir(parents=True, exist_ok=True)
+slurm_dir = Path("slurm_jobs") / job_type
+slurm_dir.mkdir(parents=True, exist_ok=True)
 # ==============================
 # 2. Base SLURM template
 # ==============================
@@ -19,8 +24,8 @@ slurm_template = """#!/bin/bash
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
-#SBATCH --output=bisyn_2nstraj_{T}K_%j.out
-#SBATCH --error=bisyn_2nstraj_{T}K_%j.err
+#SBATCH --output=slurm_logs/batch_traj/batch_traj_{T}K_%j.out
+#SBATCH --error=slurm_logs/batch_traj/batch_traj_{T}K_%j.err
 #SBATCH --mail-type=END
 #SBATCH --mail-user=noname19980927@gmail.com
 #SBATCH --signal=B:TERM@120
@@ -74,10 +79,10 @@ echo "Job finished cleanly."
 # ==============================
 
 for T in temperatures:
-    filename = f"run_{T}K.slurm"
+    slurm_path = slurm_dir / f"run_batch_traj_{T}K.slurm"
 
-    with open(filename, "w") as f:
+    with open(slurm_path, "w") as f:
         f.write(slurm_template.format(T=T))
 
-    print(f"Submitting job for {T}K")
-    subprocess.run(["sbatch", filename])
+    print(f"Submitting job for {T}K using {slurm_path}")
+    subprocess.run(["sbatch", str(slurm_path)], check=True)

@@ -92,6 +92,8 @@ def reset_simulation_state(simulation, coords_ang, temperature):
 
     # reset positions
     simulation.context.setPositions(coords_nm)
+    # update the Langevin thermostat target for the new trajectory episode
+    simulation.integrator.setTemperature(temperature)
     # reset velocities (fresh Maxwell distribution)
     simulation.context.setVelocitiesToTemperature(temperature)
 
@@ -102,6 +104,10 @@ class UserGene(object):
     """
     User defined Generator. Receive prediction from Passive Learner and generate new data points.
     """
+    GENE_TRAJ_SAVE_STRIDE = 100
+    GENE_TRAJ_BUFFER_FRAMES = 256
+    ORACLE_COOLDOWN_STEPS = 1000
+
     def __init__(self, rank, result_dir):
         """
         initilize the generator.
@@ -130,6 +136,37 @@ class UserGene(object):
         self.load_model = config['load_model']
         self.num_atom = config['num_atom']
         self.starting_pool_update = config['starting_pool_update']
+        configured_temperature_low = config.get('gene_temperature_low', None)
+        configured_temperature_high = config.get('gene_temperature_high', None)
+        if (configured_temperature_low is None) != (
+            configured_temperature_high is None
+        ):
+            raise ValueError(
+                "gene_temperature_low and gene_temperature_high must either "
+                "both be set or both be null"
+            )
+        self.sample_initial_temperature_range = (
+            configured_temperature_low is not None
+        )
+        if self.sample_initial_temperature_range:
+            configured_temperature_low = float(configured_temperature_low)
+            configured_temperature_high = float(configured_temperature_high)
+            if not (
+                np.isfinite(configured_temperature_low)
+                and np.isfinite(configured_temperature_high)
+            ):
+                raise ValueError("Generator temperature bounds must be finite")
+            if (
+                configured_temperature_low <= 0
+                or configured_temperature_high <= 0
+                or configured_temperature_low > configured_temperature_high
+            ):
+                raise ValueError(
+                    "Generator temperatures must satisfy "
+                    "0 < gene_temperature_low <= gene_temperature_high"
+                )
+            self.T_low = configured_temperature_low * unit.kelvin
+            self.T_high = configured_temperature_high * unit.kelvin
         self.stop = False
         pred_procs = AL_SETTING["pred_process"]
         self.gene_procs = AL_SETTING["gene_process"]
@@ -155,7 +192,20 @@ class UserGene(object):
         self.num_generate = 0
         self.current_iteration = None
         self.num_traj_per_gene = int(config['num_traj_per_gene'])
+        self.max_steps_per_traj = int(config.get('max_steps_per_traj', 100000))
+        if self.max_steps_per_traj < 1:
+            raise ValueError(
+                "max_steps_per_traj must be a positive integer, got "
+                f"{self.max_steps_per_traj}"
+            )
+        self.save_gene_traj = config.get('save_gene_traj', False)
+        if not isinstance(self.save_gene_traj, bool):
+            raise ValueError(
+                "save_gene_traj must be a YAML boolean (True or False), got "
+                f"{self.save_gene_traj!r}"
+            )
         self.starting_point = [0] * self.num_traj_per_gene
+        self.episode_per_traj = [0] * self.num_traj_per_gene
         self.cluster_data_length = compute_flat_length(self.metadata)
         self.trajs = [None] * self.num_traj_per_gene  # list of per-trajectory dicts
         self.history = [[] for _ in range(self.num_traj_per_gene)]
@@ -163,17 +213,251 @@ class UserGene(object):
         self.iteration_tracker = 0
         self.restart_counter = 0
         self.pool_index_per_traj = [None] * self.num_traj_per_gene
-        if self.load_model == True:
-            self.traj_temperature = [self.rng.uniform(self.T_low.value_in_unit(unit.kelvin), self.T_high.value_in_unit(unit.kelvin)) * unit.kelvin for _ in range(self.num_traj_per_gene)]
+        if self.sample_initial_temperature_range or self.load_model:
+            self.traj_temperature = [
+                self._draw_gene_temperature()
+                for _ in range(self.num_traj_per_gene)
+            ]
         else:
             self.traj_temperature = [self.temperature] * self.num_traj_per_gene
         if self.starting_pool_update:
             # raise NotImplementedError("starting_pool_update option is not implemented yet.")
             self.pool_path = init_pool(self.path, self.result_dir)
+        self._gene_traj_h5 = None
+        self._gene_traj_buffer = []
+        self.gene_traj_path = None
+        if self.save_gene_traj:
+            slurm_job_id = os.environ.get("SLURM_JOB_ID")
+            run_id = slurm_job_id or (
+                f"{config.get('time_stamp', 'local')}_pid{os.getpid()}"
+            )
+            safe_run_id = "".join(
+                character
+                if character.isalnum() or character in {"-", "_"}
+                else "_"
+                for character in str(run_id)
+            )
+            trajectory_dir = os.path.join(
+                self.result_dir, "generator_trajectories"
+            )
+            os.makedirs(trajectory_dir, exist_ok=True)
+            self.gene_traj_path = os.path.join(
+                trajectory_dir,
+                f"generator_rank_{self.rank}_{safe_run_id}.h5",
+            )
+            print(
+                f"Generator {self.rank}: saving coordinates every "
+                f"{self.GENE_TRAJ_SAVE_STRIDE} steps to {self.gene_traj_path}"
+            )
         self.statr_time = time.time()
-            
 
-        
+
+    def _draw_gene_temperature(self):
+        """Draw one episode temperature uniformly from configured bounds."""
+        return self.rng.uniform(
+            self.T_low.value_in_unit(unit.kelvin),
+            self.T_high.value_in_unit(unit.kelvin),
+        ) * unit.kelvin
+
+
+    def _open_gene_trajectory_store(self, atom_numbers):
+        """Open this generator rank's append-only compact HDF5 shard."""
+        if self._gene_traj_h5 is not None:
+            return
+        if self.gene_traj_path is None:
+            raise RuntimeError("Generator trajectory output path is not configured")
+
+        try:
+            import h5py
+        except ImportError as exc:
+            raise RuntimeError(
+                "save_gene_traj=True requires h5py in the runtime environment"
+            ) from exc
+
+        if hasattr(atom_numbers, "detach"):
+            atom_numbers = atom_numbers.detach().cpu().numpy()
+        atom_numbers_array = np.asarray(atom_numbers, dtype=np.int16).reshape(-1)
+        if atom_numbers_array.shape != (self.num_atom,):
+            raise ValueError(
+                "Cannot initialize generator trajectory output: expected "
+                f"{self.num_atom} atomic numbers, got "
+                f"{atom_numbers_array.shape}"
+            )
+
+        h5_file = h5py.File(self.gene_traj_path, "a")
+        dataset_shapes = {
+            "coordinates": (self.num_atom, 3),
+            "slot": (),
+            "episode": (),
+            "md_step": (),
+            "model_iteration": (),
+            "pool_index": (),
+            "temperature_K": (),
+        }
+        try:
+            if "coordinates" not in h5_file:
+                h5_file.attrs["schema"] = "pal_mace_generator_trajectory_v1"
+                h5_file.attrs["generator_rank"] = self.rank
+                h5_file.attrs["num_atoms"] = self.num_atom
+                h5_file.attrs["num_trajectory_slots"] = self.num_traj_per_gene
+                h5_file.attrs["save_stride"] = self.GENE_TRAJ_SAVE_STRIDE
+                h5_file.attrs["coordinate_unit"] = "angstrom"
+                h5_file.attrs["committed_frames"] = 0
+                h5_file.create_dataset(
+                    "atomic_numbers", data=atom_numbers_array, dtype="i2"
+                )
+                h5_file.create_dataset(
+                    "coordinates",
+                    shape=(0, self.num_atom, 3),
+                    maxshape=(None, self.num_atom, 3),
+                    chunks=(
+                        self.GENE_TRAJ_BUFFER_FRAMES,
+                        self.num_atom,
+                        3,
+                    ),
+                    dtype="f4",
+                    compression="gzip",
+                    compression_opts=4,
+                    shuffle=True,
+                )
+                metadata_dtypes = {
+                    "slot": "u2",
+                    "episode": "u4",
+                    "md_step": "u4",
+                    "model_iteration": "i8",
+                    "pool_index": "i4",
+                    "temperature_K": "f4",
+                }
+                for name, dtype in metadata_dtypes.items():
+                    h5_file.create_dataset(
+                        name,
+                        shape=(0,),
+                        maxshape=(None,),
+                        chunks=(self.GENE_TRAJ_BUFFER_FRAMES,),
+                        dtype=dtype,
+                        compression="gzip",
+                        compression_opts=4,
+                        shuffle=True,
+                    )
+            else:
+                required_datasets = set(dataset_shapes) | {"atomic_numbers"}
+                missing = required_datasets.difference(h5_file.keys())
+                if missing:
+                    raise ValueError(
+                        f"Existing trajectory file {self.gene_traj_path} is "
+                        f"missing datasets: {sorted(missing)}"
+                    )
+                stored_atom_numbers = np.asarray(h5_file["atomic_numbers"][:])
+                if not np.array_equal(stored_atom_numbers, atom_numbers_array):
+                    raise ValueError(
+                        f"Atomic numbers in {self.gene_traj_path} do not match "
+                        "the current generator"
+                    )
+                lengths = set()
+                for name, trailing_shape in dataset_shapes.items():
+                    dataset = h5_file[name]
+                    if dataset.shape[1:] != trailing_shape:
+                        raise ValueError(
+                            f"Dataset {name!r} in {self.gene_traj_path} has "
+                            f"shape {dataset.shape}, expected (*, "
+                            f"{trailing_shape})"
+                        )
+                    lengths.add(dataset.shape[0])
+                if len(lengths) != 1:
+                    raise ValueError(
+                        f"Datasets in {self.gene_traj_path} have inconsistent "
+                        "frame counts"
+                    )
+
+            h5_file.attrs["closed_cleanly"] = False
+            h5_file.flush()
+        except Exception:
+            h5_file.close()
+            raise
+
+        self._gene_traj_h5 = h5_file
+
+
+    def _buffer_gene_trajectory_frame(self, traj_index, sample, iteration):
+        """Buffer one saved frame; physical MD generation remains synchronous."""
+        if self._gene_traj_h5 is None:
+            self._open_gene_trajectory_store(sample[1])
+
+        coordinates = np.asarray(sample[0], dtype=np.float32)
+        if coordinates.shape != (self.num_atom, 3):
+            raise ValueError(
+                f"Generator trajectory frame has shape {coordinates.shape}, "
+                f"expected {(self.num_atom, 3)}"
+            )
+        pool_index = self.pool_index_per_traj[traj_index]
+        temperature = self.traj_temperature[traj_index].value_in_unit(
+            unit.kelvin
+        )
+        self._gene_traj_buffer.append(
+            (
+                coordinates.copy(),
+                traj_index,
+                self.episode_per_traj[traj_index],
+                self.starting_point[traj_index],
+                iteration,
+                -1 if pool_index is None else pool_index,
+                temperature,
+            )
+        )
+        if len(self._gene_traj_buffer) >= self.GENE_TRAJ_BUFFER_FRAMES:
+            self._flush_gene_trajectory_buffer()
+
+
+    def _flush_gene_trajectory_buffer(self):
+        """Append buffered records as one compressed HDF5 block."""
+        if not self._gene_traj_buffer:
+            return
+        if self._gene_traj_h5 is None:
+            raise RuntimeError("Generator trajectory HDF5 file is not open")
+
+        records = self._gene_traj_buffer
+        arrays = {
+            "coordinates": np.stack([record[0] for record in records]),
+            "slot": np.asarray([record[1] for record in records], dtype=np.uint16),
+            "episode": np.asarray(
+                [record[2] for record in records], dtype=np.uint32
+            ),
+            "md_step": np.asarray(
+                [record[3] for record in records], dtype=np.uint32
+            ),
+            "model_iteration": np.asarray(
+                [record[4] for record in records], dtype=np.int64
+            ),
+            "pool_index": np.asarray(
+                [record[5] for record in records], dtype=np.int32
+            ),
+            "temperature_K": np.asarray(
+                [record[6] for record in records], dtype=np.float32
+            ),
+        }
+
+        first = self._gene_traj_h5["coordinates"].shape[0]
+        stop = first + len(records)
+        for name, values in arrays.items():
+            dataset = self._gene_traj_h5[name]
+            dataset.resize((stop,) + dataset.shape[1:])
+            dataset[first:stop] = values
+
+        self._gene_traj_h5.attrs["committed_frames"] = stop
+        self._gene_traj_h5.flush()
+        self._gene_traj_buffer.clear()
+
+
+    def _close_gene_trajectory_store(self):
+        """Flush remaining frames and mark the HDF5 shard as cleanly closed."""
+        if not self.save_gene_traj:
+            return
+        self._flush_gene_trajectory_buffer()
+        if self._gene_traj_h5 is not None:
+            self._gene_traj_h5.attrs["closed_cleanly"] = True
+            self._gene_traj_h5.flush()
+            self._gene_traj_h5.close()
+            self._gene_traj_h5 = None
 
     
     def set_up_simulations(self, data_batch):
@@ -215,6 +499,36 @@ class UserGene(object):
     def read_in_data_from_pool(self, counter):
         print(f'Rank {self.rank} reading in data number {counter} from starting pool csv ')
         return get_specific_data(self.pool_path, counter)
+
+    def _choose_starting_pool_indices(self, k):
+        """Choose k pool rows, randomly reusing rows after exhaustion."""
+        indices = random_pop_indices(
+            results_dir=self.result_dir,
+            rank=self.rank,
+            k=k,
+            seed=self.rank,
+        )
+        missing = k - len(indices)
+        if missing <= 0:
+            return indices
+
+        # random_pop_indices intentionally returns only unused rows. Once this
+        # rank has visited all of them, draw replacements from the full current
+        # pool so a generator rank never dies with an empty index list.
+        pool_size = len(pd.read_csv(self.pool_path, usecols=[0]))
+        if pool_size == 0:
+            raise RuntimeError(
+                f"Generator {self.rank}: starting-point pool is empty: "
+                f"{self.pool_path}"
+            )
+
+        reused = self.rng.choices(range(pool_size), k=missing)
+        print(
+            f"Generator {self.rank}: starting-point pool exhausted; "
+            f"randomly reusing {missing} of {pool_size} rows",
+            flush=True,
+        )
+        return indices + reused
 
 
 
@@ -313,33 +627,27 @@ class UserGene(object):
 
         # pick a new geometry from initial dataset
         if self.starting_pool_update:
-            idx = random_pop_indices(
-                results_dir=self.result_dir,
-                rank=self.rank,
-                k=1,
-                seed=self.rank,
-            )
-            geom = self.read_in_data_from_pool(counter=idx[0])
-            pool_idx = idx[0]
+            pool_idx = self._choose_starting_pool_indices(1)[0]
+            geom = self.read_in_data_from_pool(counter=pool_idx)
         else:
             idx = self.rng.randint(0, self.init_length - 1)
             geom = self.read_in_data(counter=idx)
             pool_idx = idx
 
         self.pool_index_per_traj[i] = pool_idx
+        self.episode_per_traj[i] += 1
         coords_ang = np.asarray(geom[0], dtype=float)
 
         traj_state = self.trajs[i]
         simulation = traj_state["simulation"]
         force      = traj_state["force"]
-        if self.load_model == True:
-            # assign random structure near the original one
-            T = self.rng.uniform(self.T_low.value_in_unit(unit.kelvin), self.T_high.value_in_unit(unit.kelvin)) * unit.kelvin
-        # elif self.current_iteration < 20:
-        #     T = self.T_low
-        else:
-            T = self.rng.uniform(self.T_low.value_in_unit(unit.kelvin), self.T_high.value_in_unit(unit.kelvin)) * unit.kelvin
-            print(f"Rank {self.rank} traj {i}: restarting at random temperature {T} K")
+        T = self._draw_gene_temperature()
+        if not self.load_model:
+            temperature_K = T.value_in_unit(unit.kelvin)
+            print(
+                f"Rank {self.rank} traj {i}: restarting at random "
+                f"temperature {temperature_K:.2f} K"
+            )
 
         self.traj_temperature[i] = T
         # reset simulation state IN PLACE
@@ -382,11 +690,8 @@ class UserGene(object):
                 f"{self.num_traj_per_gene} trajectories")
             if self. starting_pool_update:
                 # raise NotImplementedError("starting_pool_update option is not implemented yet.")
-                indices = random_pop_indices(
-                    results_dir=self.result_dir,
-                    rank=self.rank,
-                    k=self.num_traj_per_gene,
-                    seed=self.rank,
+                indices = self._choose_starting_pool_indices(
+                    self.num_traj_per_gene
                 )
                 data_batch = [self.read_in_data_from_pool(counter=i) for i in indices]
             else:
@@ -441,7 +746,16 @@ class UserGene(object):
         for i in range(num_traj):
             row = body_2d[i]
             sent_i_raw = int(row[0])
-            sent_i = 0 if sent_i_raw > 1000 else sent_i_raw  # cooldown with 100
+            # prediction_check() marks a trajectory as 1 when it is selected
+            # for the oracle. Advance that marker once per generated MD step and
+            # release the trajectory after ORACLE_COOLDOWN_STEPS steps.
+            if sent_i_raw >= self.ORACLE_COOLDOWN_STEPS:
+                sent_i = 0
+            elif sent_i_raw > 0:
+                sent_i = sent_i_raw + 1
+            else:
+                sent_i = 0
+            advanced_step = False
 
             flat_geom = row[1:]
             geometry = reconstruct_from_metadata(
@@ -455,7 +769,7 @@ class UserGene(object):
                     f"{self.starting_point[i]} steps, time elapsed: {step_per_sec_i} steps/s, ")
 
             # check patience / max steps for THIS trajectory
-            if (self.starting_point[i] >= 100000 or
+            if (self.starting_point[i] >= self.max_steps_per_traj or
                 geometry[-2][0] > self.patience_threshold or
                 geometry[-2][1] > self.patience_threshold):
 
@@ -507,11 +821,23 @@ class UserGene(object):
                     sample = self.update(sim, geometry)
                     traj_state["steps"] += 1
                     self.starting_point[i] += 1
+                    advanced_step = True
                 except Exception as e:
                     # EXPLOSION HANDLING for THIS traj only
                     print(f"Trajectory {i} exploded in MD step: {e}. Restarting...")
                     new_geom, sample = self.restart_traj(i)
                     sent_i = 0
+
+            if (
+                self.save_gene_traj
+                and advanced_step
+                and self.starting_point[i] % self.GENE_TRAJ_SAVE_STRIDE == 0
+            ):
+                self._buffer_gene_trajectory_frame(
+                    traj_index=i,
+                    sample=sample,
+                    iteration=iteration_marker,
+                )
 
             self.history[i].append([self.current_iteration, [sent_i, sample]])
             sample = convert_to_1d_float_array(sample)
@@ -579,5 +905,8 @@ class UserGene(object):
         Stop the active learning workflow.
         """
         self.stop = True
-        self.save_progress(self.stop)
+        try:
+            self._close_gene_trajectory_store()
+        finally:
+            self.save_progress(self.stop)
         print('stop run')    

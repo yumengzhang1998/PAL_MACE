@@ -191,7 +191,7 @@ def eval_md(
 
         batch = batch.to(device)
 
-        if step is not None and step % 1000 == 0:
+        if step is not None and step % 10000 == 0:
 
             n_edges = batch.edge_index.shape[1]
             n_atoms = batch.num_nodes
@@ -236,7 +236,7 @@ def eval_md(
 
     t_rearrange = time.time()
 
-    if time_log is not None and step is not None and step % 1000 == 0:
+    if time_log is not None and step is not None and step % 10000 == 0:
         time_log.write(
             f"{step},{t_grph - t0:.4f},{t_forward - t_grph:.4f},{t_rearrange - t_forward:.4f}\n"
         )
